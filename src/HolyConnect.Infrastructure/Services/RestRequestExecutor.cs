@@ -101,7 +101,8 @@ public class RestRequestExecutor : IRequestExecutor
 
         if (!string.IsNullOrEmpty(request.Body))
         {
-            httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, request.ContentType ?? "application/json");
+            var contentType = string.IsNullOrEmpty(request.ContentType) ? "text/plain" : request.ContentType;
+            httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
         }
 
         return httpRequest;
