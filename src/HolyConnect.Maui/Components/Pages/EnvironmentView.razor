@@ -1,0 +1,140 @@
+@page "/environment/{EnvironmentId:guid}"
+@inject EnvironmentService EnvironmentService
+@inject CollectionService CollectionService
+@inject RequestService RequestService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.False" Style="height: calc(100vh - 64px); display: flex; padding: 0;">
+    <MudPaper Elevation="2" Style="width: 300px; overflow-y: auto; border-right: 1px solid #e0e0e0;">
+        @if (_environment != null)
+        {
+            <MudToolBar Dense="true">
+                <MudText Typo="Typo.h6">@_environment.Name</MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="CreateCollection" />
+            </MudToolBar>
+            
+            <div>
+                @if (_collections != null && _collections.Any())
+                {
+                    @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
+                    {
+                        <CollectionTreeItem Collection="@collection" OnSelect="SelectCollection" />
+                    }
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-4">No collections yet</MudText>
+                }
+            </div>
+        }
+    </MudPaper>
+
+    <MudPaper Style="flex: 1; overflow-y: auto; padding: 16px;">
+        @if (_selectedCollection != null)
+        {
+            <MudText Typo="Typo.h5" Class="mb-4">@_selectedCollection.Name</MudText>
+            <MudText Typo="Typo.body1" Class="mb-4">@_selectedCollection.Description</MudText>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateRequest" StartIcon="@Icons.Material.Filled.Add">
+                New Request
+            </MudButton>
+
+            <MudText Typo="Typo.h6" Class="mt-4 mb-2">Requests</MudText>
+            @if (_selectedCollection.Requests != null && _selectedCollection.Requests.Any())
+            {
+                <div>
+                    @foreach (var request in _selectedCollection.Requests)
+                    {
+                        <MudPaper Class="pa-2 mb-2" Style="cursor: pointer;" @onclick="@(() => SelectRequest(request))">
+                            <MudText>@request.Name</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Default">@request.Type</MudText>
+                        </MudPaper>
+                    }
+                </div>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No requests in this collection</MudText>
+            }
+        }
+        else if (_selectedRequest != null)
+        {
+            <RequestEditor Request="@_selectedRequest" OnSave="SaveRequest" OnCancel="CancelRequestEdit" />
+        }
+        else
+        {
+            <MudText Typo="Typo.h6">Select a collection to view its requests</MudText>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid EnvironmentId { get; set; }
+
+    private Domain.Entities.Environment? _environment;
+    private IEnumerable<Collection>? _collections;
+    private Collection? _selectedCollection;
+    private Request? _selectedRequest;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _environment = await EnvironmentService.GetEnvironmentByIdAsync(EnvironmentId);
+        if (_environment != null)
+        {
+            _collections = await CollectionService.GetAllCollectionsAsync();
+            _collections = _collections.Where(c => c.EnvironmentId == EnvironmentId);
+        }
+    }
+
+    private void SelectCollection(Collection collection)
+    {
+        _selectedCollection = collection;
+        _selectedRequest = null;
+        StateHasChanged();
+    }
+
+    private void SelectRequest(Request request)
+    {
+        _selectedRequest = request;
+        _selectedCollection = null;
+        StateHasChanged();
+    }
+
+    private void CreateCollection()
+    {
+        NavigationManager.NavigateTo($"/environment/{EnvironmentId}/collection/create");
+    }
+
+    private void CreateRequest()
+    {
+        if (_selectedCollection != null)
+        {
+            NavigationManager.NavigateTo($"/collection/{_selectedCollection.Id}/request/create");
+        }
+    }
+
+    private async Task SaveRequest()
+    {
+        if (_selectedRequest != null)
+        {
+            await RequestService.UpdateRequestAsync(_selectedRequest);
+            Snackbar.Add("Request saved", Severity.Success);
+            _selectedRequest = null;
+            await LoadData();
+        }
+    }
+
+    private void CancelRequestEdit()
+    {
+        _selectedRequest = null;
+        StateHasChanged();
+    }
+}

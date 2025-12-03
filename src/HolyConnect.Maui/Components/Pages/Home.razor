@@ -1,0 +1,100 @@
+﻿@page "/"
+@inject EnvironmentService EnvironmentService
+@inject NavigationManager NavigationManager
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Welcome to HolyConnect</MudText>
+    <MudText Typo="Typo.body1" Class="mb-6">
+        A powerful API testing tool for REST, GraphQL, and more. Get started by creating an environment or exploring your existing collections.
+    </MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Quick Actions</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="CreateEnvironment" FullWidth="true">
+                        Create New Environment
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Class="mt-2" OnClick="CreateRequest" FullWidth="true">
+                        Create New Request
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Recent Environments</MudText>
+                    @if (_environments != null && _environments.Any())
+                    {
+                        <div>
+                            @foreach (var env in _environments.Take(5))
+                            {
+                                <MudPaper Class="pa-2 mb-2" Style="cursor: pointer;" @onclick="@(() => NavigateToEnvironment(env.Id))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" /> @env.Name
+                                </MudPaper>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No environments yet. Create one to get started!</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Features</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.subtitle2"><MudIcon Icon="@Icons.Material.Filled.Http" Size="Size.Small" /> REST API Support</MudText>
+                            <MudText Typo="Typo.body2">Send GET, POST, PUT, DELETE, and other HTTP requests</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.subtitle2"><MudIcon Icon="@Icons.Material.Filled.GraphicEq" Size="Size.Small" /> GraphQL Support</MudText>
+                            <MudText Typo="Typo.body2">Test GraphQL queries and mutations with ease</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.subtitle2"><MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> Organization</MudText>
+                            <MudText Typo="Typo.body2">Organize requests in collections and environments</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private IEnumerable<Domain.Entities.Environment>? _environments;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEnvironments();
+    }
+
+    private async Task LoadEnvironments()
+    {
+        _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+    }
+
+    private void CreateEnvironment()
+    {
+        NavigationManager.NavigateTo("/environment/create");
+    }
+
+    private void CreateRequest()
+    {
+        NavigationManager.NavigateTo("/request/create");
+    }
+
+    private void NavigateToEnvironment(Guid id)
+    {
+        NavigationManager.NavigateTo($"/environment/{id}");
+    }
+}

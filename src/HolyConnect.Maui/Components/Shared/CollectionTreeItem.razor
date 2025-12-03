@@ -1,0 +1,26 @@
+@if (Collection != null)
+{
+    <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;" @onclick="@(() => OnSelect.InvokeAsync(Collection))">
+        <MudText>
+            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> @Collection.Name
+        </MudText>
+    </MudPaper>
+    
+    @if (Collection.SubCollections != null && Collection.SubCollections.Any())
+    {
+        <div Class="ml-4">
+            @foreach (var subCollection in Collection.SubCollections)
+            {
+                <CollectionTreeItem Collection="@subCollection" OnSelect="@OnSelect" />
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public Collection? Collection { get; set; }
+
+    [Parameter]
+    public EventCallback<Collection> OnSelect { get; set; }
+}

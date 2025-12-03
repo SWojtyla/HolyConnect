@@ -1,0 +1,41 @@
+﻿@inject EnvironmentService EnvironmentService
+@inject NavigationManager NavigationManager
+
+<MudNavMenu>
+    <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Home</MudNavLink>
+    
+    <MudNavGroup Title="Environments" Icon="@Icons.Material.Filled.Folder" Expanded="true">
+        @if (_environments != null && _environments.Any())
+        {
+            @foreach (var env in _environments)
+            {
+                <MudNavLink Href="@($"/environment/{env.Id}")" Icon="@Icons.Material.Filled.Dns">
+                    @env.Name
+                </MudNavLink>
+            }
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="ml-8 mt-2" Color="Color.Default">No environments</MudText>
+        }
+    </MudNavGroup>
+    
+    <MudDivider Class="my-2" />
+    
+    <MudNavLink Href="/settings" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink>
+</MudNavMenu>
+
+@code {
+    private IEnumerable<Domain.Entities.Environment>? _environments;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEnvironments();
+    }
+
+    private async Task LoadEnvironments()
+    {
+        _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+        StateHasChanged();
+    }
+}

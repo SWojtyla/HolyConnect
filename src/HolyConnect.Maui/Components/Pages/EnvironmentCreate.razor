@@ -1,0 +1,84 @@
+@page "/environment/create"
+@inject EnvironmentService EnvironmentService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Create Environment</MudText>
+
+    <MudCard>
+        <MudCardContent>
+            <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
+            
+            <MudText Typo="Typo.h6" Class="mt-6 mb-2">Environment Variables</MudText>
+            @foreach (var variable in _variables)
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="5">
+                        <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <MudTextField @bind-Value="variable.Value" Label="Value" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="2">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
+                    </MudItem>
+                </MudGrid>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddVariable" StartIcon="@Icons.Material.Filled.Add">
+                Add Variable
+            </MudButton>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEnvironment" Disabled="@(string.IsNullOrWhiteSpace(_name))">
+                Create
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">
+                Cancel
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private List<VariableModel> _variables = new();
+
+    private class VariableModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    private void AddVariable()
+    {
+        _variables.Add(new VariableModel());
+    }
+
+    private void RemoveVariable(VariableModel variable)
+    {
+        _variables.Remove(variable);
+    }
+
+    private async Task SaveEnvironment()
+    {
+        var environment = await EnvironmentService.CreateEnvironmentAsync(_name, _description);
+        
+        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+        {
+            environment.Variables[variable.Key] = variable.Value;
+        }
+
+        await EnvironmentService.UpdateEnvironmentAsync(environment);
+        
+        Snackbar.Add($"Environment '{_name}' created successfully", Severity.Success);
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}
