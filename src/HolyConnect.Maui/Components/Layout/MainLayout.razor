@@ -1,11 +1,15 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject SettingsService SettingsService
+
+<MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="@_isDarkMode" />
 
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
         <MudText Typo="Typo.h6">HolyConnect</MudText>
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" />
+        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" OnClick="NavigateToSettings" />
     </MudAppBar>
     
     <MudDrawer @bind-Open="@_drawerOpen" Elevation="2" Variant="@DrawerVariant.Persistent" ClipMode="DrawerClipMode.Always">
@@ -17,16 +21,45 @@
     
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.False" Style="height: 100%; padding: 0;">
-            @Body
+            <CascadingValue Value="@DarkModeToggleCallback">
+                @Body
+            </CascadingValue>
         </MudContainer>
     </MudMainContent>
 </MudLayout>
 
 @code {
     private bool _drawerOpen = true;
+    private bool _isDarkMode = false;
+    private MudThemeProvider? _mudThemeProvider;
+    private MudTheme _theme = new MudTheme();
+
+    private EventCallback<bool> DarkModeToggleCallback => EventCallback.Factory.Create<bool>(this, ToggleDarkMode);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDarkModePreference();
+    }
+
+    private async Task LoadDarkModePreference()
+    {
+        var settings = await SettingsService.GetSettingsAsync();
+        _isDarkMode = settings.IsDarkMode;
+    }
 
     private void ToggleDrawer()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    private void NavigateToSettings()
+    {
+        NavigationManager.NavigateTo("/settings");
+    }
+
+    private async Task ToggleDarkMode(bool isDark)
+    {
+        _isDarkMode = isDark;
+        StateHasChanged();
     }
 }

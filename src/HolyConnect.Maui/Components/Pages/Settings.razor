@@ -1,0 +1,162 @@
+@page "/settings"
+@inject SettingsService SettingsService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Appearance</MudText>
+            
+            <MudSwitch Value="_isDarkMode" 
+                       Label="Dark Mode" 
+                       Color="Color.Primary"
+                       T="bool"
+                       ValueChanged="OnDarkModeChanged" />
+        </MudCardContent>
+    </MudCard>
+
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Data Storage</MudText>
+            
+            <MudText Typo="Typo.body2" Class="mb-2">
+                Choose where to save your environments, collections, and requests.
+            </MudText>
+
+            <MudTextField @bind-Value="_storagePath" 
+                         Label="Storage Path" 
+                         Variant="Variant.Outlined" 
+                         Class="mb-2"
+                         HelperText="Path where data will be stored on disk" />
+
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      OnClick="BrowseStoragePath"
+                      StartIcon="@Icons.Material.Filled.FolderOpen"
+                      Class="mb-3">
+                Browse
+            </MudButton>
+
+            <MudText Typo="Typo.caption" Class="mb-3">
+                Current path: @_storagePath
+            </MudText>
+
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Success" 
+                      OnClick="SaveSettings"
+                      StartIcon="@Icons.Material.Filled.Save">
+                Save Settings
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private bool _isDarkMode;
+    private string _storagePath = string.Empty;
+
+    [CascadingParameter]
+    public EventCallback<bool> OnDarkModeToggle { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        var settings = await SettingsService.GetSettingsAsync();
+        _isDarkMode = settings.IsDarkMode;
+        _storagePath = settings.StoragePath;
+    }
+
+    private async Task OnDarkModeChanged(bool value)
+    {
+        _isDarkMode = value;
+        await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+        
+        // Auto-save dark mode preference
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            settings.IsDarkMode = _isDarkMode;
+            await SettingsService.SaveSettingsAsync(settings);
+            Snackbar.Add("Dark mode preference saved", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving dark mode preference: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task BrowseStoragePath()
+    {
+        try
+        {
+#if WINDOWS
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker();
+            var window = Microsoft.Maui.Controls.Application.Current?.Windows?.FirstOrDefault();
+            if (window?.Handler?.PlatformView != null)
+            {
+                var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window.Handler.PlatformView);
+                WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, windowHandle);
+                
+                folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                folderPicker.FileTypeFilter.Add("*");
+
+                var folder = await folderPicker.PickSingleFolderAsync();
+                if (folder != null)
+                {
+                    _storagePath = folder.Path;
+                }
+            }
+            else
+            {
+                Snackbar.Add("Cannot access window for folder picker", Severity.Warning);
+            }
+#elif ANDROID
+            // For Android, we'll use the app's local directory
+            var context = Android.App.Application.Context;
+            var externalFilesDir = context.GetExternalFilesDir(null)?.AbsolutePath;
+            if (!string.IsNullOrEmpty(externalFilesDir))
+            {
+                _storagePath = Path.Combine(externalFilesDir, "HolyConnect");
+                Snackbar.Add("Using app's storage directory on Android", Severity.Info);
+            }
+#elif IOS || MACCATALYST
+            // For iOS/MacCatalyst, use documents directory
+            _storagePath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments), "HolyConnect");
+            Snackbar.Add("Using documents directory", Severity.Info);
+#else
+            Snackbar.Add("File picker not available on this platform", Severity.Warning);
+#endif
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error selecting folder: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        try
+        {
+            var settings = new Domain.Entities.AppSettings
+            {
+                IsDarkMode = _isDarkMode,
+                StoragePath = _storagePath
+            };
+
+            await SettingsService.SaveSettingsAsync(settings);
+            await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+            Snackbar.Add("Settings saved successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving settings: {ex.Message}", Severity.Error);
+        }
+    }
+}
