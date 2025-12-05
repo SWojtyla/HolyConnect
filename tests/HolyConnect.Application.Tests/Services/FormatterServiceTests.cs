@@ -54,13 +54,13 @@ public class FormatterServiceTests
     }
 
     [Fact]
-    public void FormatJson_WithNull_ShouldReturnNull()
+    public void FormatJson_WithNull_ShouldReturnEmpty()
     {
         // Act
-        var result = _formatterService.FormatJson(null!);
+        var result = _formatterService.FormatJson(null);
 
         // Assert
-        Assert.Null(result);
+        Assert.Equal(string.Empty, result);
     }
 
     [Fact]

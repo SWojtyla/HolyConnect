@@ -391,23 +391,38 @@
             }
             else
             {
-                // Try JSON first
-                try
+                // Try to detect format by looking at content
+                var trimmedBody = _response.Body.TrimStart();
+                if (trimmedBody.StartsWith("{") || trimmedBody.StartsWith("["))
                 {
-                    _responseBodyDisplay = FormatterService.FormatJson(_response.Body);
-                }
-                catch
-                {
-                    // Try XML
-                    try
+                    var formatted = FormatterService.FormatJson(_response.Body);
+                    if (!string.IsNullOrEmpty(formatted))
                     {
-                        _responseBodyDisplay = FormatterService.FormatXml(_response.Body);
+                        _responseBodyDisplay = formatted;
                     }
-                    catch
+                    else
                     {
-                        Snackbar.Add("Could not detect format. Body appears to be plain text.", Severity.Info);
+                        Snackbar.Add("Could not format as JSON. Body appears to be plain text.", Severity.Info);
                         return;
                     }
+                }
+                else if (trimmedBody.StartsWith("<"))
+                {
+                    var formatted = FormatterService.FormatXml(_response.Body);
+                    if (!string.IsNullOrEmpty(formatted))
+                    {
+                        _responseBodyDisplay = formatted;
+                    }
+                    else
+                    {
+                        Snackbar.Add("Could not format as XML. Body appears to be plain text.", Severity.Info);
+                        return;
+                    }
+                }
+                else
+                {
+                    Snackbar.Add("Could not detect format. Body appears to be plain text.", Severity.Info);
+                    return;
                 }
             }
             StateHasChanged();

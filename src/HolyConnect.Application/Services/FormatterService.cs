@@ -9,11 +9,11 @@ namespace HolyConnect.Application.Services;
 
 public class FormatterService : IFormatterService
 {
-    public string FormatJson(string json)
+    public string FormatJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return json;
+            return string.Empty;
         }
 
         try
@@ -27,11 +27,11 @@ public class FormatterService : IFormatterService
         }
     }
 
-    public string FormatXml(string xml)
+    public string FormatXml(string? xml)
     {
         if (string.IsNullOrWhiteSpace(xml))
         {
-            return xml;
+            return string.Empty;
         }
 
         try
@@ -60,11 +60,11 @@ public class FormatterService : IFormatterService
         }
     }
 
-    public string FormatGraphQL(string graphql)
+    public string FormatGraphQL(string? graphql)
     {
         if (string.IsNullOrWhiteSpace(graphql))
         {
-            return graphql;
+            return string.Empty;
         }
 
         // Basic GraphQL formatting
