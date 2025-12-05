@@ -1,0 +1,164 @@
+@page "/wiki/variables"
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h3" Class="mb-4">Variables</MudText>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h5" Class="mb-3">What are Variables?</MudText>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Variables allow you to store and reuse values across your API requests. They help you avoid repetition and make it easy to switch between different environments or configurations.
+        </MudText>
+        <MudText Typo="Typo.body1">
+            Variables in HolyConnect work similarly to Postman and Bruno, using the <code>{{ '{' }}{ variableName }{{ '}' }}</code> syntax.
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h5" Class="mb-3">How to Use Variables</MudText>
+        
+        <MudText Typo="Typo.h6" Class="mb-2">1. Define Variables</MudText>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Variables can be defined at two levels:
+        </MudText>
+        <MudList T="string" Dense="true">
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Public">
+                <MudText><strong>Environment Variables:</strong> Available to all collections and requests in that environment</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Folder">
+                <MudText><strong>Collection Variables:</strong> Available only to requests within that collection (overrides environment variables)</MudText>
+            </MudListItem>
+        </MudList>
+
+        <MudText Typo="Typo.h6" Class="mt-4 mb-2">2. Use Variables in Requests</MudText>
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Variables can be used in:
+        </MudText>
+        <MudList T="string" Dense="true">
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Link">URL</MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Code">Headers (both key and value)</MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Search">Query Parameters (both key and value)</MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Description">Request Body</MudListItem>
+        </MudList>
+
+        <MudText Typo="Typo.h6" Class="mt-4 mb-2">3. Variable Syntax</MudText>
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Use the <code>{{ '{' }}{ variableName }{{ '}' }}</code> syntax to reference a variable:
+        </MudText>
+        <MudAlert Severity="Severity.Info" Class="mb-2" Dense="true">
+            <code>{{ '{' }}{ API_URL }{{ '}' }}/users</code>
+        </MudAlert>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Spaces inside the braces are optional: <code>{{ '{' }}{ API_URL }{{ '}' }}</code> and <code>{{ '{' }}{{API_URL}}{{ '}' }}</code> are equivalent.
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h5" Class="mb-3">Examples</MudText>
+
+        <MudText Typo="Typo.h6" Class="mb-2">Example 1: API Base URL</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">Define an environment variable:</MudText>
+        <MudAlert Severity="Severity.Normal" Class="mb-2" Dense="true">
+            Key: <code>API_URL</code><br />
+            Value: <code>https://api.example.com</code>
+        </MudAlert>
+        <MudText Typo="Typo.body2" Class="mb-2">Use it in your request URL:</MudText>
+        <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
+            <code>{{ '{' }}{ API_URL }{{ '}' }}/v1/users</code><br />
+            Resolves to: <code>https://api.example.com/v1/users</code>
+        </MudAlert>
+
+        <MudText Typo="Typo.h6" Class="mb-2">Example 2: Authorization Token</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">Define an environment variable:</MudText>
+        <MudAlert Severity="Severity.Normal" Class="mb-2" Dense="true">
+            Key: <code>AUTH_TOKEN</code><br />
+            Value: <code>Bearer abc123xyz</code>
+        </MudAlert>
+        <MudText Typo="Typo.body2" Class="mb-2">Use it in a header:</MudText>
+        <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
+            Header Key: <code>Authorization</code><br />
+            Header Value: <code>{{ '{' }}{ AUTH_TOKEN }{{ '}' }}</code><br />
+            Resolves to: <code>Bearer abc123xyz</code>
+        </MudAlert>
+
+        <MudText Typo="Typo.h6" Class="mb-2">Example 3: Collection Override</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">Environment variable:</MudText>
+        <MudAlert Severity="Severity.Normal" Class="mb-2" Dense="true">
+            Key: <code>API_URL</code><br />
+            Value: <code>https://api.production.com</code>
+        </MudAlert>
+        <MudText Typo="Typo.body2" Class="mb-2">Collection variable (overrides environment):</MudText>
+        <MudAlert Severity="Severity.Normal" Class="mb-2" Dense="true">
+            Key: <code>API_URL</code><br />
+            Value: <code>https://api.staging.com</code>
+        </MudAlert>
+        <MudText Typo="Typo.body2" Class="mb-2">Requests in this collection will use:</MudText>
+        <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
+            <code>https://api.staging.com</code> (collection variable takes precedence)
+        </MudAlert>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h5" Class="mb-3">Visual Indicators</MudText>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            HolyConnect provides visual feedback when using variables:
+        </MudText>
+        <MudList T="string" Dense="true">
+            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                <MudText><strong>Green Icon:</strong> All variables are defined and resolved successfully</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Warning" IconColor="Color.Warning">
+                <MudText><strong>Orange Icon:</strong> Some variables are missing or undefined</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Code">
+                <MudText><strong>Code Icon:</strong> Appears when variables are detected in the field</MudText>
+            </MudListItem>
+        </MudList>
+        <MudText Typo="Typo.body2" Class="mt-3">
+            Hover over or click the icon to see resolved variable values and their sources.
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h5" Class="mb-3">Best Practices</MudText>
+        <MudList T="string" Dense="true">
+            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                <MudText>Use <strong>environment variables</strong> for values that apply across all collections (API URLs, global tokens)</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                <MudText>Use <strong>collection variables</strong> for collection-specific overrides (testing endpoints, special auth)</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                <MudText>Use descriptive variable names like <code>API_URL</code>, <code>AUTH_TOKEN</code>, <code>USER_ID</code></MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                <MudText>Follow a naming convention (e.g., UPPER_SNAKE_CASE)</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                <MudText>Keep sensitive values (tokens, passwords) in variables, not hardcoded in requests</MudText>
+            </MudListItem>
+        </MudList>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h5" Class="mb-3">Limitations</MudText>
+        <MudList T="string" Dense="true">
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Info">
+                <MudText>Variable names must start with a letter or underscore and contain only letters, numbers, and underscores</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Info">
+                <MudText>Variables cannot reference other variables (no nested resolution)</MudText>
+            </MudListItem>
+            <MudListItem T="string" Icon="@Icons.Material.Filled.Info">
+                <MudText>Missing variables will remain as <code>{{ '{' }}{ variableName }{{ '}' }}</code> in the request (not replaced)</MudText>
+            </MudListItem>
+        </MudList>
+    </MudPaper>
+
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/" StartIcon="@Icons.Material.Filled.Home">
+        Back to Home
+    </MudButton>
+</MudContainer>
+
+@code {
+
+}
