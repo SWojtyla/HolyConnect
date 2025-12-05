@@ -1,18 +1,21 @@
 @if (Collection != null)
 {
     <div>
-        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;" @onclick="@(() => ToggleExpanded())">
+        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;">
             <MudText>
-                @if (HasChildren)
-                {
-                    <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" />
-                }
-                else
-                {
-                    <span style="display: inline-block; width: 24px;"></span>
-                }
-                <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> 
-                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" @onclick:stopPropagation="true">@Collection.Name</span>
+                <span @onclick="@(() => ToggleExpanded())">
+                    @if (HasChildren)
+                    {
+                        <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" />
+                    }
+                    else
+                    {
+                        <span style="display: inline-block; width: 24px;"></span>
+                    }
+                </span>
+                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> @Collection.Name
+                </span>
             </MudText>
         </MudPaper>
         

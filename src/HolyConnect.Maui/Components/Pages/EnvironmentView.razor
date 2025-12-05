@@ -113,11 +113,18 @@
 
     private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        // Reload data when location changes
-        if (e.Location.Contains($"/environment/{EnvironmentId}"))
+        try
         {
-            await LoadData();
-            StateHasChanged();
+            // Reload data when location changes
+            if (EnvironmentId != Guid.Empty && e.Location.Contains($"/environment/{EnvironmentId}"))
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reloading data on location change: {ex.Message}");
         }
     }
 

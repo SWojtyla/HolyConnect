@@ -122,13 +122,13 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         return entity;
     }
 
-    public async Task DeleteAsync(Guid id)
+    public Task DeleteAsync(Guid id)
     {
         var filePath = GetFilePath(id);
         if (File.Exists(filePath))
         {
             File.Delete(filePath);
         }
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 }
