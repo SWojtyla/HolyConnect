@@ -3,9 +3,9 @@
 @if (Collection != null)
 {
     <div>
-        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+        <MudPaper Class="pa-2 mb-1" Style="display: flex; align-items: center; justify-content: space-between;">
             <MudText Style="flex: 1;">
-                <span @onclick="@(() => ToggleExpanded())">
+                <span @onclick="@(() => ToggleExpanded())" style="cursor: pointer;">
                     @if (HasChildren)
                     {
                         <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" />
@@ -15,13 +15,13 @@
                         <span style="display: inline-block; width: 24px;"></span>
                     }
                 </span>
-                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))">
+                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" style="cursor: pointer;">
                     <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> @Collection.Name
                 </span>
             </MudText>
             <div style="display: flex; gap: 4px;">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameCollection())" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameCollection())" aria-label="Rename collection" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" />
             </div>
         </MudPaper>
         
@@ -32,13 +32,13 @@
                 {
                     @foreach (var request in Collection.Requests)
                     {
-                        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                            <MudText Style="flex: 1;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
+                        <MudPaper Class="pa-2 mb-1" Style="display: flex; align-items: center; justify-content: space-between;">
+                            <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
                             </MudText>
                             <div style="display: flex; gap: 4px;">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" />
                             </div>
                         </MudPaper>
                     }
@@ -110,7 +110,6 @@
 
         var parameters = new DialogParameters
         {
-            ["Title"] = "Rename Collection",
             ["CurrentName"] = Collection.Name
         };
 
@@ -147,7 +146,6 @@
     {
         var parameters = new DialogParameters
         {
-            ["Title"] = "Rename Request",
             ["CurrentName"] = request.Name
         };
 

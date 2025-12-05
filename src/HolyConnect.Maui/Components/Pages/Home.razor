@@ -34,13 +34,13 @@
                         <div>
                             @foreach (var env in _environments.Take(5))
                             {
-                                <MudPaper Class="pa-2 mb-2" Style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                                    <MudText Style="flex: 1;" @onclick="@(() => NavigateToEnvironment(env.Id))">
+                                <MudPaper Class="pa-2 mb-2" Style="display: flex; align-items: center; justify-content: space-between;">
+                                    <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => NavigateToEnvironment(env.Id))">
                                         <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" /> @env.Name
                                     </MudText>
                                     <div style="display: flex; gap: 4px;">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameEnvironment(env))" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteEnvironment(env))" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameEnvironment(env))" aria-label="Rename environment" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteEnvironment(env))" aria-label="Delete environment" />
                                     </div>
                                 </MudPaper>
                             }
@@ -110,7 +110,6 @@
     {
         var parameters = new DialogParameters
         {
-            ["Title"] = "Rename Environment",
             ["CurrentName"] = environment.Name
         };
 
