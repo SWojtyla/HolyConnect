@@ -1,0 +1,23 @@
+namespace HolyConnect.Domain.Entities;
+
+public abstract class Request
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string Url { get; set; } = string.Empty;
+    public Dictionary<string, string> Headers { get; set; } = new();
+    public Guid CollectionId { get; set; }
+    public Collection? Collection { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public abstract RequestType Type { get; }
+}
+
+public enum RequestType
+{
+    Rest,
+    GraphQL,
+    Soap,
+    WebSocket
+}

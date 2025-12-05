@@ -1,0 +1,156 @@
+@inject RequestService RequestService
+@inject ISnackbar Snackbar
+
+<MudCard>
+    <MudCardContent>
+        <MudText Typo="Typo.h5" Class="mb-4">@(Request?.Name ?? "New Request")</MudText>
+        
+        <MudTextField @bind-Value="Request!.Name" Label="Request Name" Variant="Variant.Outlined" Class="mb-2" />
+        <MudTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Class="mb-2" />
+        
+        @if (Request is RestRequest restRequest)
+        {
+            <MudSelect @bind-Value="restRequest.Method" Label="Method" Variant="Variant.Outlined" Class="mb-2">
+                @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
+                {
+                    <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
+                }
+            </MudSelect>
+            
+            <MudTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="10" Variant="Variant.Outlined" Class="mb-2" />
+        }
+        else if (Request is GraphQLRequest graphQLRequest)
+        {
+            <MudTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="10" Variant="Variant.Outlined" Class="mb-2" />
+            <MudTextField @bind-Value="graphQLRequest.Variables" Label="Variables (JSON)" Lines="5" Variant="Variant.Outlined" Class="mb-2" />
+        }
+
+        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Headers</MudText>
+        @foreach (var header in _headers)
+        {
+            <MudGrid Class="mb-2">
+                <MudItem xs="5">
+                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="5">
+                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="2">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                </MudItem>
+            </MudGrid>
+        }
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
+            Add Header
+        </MudButton>
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExecuteRequest" StartIcon="@Icons.Material.Filled.Send">
+            Send
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveRequestInternal">
+            Save
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())">
+            Cancel
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@if (_response != null)
+{
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6">Response</MudText>
+            <MudText Typo="Typo.body2">Status: @_response.StatusCode - @_response.StatusMessage</MudText>
+            <MudText Typo="Typo.body2">Time: @_response.ResponseTime ms</MudText>
+            <MudText Typo="Typo.body2">Size: @_response.Size bytes</MudText>
+            
+            <MudTabs Class="mt-2">
+                <MudTabPanel Text="Body">
+                    <MudTextField Value="@_response.Body" Lines="20" Variant="Variant.Outlined" ReadOnly="true" />
+                </MudTabPanel>
+                <MudTabPanel Text="Headers">
+                    @foreach (var header in _response.Headers)
+                    {
+                        <MudText Typo="Typo.body2">@header.Key: @header.Value</MudText>
+                    }
+                </MudTabPanel>
+            </MudTabs>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    [Parameter]
+    public Request? Request { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private List<HeaderModel> _headers = new();
+    private RequestResponse? _response;
+
+    private class HeaderModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Request != null)
+        {
+            _headers = Request.Headers.Select(h => new HeaderModel { Key = h.Key, Value = h.Value }).ToList();
+        }
+    }
+
+    private void AddHeader()
+    {
+        _headers.Add(new HeaderModel());
+    }
+
+    private void RemoveHeader(HeaderModel header)
+    {
+        _headers.Remove(header);
+    }
+
+    private async Task ExecuteRequest()
+    {
+        if (Request == null) return;
+
+        try
+        {
+            SyncHeaders();
+            _response = await RequestService.ExecuteRequestAsync(Request);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error executing request: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SaveRequestInternal()
+    {
+        if (Request == null) return;
+
+        SyncHeaders();
+        await OnSave.InvokeAsync();
+    }
+
+    private void SyncHeaders()
+    {
+        if (Request != null)
+        {
+            Request.Headers.Clear();
+            foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
+            {
+                Request.Headers[header.Key] = header.Value;
+            }
+        }
+    }
+}

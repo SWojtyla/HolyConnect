@@ -1,0 +1,97 @@
+@page "/collection/{CollectionId:guid}/request/create"
+@inject RequestService RequestService
+@inject CollectionService CollectionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Create Request</MudText>
+
+    <MudCard>
+        <MudCardContent>
+            <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
+            <MudTextField @bind-Value="_url" Label="URL" Required="true" Variant="Variant.Outlined" Class="mt-4" />
+            
+            <MudSelect @bind-Value="_requestType" Label="Request Type" Variant="Variant.Outlined" Class="mt-4">
+                <MudSelectItem Value="@RequestType.Rest">REST</MudSelectItem>
+                <MudSelectItem Value="@RequestType.GraphQL">GraphQL</MudSelectItem>
+            </MudSelect>
+
+            @if (_requestType == RequestType.Rest)
+            {
+                <MudSelect @bind-Value="_httpMethod" Label="Method" Variant="Variant.Outlined" Class="mt-4">
+                    @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
+                    {
+                        <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveRequest" Disabled="@(string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_url))">
+                Create
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">
+                Cancel
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid CollectionId { get; set; }
+
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private string _url = string.Empty;
+    private RequestType _requestType = RequestType.Rest;
+    private Domain.Entities.HttpMethod _httpMethod = Domain.Entities.HttpMethod.Get;
+
+    private async Task SaveRequest()
+    {
+        Request request = _requestType switch
+        {
+            RequestType.Rest => new RestRequest
+            {
+                Name = _name,
+                Description = _description,
+                Url = _url,
+                CollectionId = CollectionId,
+                Method = _httpMethod
+            },
+            RequestType.GraphQL => new GraphQLRequest
+            {
+                Name = _name,
+                Description = _description,
+                Url = _url,
+                CollectionId = CollectionId
+            },
+            _ => throw new NotSupportedException($"Request type {_requestType} not supported")
+        };
+
+        await RequestService.CreateRequestAsync(request);
+        
+        Snackbar.Add($"Request '{_name}' created successfully", Severity.Success);
+        
+        var collection = await CollectionService.GetCollectionByIdAsync(CollectionId);
+        if (collection != null)
+        {
+            NavigationManager.NavigateTo($"/environment/{collection.EnvironmentId}");
+        }
+    }
+
+    private async Task Cancel()
+    {
+        var collection = await CollectionService.GetCollectionByIdAsync(CollectionId);
+        if (collection != null)
+        {
+            NavigationManager.NavigateTo($"/environment/{collection.EnvironmentId}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}

@@ -1,0 +1,44 @@
+@page "/environment/{EnvironmentId:guid}/collection/create"
+@inject CollectionService CollectionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Create Collection</MudText>
+
+    <MudCard>
+        <MudCardContent>
+            <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCollection" Disabled="@(string.IsNullOrWhiteSpace(_name))">
+                Create
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">
+                Cancel
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid EnvironmentId { get; set; }
+
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+
+    private async Task SaveCollection()
+    {
+        await CollectionService.CreateCollectionAsync(_name, EnvironmentId, null, _description);
+        
+        Snackbar.Add($"Collection '{_name}' created successfully", Severity.Success);
+        NavigationManager.NavigateTo($"/environment/{EnvironmentId}");
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo($"/environment/{EnvironmentId}");
+    }
+}
