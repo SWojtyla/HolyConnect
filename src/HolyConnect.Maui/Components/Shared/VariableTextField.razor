@@ -1,0 +1,127 @@
+@inject IVariableResolver VariableResolver
+@inject NavigationManager NavigationManager
+
+<MudTextField @bind-Value="@CurrentValue"
+              Label="@Label"
+              Variant="@Variant"
+              Lines="@Lines"
+              Class="@Class"
+              Disabled="@Disabled"
+              Adornment="@(ContainsVariables ? Adornment.End : Adornment.None)"
+              AdornmentIcon="@(ContainsVariables ? Icons.Material.Filled.Code : null)"
+              AdornmentColor="@(HasMissingVariables ? Color.Warning : Color.Success)"
+              OnAdornmentClick="ShowVariableInfo"
+              HelperText="@HelperText"
+              HelperTextOnFocus="true" />
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "Value";
+
+    [Parameter]
+    public Variant Variant { get; set; } = Variant.Outlined;
+
+    [Parameter]
+    public int Lines { get; set; } = 1;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public Domain.Entities.Environment? Environment { get; set; }
+
+    [Parameter]
+    public Collection? Collection { get; set; }
+
+    private string? CurrentValue
+    {
+        get => Value;
+        set
+        {
+            if (Value != value)
+            {
+                Value = value;
+                ValueChanged.InvokeAsync(value);
+                UpdateHelperText();
+            }
+        }
+    }
+
+    private bool ContainsVariables => !string.IsNullOrEmpty(Value) && VariableResolver.ContainsVariables(Value);
+    private bool HasMissingVariables { get; set; }
+    private string? HelperText { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        UpdateHelperText();
+    }
+
+    private void UpdateHelperText()
+    {
+        if (string.IsNullOrEmpty(Value) || !ContainsVariables || Environment == null)
+        {
+            HelperText = null;
+            HasMissingVariables = false;
+            return;
+        }
+
+        var variableNames = VariableResolver.ExtractVariableNames(Value).ToList();
+        var missingVars = new List<string>();
+        var resolvedVars = new List<string>();
+
+        foreach (var varName in variableNames)
+        {
+            var varValue = VariableResolver.GetVariableValue(varName, Environment, Collection);
+            if (varValue == null)
+            {
+                missingVars.Add(varName);
+            }
+            else
+            {
+                resolvedVars.Add($"{varName}={varValue}");
+            }
+        }
+
+        HasMissingVariables = missingVars.Any();
+
+        if (HasMissingVariables)
+        {
+            HelperText = $"⚠️ Missing variables: {string.Join(", ", missingVars)}";
+        }
+        else if (resolvedVars.Any())
+        {
+            HelperText = $"✓ Variables: {string.Join(", ", resolvedVars.Take(3))}{(resolvedVars.Count > 3 ? "..." : "")}";
+        }
+    }
+
+    private void ShowVariableInfo()
+    {
+        if (string.IsNullOrEmpty(Value) || !ContainsVariables || Environment == null)
+        {
+            return;
+        }
+
+        var variableNames = VariableResolver.ExtractVariableNames(Value).ToList();
+        var info = new List<string>();
+
+        foreach (var varName in variableNames)
+        {
+            var varValue = VariableResolver.GetVariableValue(varName, Environment, Collection);
+            var source = Collection?.Variables.ContainsKey(varName) == true ? "Collection" : "Environment";
+            info.Add($"{varName} = {varValue ?? "MISSING"} (from {source})");
+        }
+
+        // We can't show a dialog here without DialogService, so just update helper text
+        HelperText = string.Join(", ", info);
+        StateHasChanged();
+    }
+}

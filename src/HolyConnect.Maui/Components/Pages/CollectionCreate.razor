@@ -11,6 +11,26 @@
         <MudCardContent>
             <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
             <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
+            
+            <MudText Typo="Typo.h6" Class="mt-6 mb-2">Collection Variables</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">Collection variables override environment variables for requests in this collection.</MudText>
+            @foreach (var variable in _variables)
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="5">
+                        <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <MudTextField @bind-Value="variable.Value" Label="Value" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="2">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
+                    </MudItem>
+                </MudGrid>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddVariable" StartIcon="@Icons.Material.Filled.Add">
+                Add Variable
+            </MudButton>
         </MudCardContent>
         <MudCardActions>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCollection" Disabled="@(string.IsNullOrWhiteSpace(_name))">
@@ -32,6 +52,23 @@
 
     private string _name = string.Empty;
     private string _description = string.Empty;
+    private List<VariableModel> _variables = new();
+
+    private class VariableModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    private void AddVariable()
+    {
+        _variables.Add(new VariableModel());
+    }
+
+    private void RemoveVariable(VariableModel variable)
+    {
+        _variables.Remove(variable);
+    }
 
     private async Task SaveCollection()
     {
@@ -60,7 +97,15 @@
             return;
         }
 
-        await CollectionService.CreateCollectionAsync(_name, targetEnvironmentId, ParentCollectionId, _description);
+        var collection = await CollectionService.CreateCollectionAsync(_name, targetEnvironmentId, ParentCollectionId, _description);
+        
+        // Add variables to collection
+        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+        {
+            collection.Variables[variable.Key] = variable.Value;
+        }
+
+        await CollectionService.UpdateCollectionAsync(collection);
         
         var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
         Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
