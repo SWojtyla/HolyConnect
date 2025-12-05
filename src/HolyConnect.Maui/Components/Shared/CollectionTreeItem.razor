@@ -1,20 +1,46 @@
 @if (Collection != null)
 {
-    <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;" @onclick="@(() => OnSelect.InvokeAsync(Collection))">
-        <MudText>
-            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> @Collection.Name
-        </MudText>
-    </MudPaper>
-    
-    @if (Collection.SubCollections != null && Collection.SubCollections.Any())
-    {
-        <div Class="ml-4">
-            @foreach (var subCollection in Collection.SubCollections)
-            {
-                <CollectionTreeItem Collection="@subCollection" OnSelect="@OnSelect" />
-            }
-        </div>
-    }
+    <div>
+        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;" @onclick="@(() => ToggleExpanded())">
+            <MudText>
+                @if (HasChildren)
+                {
+                    <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" />
+                }
+                else
+                {
+                    <span style="display: inline-block; width: 24px;"></span>
+                }
+                <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> 
+                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" @onclick:stopPropagation="true">@Collection.Name</span>
+            </MudText>
+        </MudPaper>
+        
+        @if (_isExpanded)
+        {
+            <div Class="ml-4">
+                @if (Collection.Requests != null && Collection.Requests.Any())
+                {
+                    @foreach (var request in Collection.Requests)
+                    {
+                        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
+                            <MudText>
+                                <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
+                            </MudText>
+                        </MudPaper>
+                    }
+                }
+                
+                @if (Collection.SubCollections != null && Collection.SubCollections.Any())
+                {
+                    @foreach (var subCollection in Collection.SubCollections)
+                    {
+                        <CollectionTreeItem Collection="@subCollection" OnSelect="@OnSelect" OnRequestSelect="@OnRequestSelect" />
+                    }
+                }
+            </div>
+        }
+    </div>
 }
 
 @code {
@@ -23,4 +49,35 @@
 
     [Parameter]
     public EventCallback<Collection> OnSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<Request> OnRequestSelect { get; set; }
+
+    private bool _isExpanded = false;
+
+    private bool HasChildren => 
+        (Collection?.SubCollections != null && Collection.SubCollections.Any()) || 
+        (Collection?.Requests != null && Collection.Requests.Any());
+
+    private void ToggleExpanded()
+    {
+        if (HasChildren)
+        {
+            _isExpanded = !_isExpanded;
+        }
+    }
+
+    private string GetRequestIcon(RequestType type) => type switch
+    {
+        RequestType.Rest => Icons.Material.Filled.Http,
+        RequestType.GraphQL => Icons.Material.Filled.GraphicEq,
+        _ => Icons.Material.Filled.Article
+    };
+
+    private Color GetRequestColor(RequestType type) => type switch
+    {
+        RequestType.Rest => Color.Primary,
+        RequestType.GraphQL => Color.Secondary,
+        _ => Color.Default
+    };
 }
