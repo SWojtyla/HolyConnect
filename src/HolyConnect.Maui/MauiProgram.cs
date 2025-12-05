@@ -29,13 +29,37 @@ public static class MauiProgram
 		builder.Services.AddHttpClient();
 		builder.Services.AddScoped<HttpClient>();
 
-		// Add repositories
-		builder.Services.AddSingleton<IRepository<Domain.Entities.Environment>>(
-			new InMemoryRepository<Domain.Entities.Environment>(e => e.Id));
-		builder.Services.AddSingleton<IRepository<Collection>>(
-			new InMemoryRepository<Collection>(c => c.Id));
-		builder.Services.AddSingleton<IRepository<Request>>(
-			new InMemoryRepository<Request>(r => r.Id));
+		// Add Settings service
+		builder.Services.AddSingleton<ISettingsService, FileBasedSettingsService>();
+		builder.Services.AddScoped<SettingsService>();
+
+		// Add repositories with file-based persistence
+		builder.Services.AddSingleton<IRepository<Domain.Entities.Environment>>(sp =>
+		{
+			var settingsService = sp.GetRequiredService<ISettingsService>();
+			return new FileBasedRepository<Domain.Entities.Environment>(
+				e => e.Id,
+				() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath,
+				"environments.json");
+		});
+		
+		builder.Services.AddSingleton<IRepository<Collection>>(sp =>
+		{
+			var settingsService = sp.GetRequiredService<ISettingsService>();
+			return new FileBasedRepository<Collection>(
+				c => c.Id,
+				() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath,
+				"collections.json");
+		});
+		
+		builder.Services.AddSingleton<IRepository<Request>>(sp =>
+		{
+			var settingsService = sp.GetRequiredService<ISettingsService>();
+			return new FileBasedRepository<Request>(
+				r => r.Id,
+				() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath,
+				"requests.json");
+		});
 
 		// Add services
 		builder.Services.AddScoped<EnvironmentService>();
