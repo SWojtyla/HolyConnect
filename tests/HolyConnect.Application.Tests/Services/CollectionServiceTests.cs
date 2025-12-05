@@ -119,4 +119,53 @@ public class CollectionServiceTests
         // Assert
         _mockRepository.Verify(r => r.DeleteAsync(id), Times.Once);
     }
+
+    [Fact]
+    public async Task CreateCollectionAsync_ShouldCreateSubCollectionWithParentId()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var parentCollectionId = Guid.NewGuid();
+        var name = "Sub-Collection";
+        var description = "Test Sub-Collection";
+        Collection? capturedCollection = null;
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Collection>()))
+            .Callback<Collection>(c => capturedCollection = c)
+            .ReturnsAsync((Collection c) => c);
+
+        // Act
+        var result = await _service.CreateCollectionAsync(name, environmentId, parentCollectionId, description);
+
+        // Assert
+        Assert.NotNull(capturedCollection);
+        Assert.NotEqual(Guid.Empty, capturedCollection.Id);
+        Assert.Equal(environmentId, capturedCollection.EnvironmentId);
+        Assert.Equal(parentCollectionId, capturedCollection.ParentCollectionId);
+        Assert.Equal(name, capturedCollection.Name);
+        Assert.Equal(description, capturedCollection.Description);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Collection>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateCollectionAsync_ShouldCreateRootCollectionWithNullParentId()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var name = "Root Collection";
+        Collection? capturedCollection = null;
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Collection>()))
+            .Callback<Collection>(c => capturedCollection = c)
+            .ReturnsAsync((Collection c) => c);
+
+        // Act
+        var result = await _service.CreateCollectionAsync(name, environmentId, null, null);
+
+        // Assert
+        Assert.NotNull(capturedCollection);
+        Assert.Null(capturedCollection.ParentCollectionId);
+        Assert.Equal(environmentId, capturedCollection.EnvironmentId);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Collection>()), Times.Once);
+    }
 }

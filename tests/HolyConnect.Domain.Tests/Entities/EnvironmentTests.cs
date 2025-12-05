@@ -72,4 +72,30 @@ public class EnvironmentTests
         Assert.Equal(now, environment.CreatedAt);
         Assert.Equal(now, environment.UpdatedAt);
     }
+
+    [Fact]
+    public void Requests_ShouldBeInitializedAsEmptyList()
+    {
+        // Arrange & Act
+        var environment = new DomainEnvironment { Name = "Test" };
+
+        // Assert
+        Assert.NotNull(environment.Requests);
+        Assert.Empty(environment.Requests);
+    }
+
+    [Fact]
+    public void Requests_ShouldBeModifiable()
+    {
+        // Arrange
+        var environment = new DomainEnvironment { Name = "Test" };
+        var request = new RestRequest { Name = "Test Request" };
+
+        // Act
+        environment.Requests.Add(request);
+
+        // Assert
+        Assert.Single(environment.Requests);
+        Assert.Equal("Test Request", environment.Requests[0].Name);
+    }
 }

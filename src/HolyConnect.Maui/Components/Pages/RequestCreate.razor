@@ -1,6 +1,8 @@
 @page "/collection/{CollectionId:guid}/request/create"
+@page "/environment/{EnvironmentId:guid}/request/create"
 @inject RequestService RequestService
 @inject CollectionService CollectionService
+@inject EnvironmentService EnvironmentService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -41,7 +43,10 @@
 
 @code {
     [Parameter]
-    public Guid CollectionId { get; set; }
+    public Guid? CollectionId { get; set; }
+
+    [Parameter]
+    public Guid? EnvironmentId { get; set; }
 
     private string _name = string.Empty;
     private string _description = string.Empty;
@@ -51,6 +56,30 @@
 
     private async Task SaveRequest()
     {
+        // Determine the environment ID for navigation
+        Guid targetEnvironmentId;
+        if (CollectionId.HasValue)
+        {
+            var collection = await CollectionService.GetCollectionByIdAsync(CollectionId.Value);
+            if (collection == null)
+            {
+                Snackbar.Add("The collection could not be found. It may have been deleted.", Severity.Error);
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            targetEnvironmentId = collection.EnvironmentId;
+        }
+        else if (EnvironmentId.HasValue)
+        {
+            targetEnvironmentId = EnvironmentId.Value;
+        }
+        else
+        {
+            Snackbar.Add("Unable to create request: no environment or collection specified. Please try again.", Severity.Error);
+            NavigationManager.NavigateTo("/");
+            return;
+        }
+
         Request request = _requestType switch
         {
             RequestType.Rest => new RestRequest
@@ -59,6 +88,7 @@
                 Description = _description,
                 Url = _url,
                 CollectionId = CollectionId,
+                EnvironmentId = targetEnvironmentId,
                 Method = _httpMethod
             },
             RequestType.GraphQL => new GraphQLRequest
@@ -66,7 +96,8 @@
                 Name = _name,
                 Description = _description,
                 Url = _url,
-                CollectionId = CollectionId
+                CollectionId = CollectionId,
+                EnvironmentId = targetEnvironmentId
             },
             _ => throw new NotSupportedException($"Request type {_requestType} not supported")
         };
@@ -75,24 +106,28 @@
         
         Snackbar.Add($"Request '{_name}' created successfully", Severity.Success);
         
-        var collection = await CollectionService.GetCollectionByIdAsync(CollectionId);
-        if (collection != null)
-        {
-            // Navigate to the environment page with the newly created request selected
-            NavigationManager.NavigateTo($"/environment/{collection.EnvironmentId}?requestId={createdRequest.Id}");
-        }
+        // Navigate to the environment page with the newly created request selected
+        NavigationManager.NavigateTo($"/environment/{targetEnvironmentId}?requestId={createdRequest.Id}");
     }
 
     private async Task Cancel()
     {
-        var collection = await CollectionService.GetCollectionByIdAsync(CollectionId);
-        if (collection != null)
+        if (CollectionId.HasValue)
         {
-            NavigationManager.NavigateTo($"/environment/{collection.EnvironmentId}");
+            var collection = await CollectionService.GetCollectionByIdAsync(CollectionId.Value);
+            if (collection != null)
+            {
+                NavigationManager.NavigateTo($"/environment/{collection.EnvironmentId}");
+                return;
+            }
         }
-        else
+        
+        if (EnvironmentId.HasValue)
         {
-            NavigationManager.NavigateTo("/");
+            NavigationManager.NavigateTo($"/environment/{EnvironmentId.Value}");
+            return;
         }
+        
+        NavigationManager.NavigateTo("/");
     }
 }

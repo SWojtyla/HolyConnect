@@ -1,4 +1,5 @@
 @inject IDialogService DialogService
+@inject NavigationManager NavigationManager
 
 @if (Collection != null)
 {
@@ -20,6 +21,7 @@
                 </span>
             </MudText>
             <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="@(() => ShowAddMenu())" aria-label="Add sub-collection or request" />
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameCollection())" aria-label="Rename collection" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" />
             </div>
@@ -103,6 +105,44 @@
         RequestType.GraphQL => Color.Secondary,
         _ => Color.Default
     };
+
+    private async Task ShowAddMenu()
+    {
+        if (Collection == null) return;
+
+        var options = new List<string> { "New Sub-Collection", "New Request" };
+        var parameters = new DialogParameters
+        {
+            ["Options"] = options
+        };
+
+        var dialog = await DialogService.ShowAsync<SelectOptionDialog>("Add", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string selectedOption)
+        {
+            if (selectedOption == "New Sub-Collection")
+            {
+                CreateSubCollection();
+            }
+            else if (selectedOption == "New Request")
+            {
+                CreateRequest();
+            }
+        }
+    }
+
+    private void CreateSubCollection()
+    {
+        if (Collection == null) return;
+        NavigationManager.NavigateTo($"/collection/{Collection.Id}/subcollection/create");
+    }
+
+    private void CreateRequest()
+    {
+        if (Collection == null) return;
+        NavigationManager.NavigateTo($"/collection/{Collection.Id}/request/create");
+    }
 
     private async Task RenameCollection()
     {

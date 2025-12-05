@@ -7,8 +7,10 @@ public abstract class Request
     public string? Description { get; set; }
     public string Url { get; set; } = string.Empty;
     public Dictionary<string, string> Headers { get; set; } = new();
-    public Guid CollectionId { get; set; }
+    public Guid? CollectionId { get; set; }
     public Collection? Collection { get; set; }
+    public Guid EnvironmentId { get; set; }
+    public Environment? Environment { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public abstract RequestType Type { get; }

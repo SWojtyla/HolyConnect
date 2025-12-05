@@ -1,10 +1,11 @@
 @page "/environment/{EnvironmentId:guid}/collection/create"
+@page "/collection/{ParentCollectionId:guid}/subcollection/create"
 @inject CollectionService CollectionService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Create Collection</MudText>
+    <MudText Typo="Typo.h4" Class="mb-4">@(ParentCollectionId.HasValue ? "Create Sub-Collection" : "Create Collection")</MudText>
 
     <MudCard>
         <MudCardContent>
@@ -24,21 +25,66 @@
 
 @code {
     [Parameter]
-    public Guid EnvironmentId { get; set; }
+    public Guid? EnvironmentId { get; set; }
+
+    [Parameter]
+    public Guid? ParentCollectionId { get; set; }
 
     private string _name = string.Empty;
     private string _description = string.Empty;
 
     private async Task SaveCollection()
     {
-        await CollectionService.CreateCollectionAsync(_name, EnvironmentId, null, _description);
+        Guid targetEnvironmentId;
         
-        Snackbar.Add($"Collection '{_name}' created successfully", Severity.Success);
-        NavigationManager.NavigateTo($"/environment/{EnvironmentId}");
+        // Determine the environment ID
+        if (ParentCollectionId.HasValue)
+        {
+            var parentCollection = await CollectionService.GetCollectionByIdAsync(ParentCollectionId.Value);
+            if (parentCollection == null)
+            {
+                Snackbar.Add("The parent collection could not be found. It may have been deleted.", Severity.Error);
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            targetEnvironmentId = parentCollection.EnvironmentId;
+        }
+        else if (EnvironmentId.HasValue)
+        {
+            targetEnvironmentId = EnvironmentId.Value;
+        }
+        else
+        {
+            Snackbar.Add("Unable to create collection: no environment or parent collection specified. Please try again.", Severity.Error);
+            NavigationManager.NavigateTo("/");
+            return;
+        }
+
+        await CollectionService.CreateCollectionAsync(_name, targetEnvironmentId, ParentCollectionId, _description);
+        
+        var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
+        Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
+        NavigationManager.NavigateTo($"/environment/{targetEnvironmentId}");
     }
 
-    private void Cancel()
+    private async Task Cancel()
     {
-        NavigationManager.NavigateTo($"/environment/{EnvironmentId}");
+        if (ParentCollectionId.HasValue)
+        {
+            var parentCollection = await CollectionService.GetCollectionByIdAsync(ParentCollectionId.Value);
+            if (parentCollection != null)
+            {
+                NavigationManager.NavigateTo($"/environment/{parentCollection.EnvironmentId}");
+                return;
+            }
+        }
+        
+        if (EnvironmentId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/environment/{EnvironmentId.Value}");
+            return;
+        }
+        
+        NavigationManager.NavigateTo("/");
     }
 }

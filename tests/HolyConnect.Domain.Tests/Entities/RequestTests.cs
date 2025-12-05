@@ -187,4 +187,47 @@ public class RequestTests
         Assert.Equal(2, (int)RequestType.Soap);
         Assert.Equal(3, (int)RequestType.WebSocket);
     }
+
+    [Fact]
+    public void Request_CollectionId_ShouldBeNullableForEnvironmentLevelRequests()
+    {
+        // Arrange
+        var request = new RestRequest();
+
+        // Act
+        request.CollectionId = null;
+
+        // Assert
+        Assert.Null(request.CollectionId);
+    }
+
+    [Fact]
+    public void Request_EnvironmentId_ShouldBeSettable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        var environmentId = Guid.NewGuid();
+
+        // Act
+        request.EnvironmentId = environmentId;
+
+        // Assert
+        Assert.Equal(environmentId, request.EnvironmentId);
+    }
+
+    [Fact]
+    public void Request_Environment_ShouldBeSettable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        var environment = new HolyConnect.Domain.Entities.Environment { Id = Guid.NewGuid(), Name = "Test Environment" };
+
+        // Act
+        request.Environment = environment;
+
+        // Assert
+        Assert.NotNull(request.Environment);
+        Assert.Equal(environment.Id, request.Environment.Id);
+        Assert.Equal("Test Environment", request.Environment.Name);
+    }
 }
