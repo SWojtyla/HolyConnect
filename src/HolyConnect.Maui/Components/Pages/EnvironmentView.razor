@@ -15,7 +15,7 @@
             <MudToolBar Dense="true">
                 <MudText Typo="Typo.h6">@_environment.Name</MudText>
                 <MudSpacer />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="RenameEnvironment" aria-label="Rename environment" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="EditEnvironment" aria-label="Edit environment" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteEnvironment" aria-label="Delete environment" />
                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="ShowCreateMenu" aria-label="Add collection or request" />
             </MudToolBar>
@@ -91,7 +91,11 @@
         }
         else if (_selectedRequest != null)
         {
-            <RequestEditor Request="@_selectedRequest" OnSave="SaveRequest" OnCancel="CancelRequestEdit" />
+            <RequestEditor Request="@_selectedRequest" 
+                         Environment="@_environment" 
+                         Collection="@_selectedRequestCollection"
+                         OnSave="SaveRequest" 
+                         OnCancel="CancelRequestEdit" />
         }
         else
         {
@@ -109,6 +113,7 @@
     private IEnumerable<Request>? _environmentRequests;
     private Collection? _selectedCollection;
     private Request? _selectedRequest;
+    private Collection? _selectedRequestCollection;
 
     protected override async Task OnInitializedAsync()
     {
@@ -228,7 +233,34 @@
     {
         _selectedRequest = request;
         _selectedCollection = null;
+        
+        // Find the collection for this request
+        _selectedRequestCollection = null;
+        if (request.CollectionId.HasValue && _collections != null)
+        {
+            _selectedRequestCollection = FindCollectionById(_collections, request.CollectionId.Value);
+        }
+        
         StateHasChanged();
+    }
+
+    private Collection? FindCollectionById(IEnumerable<Collection> collections, Guid id)
+    {
+        foreach (var collection in collections)
+        {
+            if (collection.Id == id)
+            {
+                return collection;
+            }
+            
+            var found = FindCollectionById(collection.SubCollections, id);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        
+        return null;
     }
 
     private async Task ShowCreateMenu()
@@ -333,25 +365,10 @@
         StateHasChanged();
     }
 
-    private async Task RenameEnvironment()
+    private void EditEnvironment()
     {
         if (_environment == null) return;
-
-        var parameters = new DialogParameters
-        {
-            ["CurrentName"] = _environment.Name
-        };
-
-        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Environment", parameters);
-        var result = await dialog.Result;
-
-        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
-        {
-            _environment.Name = newName;
-            await EnvironmentService.UpdateEnvironmentAsync(_environment);
-            Snackbar.Add("Environment renamed successfully", Severity.Success);
-            StateHasChanged();
-        }
+        NavigationManager.NavigateTo($"/environment/{_environment.Id}/edit");
     }
 
     private async Task DeleteEnvironment()

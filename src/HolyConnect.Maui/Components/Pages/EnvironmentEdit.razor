@@ -1,0 +1,117 @@
+@page "/environment/{EnvironmentId:guid}/edit"
+@inject EnvironmentService EnvironmentService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Edit Environment</MudText>
+
+    @if (_environment != null)
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
+                
+                <MudText Typo="Typo.h6" Class="mt-6 mb-2">Environment Variables</MudText>
+                @foreach (var variable in _variables)
+                {
+                    <MudGrid Class="mb-2">
+                        <MudItem xs="5">
+                            <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudTextField @bind-Value="variable.Value" Label="Value" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="2">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
+                        </MudItem>
+                    </MudGrid>
+                }
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddVariable" StartIcon="@Icons.Material.Filled.Add">
+                    Add Variable
+                </MudButton>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEnvironment" Disabled="@(string.IsNullOrWhiteSpace(_name))">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">
+                    Cancel
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+    else
+    {
+        <MudText>Loading...</MudText>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid EnvironmentId { get; set; }
+
+    private Domain.Entities.Environment? _environment;
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private List<VariableModel> _variables = new();
+
+    private class VariableModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _environment = await EnvironmentService.GetEnvironmentByIdAsync(EnvironmentId);
+        
+        if (_environment != null)
+        {
+            _name = _environment.Name;
+            _description = _environment.Description ?? string.Empty;
+            
+            // Load existing variables
+            foreach (var kvp in _environment.Variables)
+            {
+                _variables.Add(new VariableModel { Key = kvp.Key, Value = kvp.Value });
+            }
+        }
+    }
+
+    private void AddVariable()
+    {
+        _variables.Add(new VariableModel());
+    }
+
+    private void RemoveVariable(VariableModel variable)
+    {
+        _variables.Remove(variable);
+    }
+
+    private async Task SaveEnvironment()
+    {
+        if (_environment == null) return;
+
+        _environment.Name = _name;
+        _environment.Description = _description;
+        
+        // Clear and rebuild variables dictionary
+        _environment.Variables.Clear();
+        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+        {
+            _environment.Variables[variable.Key] = variable.Value;
+        }
+
+        await EnvironmentService.UpdateEnvironmentAsync(_environment);
+        
+        Snackbar.Add($"Environment '{_name}' updated successfully", Severity.Success);
+        NavigationManager.NavigateTo($"/environment/{EnvironmentId}");
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo($"/environment/{EnvironmentId}");
+    }
+}

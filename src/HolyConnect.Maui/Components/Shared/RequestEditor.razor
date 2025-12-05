@@ -37,7 +37,7 @@ else
         <MudText Typo="Typo.h5" Class="mb-4">@(Request?.Name ?? "New Request")</MudText>
         
         <MudTextField @bind-Value="Request!.Name" Label="Request Name" Variant="Variant.Outlined" Class="mb-2" />
-        <MudTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Class="mb-2" />
+        <VariableTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Class="mb-2" Environment="@Environment" Collection="@Collection" />
         
         @if (Request is RestRequest restRequest)
         {
@@ -62,7 +62,7 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <MudTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="12" Variant="Variant.Outlined" />
+                        <VariableTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="12" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
                     </div>
                 </MudTabPanel>
                 
@@ -91,10 +91,10 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
+                                    <VariableTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
+                                    <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="2" Style="display: flex; align-items: center;">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
@@ -116,10 +116,10 @@ else
                                     <MudCheckBox @bind-Value="param.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <MudTextField @bind-Value="param.Key" Label="Parameter Name" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" />
+                                    <VariableTextField @bind-Value="param.Key" Label="Parameter Name" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <MudTextField @bind-Value="param.Value" Label="Parameter Value" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" />
+                                    <VariableTextField @bind-Value="param.Value" Label="Parameter Value" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="2" Style="display: flex; align-items: center;">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveQueryParam(param))" />
@@ -143,7 +143,7 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <MudTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="12" Variant="Variant.Outlined" />
+                        <VariableTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="12" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
                     </div>
                 </MudTabPanel>
                 
@@ -154,7 +154,7 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <MudTextField @bind-Value="graphQLRequest.Variables" Label="Variables (JSON)" Lines="8" Variant="Variant.Outlined" />
+                        <VariableTextField @bind-Value="graphQLRequest.Variables" Label="Variables (JSON)" Lines="8" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
                     </div>
                 </MudTabPanel>
                 
@@ -177,10 +177,10 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
+                                    <VariableTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
+                                    <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="2" Style="display: flex; align-items: center;">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
@@ -288,6 +288,12 @@ else
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public Domain.Entities.Environment? Environment { get; set; }
+
+    [Parameter]
+    public Collection? Collection { get; set; }
 
     private List<HeaderModel> _headers = new();
     private List<ParamModel> _queryParams = new();

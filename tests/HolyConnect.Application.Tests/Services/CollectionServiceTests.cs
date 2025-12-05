@@ -168,4 +168,65 @@ public class CollectionServiceTests
         Assert.Equal(environmentId, capturedCollection.EnvironmentId);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Collection>()), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateCollectionAsync_WithVariables_ShouldPreserveVariables()
+    {
+        // Arrange
+        var collection = new Collection
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Collection",
+            EnvironmentId = Guid.NewGuid(),
+            Variables = new Dictionary<string, string>
+            {
+                { "API_URL", "https://api.staging.com" },
+                { "TEST_VAR", "test_value" }
+            }
+        };
+
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        // Act
+        var result = await _service.UpdateCollectionAsync(collection);
+
+        // Assert
+        Assert.Equal(2, result.Variables.Count);
+        Assert.Equal("https://api.staging.com", result.Variables["API_URL"]);
+        Assert.Equal("test_value", result.Variables["TEST_VAR"]);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Collection>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCollectionAsync_ModifyingVariables_ShouldUpdateCorrectly()
+    {
+        // Arrange
+        var collection = new Collection
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Collection",
+            EnvironmentId = Guid.NewGuid(),
+            Variables = new Dictionary<string, string>
+            {
+                { "OLD_VAR", "old_value" }
+            }
+        };
+
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        // Act
+        collection.Variables.Remove("OLD_VAR");
+        collection.Variables["NEW_VAR"] = "new_value";
+        collection.Variables["ANOTHER_VAR"] = "another_value";
+        var result = await _service.UpdateCollectionAsync(collection);
+
+        // Assert
+        Assert.Equal(2, result.Variables.Count);
+        Assert.False(result.Variables.ContainsKey("OLD_VAR"));
+        Assert.Equal("new_value", result.Variables["NEW_VAR"]);
+        Assert.Equal("another_value", result.Variables["ANOTHER_VAR"]);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Collection>()), Times.Once);
+    }
 }
