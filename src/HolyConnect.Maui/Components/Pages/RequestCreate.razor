@@ -71,14 +71,15 @@
             _ => throw new NotSupportedException($"Request type {_requestType} not supported")
         };
 
-        await RequestService.CreateRequestAsync(request);
+        var createdRequest = await RequestService.CreateRequestAsync(request);
         
         Snackbar.Add($"Request '{_name}' created successfully", Severity.Success);
         
         var collection = await CollectionService.GetCollectionByIdAsync(CollectionId);
         if (collection != null)
         {
-            NavigationManager.NavigateTo($"/environment/{collection.EnvironmentId}");
+            // Navigate to the environment page with the newly created request selected
+            NavigationManager.NavigateTo($"/environment/{collection.EnvironmentId}?requestId={createdRequest.Id}");
         }
     }
 

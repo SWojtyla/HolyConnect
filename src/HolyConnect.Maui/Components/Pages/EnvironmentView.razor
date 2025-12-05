@@ -1,4 +1,5 @@
 @page "/environment/{EnvironmentId:guid}"
+@using Microsoft.AspNetCore.WebUtilities
 @inject EnvironmentService EnvironmentService
 @inject CollectionService CollectionService
 @inject RequestService RequestService
@@ -82,6 +83,18 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
+        
+        // Check if there's a requestId query parameter to auto-select a request
+        var uri = new Uri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("requestId", out var requestIdString) && Guid.TryParse(requestIdString, out var requestId))
+        {
+            var request = await RequestService.GetRequestByIdAsync(requestId);
+            if (request != null)
+            {
+                SelectRequest(request);
+            }
+        }
     }
 
     private async Task LoadData()
@@ -90,7 +103,20 @@
         if (_environment != null)
         {
             _collections = await CollectionService.GetAllCollectionsAsync();
-            _collections = _collections.Where(c => c.EnvironmentId == EnvironmentId);
+            _collections = _collections.Where(c => c.EnvironmentId == EnvironmentId).ToList();
+            
+            // Load requests for each collection (load once and group to avoid N+1 queries)
+            var allRequests = await RequestService.GetAllRequestsAsync();
+            var collectionIds = _collections.Select(c => c.Id).ToHashSet();
+            var requestsByCollection = allRequests
+                .Where(r => collectionIds.Contains(r.CollectionId))
+                .GroupBy(r => r.CollectionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            
+            foreach (var collection in _collections)
+            {
+                collection.Requests = requestsByCollection.TryGetValue(collection.Id, out var requests) ? requests : new List<Request>();
+            }
         }
     }
 

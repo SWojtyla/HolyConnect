@@ -32,6 +32,12 @@ public class RequestService
         return await _requestRepository.GetByIdAsync(id);
     }
 
+    public async Task<IEnumerable<Request>> GetRequestsByCollectionIdAsync(Guid collectionId)
+    {
+        var allRequests = await _requestRepository.GetAllAsync();
+        return allRequests.Where(r => r.CollectionId == collectionId);
+    }
+
     public async Task<Request> UpdateRequestAsync(Request request)
     {
         request.UpdatedAt = DateTime.UtcNow;
