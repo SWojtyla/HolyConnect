@@ -59,7 +59,7 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         // Search for readable filename pattern only
         var dir = GetDirectoryPath();
         var match = Directory.EnumerateFiles(dir, $"*__{id}.json").FirstOrDefault();
-        return match ?? Path.Combine(dir, $"{id}.json"); // keep deterministic path if name unknown (for consistency)
+        return match ?? Path.Combine(dir, $"{id}.json"); // deterministic path if name unknown
     }
 
     private string GetFilePath(T entity)
@@ -67,6 +67,21 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         var dir = GetDirectoryPath();
         var readable = GetReadableFileName(entity);
         return Path.Combine(dir, readable);
+    }
+
+    private JsonSerializerOptions GetOptions()
+    {
+        var options = new JsonSerializerOptions 
+        { 
+            WriteIndented = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
+        // Custom polymorphic converter for Request base type if applicable
+        if (typeof(T) == typeof(HolyConnect.Domain.Entities.Request) || typeof(T).IsSubclassOf(typeof(HolyConnect.Domain.Entities.Request)))
+        {
+            options.Converters.Add(new RequestJsonConverter());
+        }
+        return options;
     }
 
     private async Task<T?> LoadEntityAsync(Guid id)
@@ -80,10 +95,7 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         try
         {
             var json = await File.ReadAllTextAsync(filePath);
-            var options = new JsonSerializerOptions 
-            { 
-                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
-            };
+            var options = GetOptions();
             return JsonSerializer.Deserialize<T>(json, options);
         }
         catch (Exception ex)
@@ -96,11 +108,7 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     private async Task SaveEntityAsync(T entity)
     {
         var filePath = GetFilePath(entity);
-        var options = new JsonSerializerOptions 
-        { 
-            WriteIndented = true,
-            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
-        };
+        var options = GetOptions();
         var json = JsonSerializer.Serialize(entity, options);
         await File.WriteAllTextAsync(filePath, json);
     }
@@ -121,10 +129,7 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
             try
             {
                 var json = await File.ReadAllTextAsync(file);
-                var options = new JsonSerializerOptions 
-                { 
-                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
-                };
+                var options = GetOptions();
                 var entity = JsonSerializer.Deserialize<T>(json, options);
                 if (entity != null)
                 {
