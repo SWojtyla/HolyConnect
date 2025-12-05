@@ -8,15 +8,26 @@ namespace HolyConnect.Application.Tests.Services;
 public class RequestServiceTests
 {
     private readonly Mock<IRepository<Request>> _mockRepository;
+    private readonly Mock<IRepository<Domain.Entities.Environment>> _mockEnvironmentRepository;
+    private readonly Mock<IRepository<Collection>> _mockCollectionRepository;
     private readonly Mock<IRequestExecutor> _mockExecutor;
+    private readonly Mock<IVariableResolver> _mockVariableResolver;
     private readonly RequestService _service;
 
     public RequestServiceTests()
     {
         _mockRepository = new Mock<IRepository<Request>>();
+        _mockEnvironmentRepository = new Mock<IRepository<Domain.Entities.Environment>>();
+        _mockCollectionRepository = new Mock<IRepository<Collection>>();
         _mockExecutor = new Mock<IRequestExecutor>();
+        _mockVariableResolver = new Mock<IVariableResolver>();
         var executors = new List<IRequestExecutor> { _mockExecutor.Object };
-        _service = new RequestService(_mockRepository.Object, executors);
+        _service = new RequestService(
+            _mockRepository.Object, 
+            _mockEnvironmentRepository.Object,
+            _mockCollectionRepository.Object,
+            executors,
+            _mockVariableResolver.Object);
     }
 
     [Fact]
@@ -157,16 +168,33 @@ public class RequestServiceTests
     public async Task ExecuteRequestAsync_ShouldUseCorrectExecutor()
     {
         // Arrange
-        var request = new RestRequest { Id = Guid.NewGuid(), Name = "Test Request" };
+        var environmentId = Guid.NewGuid();
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Name = "Test",
+            Variables = new Dictionary<string, string>()
+        };
+        var request = new RestRequest 
+        { 
+            Id = Guid.NewGuid(), 
+            Name = "Test Request",
+            EnvironmentId = environmentId,
+            Url = "https://api.example.com"
+        };
         var expectedResponse = new RequestResponse
         {
             StatusCode = 200,
             Body = "Success"
         };
 
-        _mockExecutor.Setup(e => e.CanExecute(request))
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
+            .Returns<string, Domain.Entities.Environment, Collection>((input, env, coll) => input);
+        _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
             .Returns(true);
-        _mockExecutor.Setup(e => e.ExecuteAsync(request))
+        _mockExecutor.Setup(e => e.ExecuteAsync(It.IsAny<Request>()))
             .ReturnsAsync(expectedResponse);
 
         // Act
@@ -175,17 +203,33 @@ public class RequestServiceTests
         // Assert
         Assert.Equal(200, result.StatusCode);
         Assert.Equal("Success", result.Body);
-        _mockExecutor.Verify(e => e.CanExecute(request), Times.Once);
-        _mockExecutor.Verify(e => e.ExecuteAsync(request), Times.Once);
+        _mockExecutor.Verify(e => e.CanExecute(It.IsAny<Request>()), Times.Once);
+        _mockExecutor.Verify(e => e.ExecuteAsync(It.IsAny<Request>()), Times.Once);
     }
 
     [Fact]
     public async Task ExecuteRequestAsync_ShouldThrowException_WhenNoExecutorFound()
     {
         // Arrange
-        var request = new RestRequest { Id = Guid.NewGuid(), Name = "Test Request" };
+        var environmentId = Guid.NewGuid();
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Name = "Test",
+            Variables = new Dictionary<string, string>()
+        };
+        var request = new RestRequest 
+        { 
+            Id = Guid.NewGuid(), 
+            Name = "Test Request",
+            EnvironmentId = environmentId
+        };
 
-        _mockExecutor.Setup(e => e.CanExecute(request))
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
+            .Returns<string, Domain.Entities.Environment, Collection>((input, env, coll) => input);
+        _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
             .Returns(false);
 
         // Act & Assert

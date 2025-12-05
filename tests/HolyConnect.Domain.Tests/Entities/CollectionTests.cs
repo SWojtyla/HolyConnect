@@ -19,6 +19,8 @@ public class CollectionTests
         Assert.NotEqual(Guid.Empty, collection.Id);
         Assert.Equal("Test Collection", collection.Name);
         Assert.Equal("Test Description", collection.Description);
+        Assert.NotNull(collection.Variables);
+        Assert.Empty(collection.Variables);
         Assert.NotNull(collection.Requests);
         Assert.Empty(collection.Requests);
         Assert.NotNull(collection.SubCollections);
@@ -69,5 +71,21 @@ public class CollectionTests
         // Assert
         Assert.Null(rootCollection.ParentCollectionId);
         Assert.NotNull(childCollection.ParentCollectionId);
+    }
+
+    [Fact]
+    public void Variables_ShouldBeModifiable()
+    {
+        // Arrange
+        var collection = new Collection { Name = "Test" };
+
+        // Act
+        collection.Variables["API_URL"] = "https://api.example.com";
+        collection.Variables["API_KEY"] = "secret";
+
+        // Assert
+        Assert.Equal(2, collection.Variables.Count);
+        Assert.Equal("https://api.example.com", collection.Variables["API_URL"]);
+        Assert.Equal("secret", collection.Variables["API_KEY"]);
     }
 }
