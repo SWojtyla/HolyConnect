@@ -14,7 +14,25 @@
                        Label="Dark Mode" 
                        Color="Color.Primary"
                        T="bool"
-                       ValueChanged="OnDarkModeChanged" />
+                       ValueChanged="OnDarkModeChanged"
+                       Class="mb-3" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Request Layout</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">
+                Choose how requests and responses are displayed.
+            </MudText>
+            <MudRadioGroup @bind-Value="_requestLayout">
+                <MudRadio Value="@Domain.Entities.RequestLayout.Horizontal" Color="Color.Primary">
+                    <MudText Typo="Typo.body2">
+                        <strong>Horizontal (Default)</strong> - Request configuration on top, response below with resizable areas
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@Domain.Entities.RequestLayout.Vertical" Color="Color.Primary">
+                    <MudText Typo="Typo.body2">
+                        <strong>Vertical (Bruno/Postman style)</strong> - Request on left, response on right
+                    </MudText>
+                </MudRadio>
+            </MudRadioGroup>
         </MudCardContent>
     </MudCard>
 
@@ -57,6 +75,7 @@
 @code {
     private bool _isDarkMode;
     private string _storagePath = string.Empty;
+    private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
 
     [CascadingParameter]
     public EventCallback<bool> OnDarkModeToggle { get; set; }
@@ -71,6 +90,7 @@
         var settings = await SettingsService.GetSettingsAsync();
         _isDarkMode = settings.IsDarkMode;
         _storagePath = settings.StoragePath;
+        _requestLayout = settings.Layout;
     }
 
     private async Task OnDarkModeChanged(bool value)
@@ -147,7 +167,8 @@
             var settings = new Domain.Entities.AppSettings
             {
                 IsDarkMode = _isDarkMode,
-                StoragePath = _storagePath
+                StoragePath = _storagePath,
+                Layout = _requestLayout
             };
 
             await SettingsService.SaveSettingsAsync(settings);

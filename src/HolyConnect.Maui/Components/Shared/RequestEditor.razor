@@ -1,7 +1,37 @@
 @inject RequestService RequestService
 @inject IFormatterService FormatterService
 @inject ISnackbar Snackbar
+@inject SettingsService SettingsService
 
+@if (_layout == Domain.Entities.RequestLayout.Vertical)
+{
+    <!-- Vertical Layout: Request on left, Response on right -->
+    <div style="display: flex; height: 100%; gap: 16px;">
+        <div style="flex: 0 0 50%; overflow-y: auto;">
+            @RequestConfigurationSection
+        </div>
+        <div style="flex: 0 0 50%; overflow-y: auto;">
+            @ResponseSection
+        </div>
+    </div>
+}
+else
+{
+    <!-- Horizontal Layout: Request on top, Response on bottom -->
+    <div>
+        @RequestConfigurationSection
+        
+        @if (_response != null)
+        {
+            <MudDivider Class="my-4" />
+            @ResponseSection
+        }
+    </div>
+}
+
+@code {
+    private RenderFragment RequestConfigurationSection => __builder =>
+    {
 <MudCard>
     <MudCardContent>
         <MudText Typo="Typo.h5" Class="mb-4">@(Request?.Name ?? "New Request")</MudText>
@@ -57,13 +87,16 @@
                         @foreach (var header in _headers)
                         {
                             <MudGrid Class="mb-2">
-                                <MudItem xs="5">
-                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" />
+                                <MudItem xs="1" Style="display: flex; align-items: center;">
+                                    <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" />
+                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
                                 </MudItem>
-                                <MudItem xs="2">
+                                <MudItem xs="4">
+                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
+                                </MudItem>
+                                <MudItem xs="2" Style="display: flex; align-items: center;">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
                                 </MudItem>
                             </MudGrid>
@@ -79,13 +112,16 @@
                         @foreach (var param in _queryParams)
                         {
                             <MudGrid Class="mb-2">
-                                <MudItem xs="5">
-                                    <MudTextField @bind-Value="param.Key" Label="Parameter Name" Variant="Variant.Outlined" />
+                                <MudItem xs="1" Style="display: flex; align-items: center;">
+                                    <MudCheckBox @bind-Value="param.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <MudTextField @bind-Value="param.Value" Label="Parameter Value" Variant="Variant.Outlined" />
+                                    <MudTextField @bind-Value="param.Key" Label="Parameter Name" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" />
                                 </MudItem>
-                                <MudItem xs="2">
+                                <MudItem xs="4">
+                                    <MudTextField @bind-Value="param.Value" Label="Parameter Value" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" />
+                                </MudItem>
+                                <MudItem xs="2" Style="display: flex; align-items: center;">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveQueryParam(param))" />
                                 </MudItem>
                             </MudGrid>
@@ -137,13 +173,16 @@
                         @foreach (var header in _headers)
                         {
                             <MudGrid Class="mb-2">
-                                <MudItem xs="5">
-                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" />
+                                <MudItem xs="1" Style="display: flex; align-items: center;">
+                                    <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" />
+                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
                                 </MudItem>
-                                <MudItem xs="2">
+                                <MudItem xs="4">
+                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" />
+                                </MudItem>
+                                <MudItem xs="2" Style="display: flex; align-items: center;">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
                                 </MudItem>
                             </MudGrid>
@@ -168,7 +207,10 @@
         </MudButton>
     </MudCardActions>
 </MudCard>
+    };
 
+    private RenderFragment ResponseSection => __builder =>
+    {
 @if (_response != null)
 {
     <MudCard Class="mt-4">
@@ -234,6 +276,8 @@
         </MudCardContent>
     </MudCard>
 }
+    };
+}
 
 @code {
     [Parameter]
@@ -249,28 +293,47 @@
     private List<ParamModel> _queryParams = new();
     private RequestResponse? _response;
     private string _responseBodyDisplay = string.Empty;
+    private Domain.Entities.RequestLayout _layout = Domain.Entities.RequestLayout.Horizontal;
 
     private class HeaderModel
     {
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
     }
 
     private class ParamModel
     {
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await SettingsService.GetSettingsAsync();
+        _layout = settings.Layout;
     }
 
     protected override void OnParametersSet()
     {
         if (Request != null)
         {
-            _headers = Request.Headers.Select(h => new HeaderModel { Key = h.Key, Value = h.Value }).ToList();
+            _headers = Request.Headers.Select(h => new HeaderModel 
+            { 
+                Key = h.Key, 
+                Value = h.Value,
+                Enabled = !Request.DisabledHeaders.Contains(h.Key)
+            }).ToList();
             
             if (Request is RestRequest restRequest)
             {
-                _queryParams = restRequest.QueryParameters.Select(p => new ParamModel { Key = p.Key, Value = p.Value }).ToList();
+                _queryParams = restRequest.QueryParameters.Select(p => new ParamModel 
+                { 
+                    Key = p.Key, 
+                    Value = p.Value,
+                    Enabled = !restRequest.DisabledQueryParameters.Contains(p.Key)
+                }).ToList();
             }
         }
     }
@@ -465,9 +528,15 @@
         if (Request != null)
         {
             Request.Headers.Clear();
+            Request.DisabledHeaders.Clear();
+            
             foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
             {
                 Request.Headers[header.Key] = header.Value;
+                if (!header.Enabled)
+                {
+                    Request.DisabledHeaders.Add(header.Key);
+                }
             }
         }
     }
@@ -477,9 +546,15 @@
         if (Request is RestRequest restRequest)
         {
             restRequest.QueryParameters.Clear();
+            restRequest.DisabledQueryParameters.Clear();
+            
             foreach (var param in _queryParams.Where(p => !string.IsNullOrWhiteSpace(p.Key)))
             {
                 restRequest.QueryParameters[param.Key] = param.Value;
+                if (!param.Enabled)
+                {
+                    restRequest.DisabledQueryParameters.Add(param.Key);
+                }
             }
         }
     }
