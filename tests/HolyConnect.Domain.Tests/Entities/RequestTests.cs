@@ -230,4 +230,31 @@ public class RequestTests
         Assert.Equal(environment.Id, request.Environment.Id);
         Assert.Equal("Test Environment", request.Environment.Name);
     }
+
+    [Fact]
+    public void Request_DisabledHeaders_ShouldBeInitializedAsEmptyHashSet()
+    {
+        // Arrange & Act
+        var request = new RestRequest();
+
+        // Assert
+        Assert.NotNull(request.DisabledHeaders);
+        Assert.Empty(request.DisabledHeaders);
+    }
+
+    [Fact]
+    public void Request_DisabledHeaders_ShouldBeModifiable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        request.Headers["Content-Type"] = "application/json";
+        request.Headers["Authorization"] = "Bearer token";
+
+        // Act
+        request.DisabledHeaders.Add("Authorization");
+
+        // Assert
+        Assert.Single(request.DisabledHeaders);
+        Assert.Contains("Authorization", request.DisabledHeaders);
+    }
 }

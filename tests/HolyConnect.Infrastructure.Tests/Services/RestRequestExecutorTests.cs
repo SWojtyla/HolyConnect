@@ -218,4 +218,114 @@ public class RestRequestExecutorTests
         Assert.Equal("1", response.SentRequest.QueryParameters["page"]);
         Assert.Equal("10", response.SentRequest.QueryParameters["limit"]);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldExcludeDisabledHeaders()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            Headers = { { "X-Custom-Header", "value1" }, { "X-Disabled-Header", "value2" } },
+            DisabledHeaders = { "X-Disabled-Header" }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(response.SentRequest);
+        Assert.Contains("X-Custom-Header", response.SentRequest.Headers.Keys);
+        Assert.DoesNotContain("X-Disabled-Header", response.SentRequest.Headers.Keys);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldExcludeDisabledQueryParameters()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => 
+                    req.RequestUri != null && 
+                    req.RequestUri.Query.Contains("page=1") && 
+                    !req.RequestUri.Query.Contains("limit")),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            QueryParameters = { { "page", "1" }, { "limit", "10" } },
+            DisabledQueryParameters = { "limit" }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(response.SentRequest);
+        Assert.Single(response.SentRequest.QueryParameters);
+        Assert.Equal("1", response.SentRequest.QueryParameters["page"]);
+        Assert.DoesNotContain("limit", response.SentRequest.QueryParameters.Keys);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldSendAllParametersWhenNoneDisabled()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            Headers = { { "X-Header-1", "value1" }, { "X-Header-2", "value2" } },
+            QueryParameters = { { "page", "1" }, { "limit", "10" } }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(response.SentRequest);
+        Assert.Contains("X-Header-1", response.SentRequest.Headers.Keys);
+        Assert.Contains("X-Header-2", response.SentRequest.Headers.Keys);
+        Assert.Equal(2, response.SentRequest.QueryParameters.Count);
+    }
 }
