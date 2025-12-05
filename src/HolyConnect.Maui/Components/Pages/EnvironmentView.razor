@@ -278,8 +278,7 @@
         if (_selectedRequest != null)
         {
             await RequestService.UpdateRequestAsync(_selectedRequest);
-            Snackbar.Add("Request saved", Severity.Success);
-            _selectedRequest = null;
+            Snackbar.Add("Request saved", Severity.Success);          
             await LoadData();
         }
     }
