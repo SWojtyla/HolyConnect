@@ -133,9 +133,15 @@ public class RestRequestExecutor : IRequestExecutor
         // Apply authentication
         ApplyAuthentication(httpRequest, request);
 
-        // Only include enabled headers
+        // Only include enabled headers (skip Authorization if auth is configured)
+        var skipAuthorizationHeader = request.AuthType != AuthenticationType.None;
         foreach (var header in request.Headers.Where(h => !request.DisabledHeaders.Contains(h.Key)))
         {
+            // Skip Authorization header if authentication is configured to avoid conflicts
+            if (skipAuthorizationHeader && header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
             httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
 

@@ -53,8 +53,15 @@ public class GraphQLRequestExecutor : IRequestExecutor
             // Apply authentication
             ApplyAuthentication(httpRequest, graphQLRequest);
 
-            foreach (var header in graphQLRequest.Headers)
+            // Only include enabled headers (skip Authorization if auth is configured)
+            var skipAuthorizationHeader = graphQLRequest.AuthType != AuthenticationType.None;
+            foreach (var header in graphQLRequest.Headers.Where(h => !graphQLRequest.DisabledHeaders.Contains(h.Key)))
             {
+                // Skip Authorization header if authentication is configured to avoid conflicts
+                if (skipAuthorizationHeader && header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
                 httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
 

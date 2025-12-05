@@ -526,4 +526,47 @@ public class GraphQLRequestExecutorTests
         Assert.NotNull(capturedRequest);
         Assert.False(capturedRequest.Headers.Contains("Authorization"));
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldPreferAuthenticationOverCustomAuthorizationHeader()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\": {}}")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new GraphQLRequestExecutor(httpClient);
+        var request = new GraphQLRequest
+        {
+            Url = "https://api.example.com/graphql",
+            Query = "query { test }",
+            AuthType = AuthenticationType.BearerToken,
+            BearerToken = "correct-token",
+            Headers = { { "Authorization", "Bearer old-token" } }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("Authorization"));
+        var authHeaders = capturedRequest.Headers.GetValues("Authorization").ToList();
+        
+        // Should only have one Authorization header with the Bearer token from auth config
+        Assert.Single(authHeaders);
+        Assert.Equal("Bearer correct-token", authHeaders[0]);
+    }
 }
