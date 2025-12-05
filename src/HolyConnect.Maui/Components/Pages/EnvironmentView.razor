@@ -106,10 +106,10 @@
             _collections = _collections.Where(c => c.EnvironmentId == EnvironmentId).ToList();
             
             // Load requests for each collection
-            var allRequests = await RequestService.GetAllRequestsAsync();
             foreach (var collection in _collections)
             {
-                collection.Requests = allRequests.Where(r => r.CollectionId == collection.Id).ToList();
+                var requests = await RequestService.GetRequestsByCollectionIdAsync(collection.Id);
+                collection.Requests = requests.ToList();
             }
         }
     }
