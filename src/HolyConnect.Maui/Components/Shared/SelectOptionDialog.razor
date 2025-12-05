@@ -1,6 +1,6 @@
 <MudDialog>
     <DialogContent>
-        <MudList Clickable="true">
+        <MudList T="string" Clickable="true">
             @foreach (var option in Options)
             {
                 <MudListItem OnClick="@(() => SelectOption(option))">
