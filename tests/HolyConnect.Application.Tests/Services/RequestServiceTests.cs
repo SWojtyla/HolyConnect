@@ -294,4 +294,111 @@ public class RequestServiceTests
         Assert.Null(capturedRequest.CollectionId);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Request>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ExecuteRequestAsync_ShouldPreserveAuthenticationProperties()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Name = "Test Env",
+            Variables = new Dictionary<string, string>
+            {
+                { "token", "resolved-token-123" }
+            }
+        };
+
+        var request = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Auth Test",
+            Url = "https://api.example.com/test",
+            EnvironmentId = environmentId,
+            AuthType = AuthenticationType.BearerToken,
+            BearerToken = "{{ token }}"
+        };
+
+        Request? executedRequest = null;
+
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+
+        _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
+            .Returns(true);
+
+        _mockExecutor.Setup(e => e.ExecuteAsync(It.IsAny<Request>()))
+            .Callback<Request>(r => executedRequest = r)
+            .ReturnsAsync(new RequestResponse
+            {
+                StatusCode = 200,
+                StatusMessage = "OK"
+            });
+
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
+            .Returns((string input, Domain.Entities.Environment env, Collection col) => 
+                input.Replace("{{ token }}", "resolved-token-123"));
+
+        // Act
+        await _service.ExecuteRequestAsync(request);
+
+        // Assert
+        Assert.NotNull(executedRequest);
+        Assert.Equal(AuthenticationType.BearerToken, executedRequest.AuthType);
+        Assert.Equal("resolved-token-123", executedRequest.BearerToken);
+    }
+
+    [Fact]
+    public async Task ExecuteRequestAsync_ShouldPreserveBasicAuthProperties()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Name = "Test Env",
+            Variables = new Dictionary<string, string>()
+        };
+
+        var request = new GraphQLRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Basic Auth Test",
+            Url = "https://api.example.com/graphql",
+            EnvironmentId = environmentId,
+            Query = "query { test }",
+            AuthType = AuthenticationType.Basic,
+            BasicAuthUsername = "testuser",
+            BasicAuthPassword = "testpass"
+        };
+
+        Request? executedRequest = null;
+
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+
+        _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
+            .Returns(true);
+
+        _mockExecutor.Setup(e => e.ExecuteAsync(It.IsAny<Request>()))
+            .Callback<Request>(r => executedRequest = r)
+            .ReturnsAsync(new RequestResponse
+            {
+                StatusCode = 200,
+                StatusMessage = "OK"
+            });
+
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
+            .Returns((string input, Domain.Entities.Environment env, Collection col) => input);
+
+        // Act
+        await _service.ExecuteRequestAsync(request);
+
+        // Assert
+        Assert.NotNull(executedRequest);
+        Assert.Equal(AuthenticationType.Basic, executedRequest.AuthType);
+        Assert.Equal("testuser", executedRequest.BasicAuthUsername);
+        Assert.Equal("testpass", executedRequest.BasicAuthPassword);
+    }
 }
