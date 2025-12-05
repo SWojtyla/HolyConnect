@@ -6,14 +6,14 @@
 @if (_layout == Domain.Entities.RequestLayout.Vertical)
 {
     <!-- Vertical Layout: Request on left, Response on right -->
-    <div style="display: flex; height: 100%; gap: 16px;">
-        <div style="flex: 0 0 50%; overflow-y: auto;">
+    <MudGrid Class="flex-grow-1">
+        <MudItem xs="6" Class="overflow-y-auto">
             @RequestConfigurationSection
-        </div>
-        <div style="flex: 0 0 50%; overflow-y: auto;">
+        </MudItem>
+        <MudItem xs="6" Class="overflow-y-auto">
             @ResponseSection
-        </div>
-    </div>
+        </MudItem>
+    </MudGrid>
 }
 else
 {
@@ -51,8 +51,8 @@ else
             <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
                 <MudTabPanel Text="Body">
                     <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
-                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Style="max-width: 200px;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween"  Class="mb-2">
+                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Class="flex-shrink-1" Style="max-width: 200px;">
                                 @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
                                 {
                                     <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
@@ -86,8 +86,8 @@ else
                         
                         @foreach (var header in _headers)
                         {
-                            <MudGrid Class="mb-2">
-                                <MudItem xs="1" Style="display: flex; align-items: center;">
+                            <MudGrid Class="mb-2" >
+                                <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
@@ -96,7 +96,7 @@ else
                                 <MudItem xs="4">
                                     <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
-                                <MudItem xs="2" Style="display: flex; align-items: center;">
+                                <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
                                 </MudItem>
                             </MudGrid>
@@ -112,7 +112,7 @@ else
                         @foreach (var param in _queryParams)
                         {
                             <MudGrid Class="mb-2">
-                                <MudItem xs="1" Style="display: flex; align-items: center;">
+                                <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="param.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
@@ -121,7 +121,7 @@ else
                                 <MudItem xs="4">
                                     <VariableTextField @bind-Value="param.Value" Label="Parameter Value" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
-                                <MudItem xs="2" Style="display: flex; align-items: center;">
+                                <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveQueryParam(param))" />
                                 </MudItem>
                             </MudGrid>
@@ -197,8 +197,8 @@ else
                         
                         @foreach (var header in _headers)
                         {
-                            <MudGrid Class="mb-2">
-                                <MudItem xs="1" Style="display: flex; align-items: center;">
+                            <MudGrid Class="mb-2" >
+                                <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
@@ -207,7 +207,7 @@ else
                                 <MudItem xs="4">
                                     <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
                                 </MudItem>
-                                <MudItem xs="2" Style="display: flex; align-items: center;">
+                                <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
                                 </MudItem>
                             </MudGrid>
