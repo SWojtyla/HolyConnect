@@ -130,6 +130,9 @@ public class RestRequestExecutor : IRequestExecutor
 
         var httpRequest = new HttpRequestMessage(httpMethod, url);
 
+        // Apply authentication
+        ApplyAuthentication(httpRequest, request);
+
         // Only include enabled headers
         foreach (var header in request.Headers.Where(h => !request.DisabledHeaders.Contains(h.Key)))
         {
@@ -143,5 +146,32 @@ public class RestRequestExecutor : IRequestExecutor
         }
 
         return httpRequest;
+    }
+
+    private void ApplyAuthentication(HttpRequestMessage httpRequest, Request request)
+    {
+        switch (request.AuthType)
+        {
+            case AuthenticationType.Basic:
+                if (!string.IsNullOrEmpty(request.BasicAuthUsername))
+                {
+                    var credentials = $"{request.BasicAuthUsername}:{request.BasicAuthPassword ?? string.Empty}";
+                    var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
+                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Basic {encodedCredentials}");
+                }
+                break;
+
+            case AuthenticationType.BearerToken:
+                if (!string.IsNullOrEmpty(request.BearerToken))
+                {
+                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {request.BearerToken}");
+                }
+                break;
+
+            case AuthenticationType.None:
+            default:
+                // No authentication
+                break;
+        }
     }
 }

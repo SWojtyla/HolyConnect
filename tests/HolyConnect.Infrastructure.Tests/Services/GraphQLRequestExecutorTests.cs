@@ -403,4 +403,127 @@ public class GraphQLRequestExecutorTests
         Assert.NotNull(response.SentRequest.Body);
         Assert.Contains("query", response.SentRequest.Body);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldApplyBasicAuthentication_WhenBasicAuthTypeIsSet()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\": {}}")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new GraphQLRequestExecutor(httpClient);
+        var request = new GraphQLRequest
+        {
+            Url = "https://api.example.com/graphql",
+            Query = "query { test }",
+            AuthType = AuthenticationType.Basic,
+            BasicAuthUsername = "graphqluser",
+            BasicAuthPassword = "graphqlpass"
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("Authorization"));
+        var authHeader = capturedRequest.Headers.GetValues("Authorization").First();
+        Assert.StartsWith("Basic ", authHeader);
+        
+        // Verify the encoded credentials
+        var encodedCredentials = authHeader.Substring(6);
+        var decodedBytes = Convert.FromBase64String(encodedCredentials);
+        var decodedCredentials = System.Text.Encoding.UTF8.GetString(decodedBytes);
+        Assert.Equal("graphqluser:graphqlpass", decodedCredentials);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldApplyBearerTokenAuthentication_WhenBearerTokenTypeIsSet()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\": {}}")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new GraphQLRequestExecutor(httpClient);
+        var request = new GraphQLRequest
+        {
+            Url = "https://api.example.com/graphql",
+            Query = "query { test }",
+            AuthType = AuthenticationType.BearerToken,
+            BearerToken = "graphqltoken456"
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("Authorization"));
+        var authHeader = capturedRequest.Headers.GetValues("Authorization").First();
+        Assert.Equal("Bearer graphqltoken456", authHeader);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldNotApplyAuthentication_WhenAuthTypeIsNone()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\": {}}")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new GraphQLRequestExecutor(httpClient);
+        var request = new GraphQLRequest
+        {
+            Url = "https://api.example.com/graphql",
+            Query = "query { test }",
+            AuthType = AuthenticationType.None,
+            BasicAuthUsername = "user",
+            BearerToken = "token"
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.False(capturedRequest.Headers.Contains("Authorization"));
+    }
 }

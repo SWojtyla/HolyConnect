@@ -15,6 +15,10 @@ public abstract class Request
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public abstract RequestType Type { get; }
+    public AuthenticationType AuthType { get; set; } = AuthenticationType.None;
+    public string? BasicAuthUsername { get; set; }
+    public string? BasicAuthPassword { get; set; }
+    public string? BearerToken { get; set; }
 }
 
 public enum RequestType
@@ -23,4 +27,11 @@ public enum RequestType
     GraphQL,
     Soap,
     WebSocket
+}
+
+public enum AuthenticationType
+{
+    None,
+    Basic,
+    BearerToken
 }

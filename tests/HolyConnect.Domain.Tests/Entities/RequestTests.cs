@@ -257,4 +257,162 @@ public class RequestTests
         Assert.Single(request.DisabledHeaders);
         Assert.Contains("Authorization", request.DisabledHeaders);
     }
+
+    [Fact]
+    public void Request_AuthType_ShouldDefaultToNone()
+    {
+        // Arrange & Act
+        var request = new RestRequest();
+
+        // Assert
+        Assert.Equal(AuthenticationType.None, request.AuthType);
+    }
+
+    [Fact]
+    public void Request_AuthType_ShouldBeSettable()
+    {
+        // Arrange
+        var request = new RestRequest();
+
+        // Act
+        request.AuthType = AuthenticationType.Basic;
+
+        // Assert
+        Assert.Equal(AuthenticationType.Basic, request.AuthType);
+    }
+
+    [Theory]
+    [InlineData(AuthenticationType.None)]
+    [InlineData(AuthenticationType.Basic)]
+    [InlineData(AuthenticationType.BearerToken)]
+    public void Request_AuthType_ShouldSupportAllAuthenticationTypes(AuthenticationType authType)
+    {
+        // Arrange
+        var request = new RestRequest { AuthType = authType };
+
+        // Assert
+        Assert.Equal(authType, request.AuthType);
+    }
+
+    [Fact]
+    public void Request_BasicAuthUsername_ShouldBeNullable()
+    {
+        // Arrange
+        var request = new RestRequest();
+
+        // Act
+        request.BasicAuthUsername = null;
+
+        // Assert
+        Assert.Null(request.BasicAuthUsername);
+    }
+
+    [Fact]
+    public void Request_BasicAuthUsername_ShouldBeSettable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        var username = "testuser";
+
+        // Act
+        request.BasicAuthUsername = username;
+
+        // Assert
+        Assert.Equal(username, request.BasicAuthUsername);
+    }
+
+    [Fact]
+    public void Request_BasicAuthPassword_ShouldBeNullable()
+    {
+        // Arrange
+        var request = new RestRequest();
+
+        // Act
+        request.BasicAuthPassword = null;
+
+        // Assert
+        Assert.Null(request.BasicAuthPassword);
+    }
+
+    [Fact]
+    public void Request_BasicAuthPassword_ShouldBeSettable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        var password = "testpassword";
+
+        // Act
+        request.BasicAuthPassword = password;
+
+        // Assert
+        Assert.Equal(password, request.BasicAuthPassword);
+    }
+
+    [Fact]
+    public void Request_BearerToken_ShouldBeNullable()
+    {
+        // Arrange
+        var request = new RestRequest();
+
+        // Act
+        request.BearerToken = null;
+
+        // Assert
+        Assert.Null(request.BearerToken);
+    }
+
+    [Fact]
+    public void Request_BearerToken_ShouldBeSettable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        var token = "abc123token";
+
+        // Act
+        request.BearerToken = token;
+
+        // Assert
+        Assert.Equal(token, request.BearerToken);
+    }
+
+    [Fact]
+    public void Request_WithBasicAuth_ShouldHaveUsernameAndPassword()
+    {
+        // Arrange & Act
+        var request = new RestRequest
+        {
+            AuthType = AuthenticationType.Basic,
+            BasicAuthUsername = "admin",
+            BasicAuthPassword = "secret"
+        };
+
+        // Assert
+        Assert.Equal(AuthenticationType.Basic, request.AuthType);
+        Assert.Equal("admin", request.BasicAuthUsername);
+        Assert.Equal("secret", request.BasicAuthPassword);
+    }
+
+    [Fact]
+    public void Request_WithBearerToken_ShouldHaveToken()
+    {
+        // Arrange & Act
+        var request = new RestRequest
+        {
+            AuthType = AuthenticationType.BearerToken,
+            BearerToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        };
+
+        // Assert
+        Assert.Equal(AuthenticationType.BearerToken, request.AuthType);
+        Assert.Equal("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", request.BearerToken);
+    }
+
+    [Fact]
+    public void AuthenticationType_Enum_ShouldHaveExpectedValues()
+    {
+        // Assert
+        Assert.Equal(0, (int)AuthenticationType.None);
+        Assert.Equal(1, (int)AuthenticationType.Basic);
+        Assert.Equal(2, (int)AuthenticationType.BearerToken);
+    }
 }
