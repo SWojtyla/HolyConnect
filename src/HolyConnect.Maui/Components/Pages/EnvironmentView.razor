@@ -1,8 +1,8 @@
 @page "/environment/{EnvironmentId:guid}"
 @using Microsoft.AspNetCore.WebUtilities
-@inject EnvironmentService EnvironmentService
-@inject CollectionService CollectionService
-@inject RequestService RequestService
+@inject IEnvironmentService EnvironmentService
+@inject ICollectionService CollectionService
+@inject IRequestService RequestService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService

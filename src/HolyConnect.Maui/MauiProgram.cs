@@ -32,7 +32,7 @@ public static class MauiProgram
 
 		// Add Settings service
 		builder.Services.AddSingleton<ISettingsService, FileBasedSettingsService>();
-		builder.Services.AddScoped<SettingsService>();
+		builder.Services.AddSingleton<SettingsService>();
 
 		// Helper to synchronously read storage path without async blocking
 		string GetStoragePathSafe()
@@ -89,9 +89,9 @@ public static class MauiProgram
 		});
 
 		// Add services
-		builder.Services.AddScoped<EnvironmentService>();
-		builder.Services.AddScoped<CollectionService>();
-		builder.Services.AddScoped<RequestService>();
+		builder.Services.AddScoped<IEnvironmentService, EnvironmentService>();
+		builder.Services.AddScoped<ICollectionService, CollectionService>();
+		builder.Services.AddScoped<IRequestService, RequestService>();
 		builder.Services.AddScoped<IFormatterService, FormatterService>();
 		builder.Services.AddScoped<IVariableResolver, VariableResolver>();
 

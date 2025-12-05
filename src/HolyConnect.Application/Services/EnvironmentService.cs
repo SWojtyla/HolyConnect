@@ -3,7 +3,7 @@ using HolyConnect.Domain.Entities;
 
 namespace HolyConnect.Application.Services;
 
-public class EnvironmentService
+public class EnvironmentService : IEnvironmentService
 {
     private readonly IRepository<Domain.Entities.Environment> _environmentRepository;
 
