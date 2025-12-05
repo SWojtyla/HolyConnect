@@ -107,7 +107,11 @@
             
             // Load requests for each collection (load once and group to avoid N+1 queries)
             var allRequests = await RequestService.GetAllRequestsAsync();
-            var requestsByCollection = allRequests.GroupBy(r => r.CollectionId).ToDictionary(g => g.Key, g => g.ToList());
+            var collectionIds = _collections.Select(c => c.Id).ToHashSet();
+            var requestsByCollection = allRequests
+                .Where(r => collectionIds.Contains(r.CollectionId))
+                .GroupBy(r => r.CollectionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
             
             foreach (var collection in _collections)
             {
