@@ -83,21 +83,34 @@
         {
 #if WINDOWS
             var folderPicker = new Windows.Storage.Pickers.FolderPicker();
-            var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(Application.Current.Windows[0].Handler.PlatformView);
-            WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, windowHandle);
-            
-            folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-            folderPicker.FileTypeFilter.Add("*");
-
-            var folder = await folderPicker.PickSingleFolderAsync();
-            if (folder != null)
+            var window = Microsoft.Maui.Controls.Application.Current?.Windows?.FirstOrDefault();
+            if (window?.Handler?.PlatformView != null)
             {
-                _storagePath = folder.Path;
+                var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window.Handler.PlatformView);
+                WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, windowHandle);
+                
+                folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                folderPicker.FileTypeFilter.Add("*");
+
+                var folder = await folderPicker.PickSingleFolderAsync();
+                if (folder != null)
+                {
+                    _storagePath = folder.Path;
+                }
+            }
+            else
+            {
+                Snackbar.Add("Cannot access window for folder picker", Severity.Warning);
             }
 #elif ANDROID
             // For Android, we'll use the app's local directory
-            _storagePath = Path.Combine(Android.App.Application.Context.GetExternalFilesDir(null)?.AbsolutePath ?? "", "HolyConnect");
-            Snackbar.Add("Using app's storage directory on Android", Severity.Info);
+            var context = Android.App.Application.Context;
+            var externalFilesDir = context.GetExternalFilesDir(null)?.AbsolutePath;
+            if (!string.IsNullOrEmpty(externalFilesDir))
+            {
+                _storagePath = Path.Combine(externalFilesDir, "HolyConnect");
+                Snackbar.Add("Using app's storage directory on Android", Severity.Info);
+            }
 #elif IOS || MACCATALYST
             // For iOS/MacCatalyst, use documents directory
             _storagePath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments), "HolyConnect");

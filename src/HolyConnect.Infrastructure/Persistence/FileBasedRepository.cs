@@ -39,7 +39,11 @@ public class FileBasedRepository<T> : IRepository<T> where T : class
         try
         {
             var json = await File.ReadAllTextAsync(filePath);
-            var list = JsonSerializer.Deserialize<List<T>>(json);
+            var options = new JsonSerializerOptions 
+            { 
+                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+            };
+            var list = JsonSerializer.Deserialize<List<T>>(json, options);
             return list?.ToDictionary(_idSelector) ?? new Dictionary<Guid, T>();
         }
         catch
@@ -52,7 +56,12 @@ public class FileBasedRepository<T> : IRepository<T> where T : class
     {
         var filePath = GetFilePath();
         var list = data.Values.ToList();
-        var json = JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true });
+        var options = new JsonSerializerOptions 
+        { 
+            WriteIndented = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
+        var json = JsonSerializer.Serialize(list, options);
         await File.WriteAllTextAsync(filePath, json);
     }
 
