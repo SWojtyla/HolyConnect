@@ -328,4 +328,214 @@ public class RestRequestExecutorTests
         Assert.Contains("X-Header-2", response.SentRequest.Headers.Keys);
         Assert.Equal(2, response.SentRequest.QueryParameters.Count);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldApplyBasicAuthentication_WhenBasicAuthTypeIsSet()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            AuthType = AuthenticationType.Basic,
+            BasicAuthUsername = "testuser",
+            BasicAuthPassword = "testpass"
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("Authorization"));
+        var authHeader = capturedRequest.Headers.GetValues("Authorization").First();
+        Assert.StartsWith("Basic ", authHeader);
+        
+        // Verify the encoded credentials
+        var encodedCredentials = authHeader.Substring(6);
+        var decodedBytes = Convert.FromBase64String(encodedCredentials);
+        var decodedCredentials = System.Text.Encoding.UTF8.GetString(decodedBytes);
+        Assert.Equal("testuser:testpass", decodedCredentials);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldApplyBearerTokenAuthentication_WhenBearerTokenTypeIsSet()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            AuthType = AuthenticationType.BearerToken,
+            BearerToken = "mytoken123"
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("Authorization"));
+        var authHeader = capturedRequest.Headers.GetValues("Authorization").First();
+        Assert.Equal("Bearer mytoken123", authHeader);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldNotApplyAuthentication_WhenAuthTypeIsNone()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            AuthType = AuthenticationType.None,
+            BasicAuthUsername = "testuser",
+            BasicAuthPassword = "testpass",
+            BearerToken = "mytoken123"
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.False(capturedRequest.Headers.Contains("Authorization"));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldHandleBasicAuthWithEmptyPassword()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            AuthType = AuthenticationType.Basic,
+            BasicAuthUsername = "testuser",
+            BasicAuthPassword = null
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("Authorization"));
+        var authHeader = capturedRequest.Headers.GetValues("Authorization").First();
+        var encodedCredentials = authHeader.Substring(6);
+        var decodedBytes = Convert.FromBase64String(encodedCredentials);
+        var decodedCredentials = System.Text.Encoding.UTF8.GetString(decodedBytes);
+        Assert.Equal("testuser:", decodedCredentials);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldPreferAuthenticationOverCustomAuthorizationHeader()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            AuthType = AuthenticationType.BearerToken,
+            BearerToken = "correct-token",
+            Headers = { { "Authorization", "Bearer old-token" } }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("Authorization"));
+        var authHeaders = capturedRequest.Headers.GetValues("Authorization").ToList();
+        
+        // Should only have one Authorization header with the Bearer token from auth config
+        Assert.Single(authHeaders);
+        Assert.Equal("Bearer correct-token", authHeaders[0]);
+    }
 }

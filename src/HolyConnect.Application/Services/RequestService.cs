@@ -118,6 +118,20 @@ public class RequestService
         }
         resolvedRequest.Headers = resolvedHeaders;
 
+        // Resolve variables in authentication fields
+        if (!string.IsNullOrEmpty(resolvedRequest.BasicAuthUsername))
+        {
+            resolvedRequest.BasicAuthUsername = _variableResolver.ResolveVariables(resolvedRequest.BasicAuthUsername, environment, collection);
+        }
+        if (!string.IsNullOrEmpty(resolvedRequest.BasicAuthPassword))
+        {
+            resolvedRequest.BasicAuthPassword = _variableResolver.ResolveVariables(resolvedRequest.BasicAuthPassword, environment, collection);
+        }
+        if (!string.IsNullOrEmpty(resolvedRequest.BearerToken))
+        {
+            resolvedRequest.BearerToken = _variableResolver.ResolveVariables(resolvedRequest.BearerToken, environment, collection);
+        }
+
         // Resolve variables in request-specific properties
         if (resolvedRequest is RestRequest resolvedRestRequest)
         {
@@ -177,7 +191,11 @@ public class RequestService
             ContentType = source.ContentType,
             BodyType = source.BodyType,
             QueryParameters = new Dictionary<string, string>(source.QueryParameters),
-            DisabledQueryParameters = new HashSet<string>(source.DisabledQueryParameters)
+            DisabledQueryParameters = new HashSet<string>(source.DisabledQueryParameters),
+            AuthType = source.AuthType,
+            BasicAuthUsername = source.BasicAuthUsername,
+            BasicAuthPassword = source.BasicAuthPassword,
+            BearerToken = source.BearerToken
         };
     }
 
@@ -199,7 +217,11 @@ public class RequestService
             UpdatedAt = source.UpdatedAt,
             Query = source.Query,
             Variables = source.Variables,
-            OperationName = source.OperationName
+            OperationName = source.OperationName,
+            AuthType = source.AuthType,
+            BasicAuthUsername = source.BasicAuthUsername,
+            BasicAuthPassword = source.BasicAuthPassword,
+            BearerToken = source.BearerToken
         };
     }
 }

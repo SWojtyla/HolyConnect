@@ -50,8 +50,18 @@ public class GraphQLRequestExecutor : IRequestExecutor
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             };
 
-            foreach (var header in graphQLRequest.Headers)
+            // Apply authentication
+            ApplyAuthentication(httpRequest, graphQLRequest);
+
+            // Only include enabled headers (skip Authorization if auth is configured)
+            var skipAuthorizationHeader = graphQLRequest.AuthType != AuthenticationType.None;
+            foreach (var header in graphQLRequest.Headers.Where(h => !graphQLRequest.DisabledHeaders.Contains(h.Key)))
             {
+                // Skip Authorization header if authentication is configured to avoid conflicts
+                if (skipAuthorizationHeader && header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
                 httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
 
@@ -113,5 +123,32 @@ public class GraphQLRequestExecutor : IRequestExecutor
         }
 
         return response;
+    }
+
+    private void ApplyAuthentication(HttpRequestMessage httpRequest, Request request)
+    {
+        switch (request.AuthType)
+        {
+            case AuthenticationType.Basic:
+                if (!string.IsNullOrEmpty(request.BasicAuthUsername))
+                {
+                    var credentials = $"{request.BasicAuthUsername}:{request.BasicAuthPassword ?? string.Empty}";
+                    var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
+                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Basic {encodedCredentials}");
+                }
+                break;
+
+            case AuthenticationType.BearerToken:
+                if (!string.IsNullOrEmpty(request.BearerToken))
+                {
+                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {request.BearerToken}");
+                }
+                break;
+
+            case AuthenticationType.None:
+            default:
+                // No authentication
+                break;
+        }
     }
 }

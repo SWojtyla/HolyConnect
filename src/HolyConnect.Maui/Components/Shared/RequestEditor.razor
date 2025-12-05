@@ -131,6 +131,31 @@ else
                         </MudButton>
                     </div>
                 </MudTabPanel>
+                
+                <MudTabPanel Text="Auth">
+                    <div class="pa-4">
+                        <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
+                            @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
+                            {
+                                <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        
+                        @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
+                        {
+                            <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
+                            <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+                        }
+                        else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
+                        {
+                            <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
+                        }
+                    </div>
+                </MudTabPanel>
             </MudTabs>
         }
         else if (Request is GraphQLRequest graphQLRequest)
@@ -190,6 +215,31 @@ else
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
                             Add Header
                         </MudButton>
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Auth">
+                    <div class="pa-4">
+                        <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
+                            @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
+                            {
+                                <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        
+                        @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
+                        {
+                            <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
+                            <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+                        }
+                        else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
+                        {
+                            <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
+                        }
                     </div>
                 </MudTabPanel>
             </MudTabs>
@@ -569,5 +619,16 @@ else
                 }
             }
         }
+    }
+
+    private string GetAuthTypeName(Domain.Entities.AuthenticationType authType)
+    {
+        return authType switch
+        {
+            Domain.Entities.AuthenticationType.None => "No Auth",
+            Domain.Entities.AuthenticationType.Basic => "Basic Auth",
+            Domain.Entities.AuthenticationType.BearerToken => "Bearer Token",
+            _ => authType.ToString()
+        };
     }
 }
