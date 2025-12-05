@@ -9,6 +9,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 🗂️ **Environment Management**: Organize your API requests by environments
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests
+- 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
 - 🏗️ **Extensible Architecture**: Built with clean architecture principles for easy extension
 
@@ -95,14 +96,22 @@ HolyConnect/
 1. Select a collection
 2. Click "New Request"
 3. Enter request details (name, URL, method, headers, body)
-4. Click "Create"
+4. Use variables with `{{ variableName }}` syntax in URL, headers, query params, or body
+5. Click "Create"
 
 ### Executing a Request
 
 1. Open a saved request
-2. Modify parameters if needed
+2. Modify parameters if needed (variables will be automatically resolved)
 3. Click "Send"
 4. View response (status, headers, body, timing)
+
+### Using Variables
+
+1. Define variables in environments or collections
+2. Use `{{ variableName }}` syntax in your requests
+3. Collection variables override environment variables
+4. See the [Variables Wiki](/wiki/variables) for detailed documentation
 
 ## Extending the Application
 

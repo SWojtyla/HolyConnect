@@ -87,6 +87,8 @@ public class RequestService
         var environment = await _environmentRepository.GetByIdAsync(request.EnvironmentId);
         if (environment == null)
         {
+            // Environment not found - this shouldn't happen for valid requests, but we'll continue without variable resolution
+            // Variables will remain as placeholders in the request
             return request;
         }
 

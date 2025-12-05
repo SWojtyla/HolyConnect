@@ -80,8 +80,15 @@ Contains business logic and orchestration:
   - `EnvironmentService`: Manages environment CRUD operations
   - `CollectionService`: Handles collection management
   - `RequestService`: Coordinates request storage and execution
+  - `VariableResolver`: Resolves variables in requests using environment and collection values
 
 - **Use Cases**: Business workflows that orchestrate domain entities
+
+- **Variable Resolution**:
+  - Variables use the `{{ variableName }}` syntax (like Postman and Bruno)
+  - Resolved before request execution in `RequestService`
+  - Collection variables take precedence over environment variables
+  - Supports URL, headers, query parameters, and request body
 
 ### 3. Infrastructure Layer (HolyConnect.Infrastructure)
 **Dependencies**: Application Layer, Domain Layer
@@ -237,4 +244,4 @@ tests/
 7. **WebSocket Support**: Real-time API testing
 8. **Authentication Flows**: OAuth, JWT, API Key management
 9. **Scripting**: Pre-request and post-request scripts
-10. **Variables**: Dynamic variables and computed values
+10. **Dynamic Variables**: Computed values and system variables (e.g., timestamps, random values)
