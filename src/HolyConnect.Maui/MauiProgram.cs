@@ -60,29 +60,32 @@ public static class MauiProgram
 		}
 	}
 
-		// Add repositories with file-based persistence without async blocking
+		// Add repositories with multi-file persistence for better performance with large collections
 		builder.Services.AddSingleton<IRepository<Domain.Entities.Environment>>(sp =>
 		{
-			return new FileBasedRepository<Domain.Entities.Environment>(
+			return new MultiFileRepository<Domain.Entities.Environment>(
 				e => e.Id,
 				GetStoragePathSafe,
-				"environments.json");
+				"environments",
+				e => e.Name);
 		});
 		
 		builder.Services.AddSingleton<IRepository<Collection>>(sp =>
 		{
-			return new FileBasedRepository<Collection>(
+			return new MultiFileRepository<Collection>(
 				c => c.Id,
 				GetStoragePathSafe,
-				"collections.json");
+				"collections",
+				c => c.Name);
 		});
 		
 		builder.Services.AddSingleton<IRepository<Request>>(sp =>
 		{
-			return new FileBasedRepository<Request>(
+			return new MultiFileRepository<Request>(
 				r => r.Id,
 				GetStoragePathSafe,
-				"requests.json");
+				"requests",
+				r => r.Name);
 		});
 
 		// Add services

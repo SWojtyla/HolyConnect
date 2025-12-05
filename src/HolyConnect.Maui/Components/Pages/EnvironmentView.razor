@@ -5,6 +5,7 @@
 @inject RequestService RequestService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.False" Style="height: calc(100vh - 64px); display: flex; padding: 0;">
     <MudPaper Elevation="2" Style="width: 300px; overflow-y: auto; border-right: 1px solid #e0e0e0;">
@@ -21,7 +22,7 @@
                 {
                     @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
                     {
-                        <CollectionTreeItem Collection="@collection" OnSelect="SelectCollection" />
+                        <CollectionTreeItem Collection="@collection" OnSelect="SelectCollection" OnRequestSelect="SelectRequest" />
                     }
                 }
                 else
@@ -82,8 +83,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to navigation changes to refresh data when coming back from create pages
+        NavigationManager.LocationChanged += OnLocationChanged;
         await LoadData();
-        
+        await HandleQueryParameters();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reload data when parameters change (e.g., navigating back from create pages)
+        await LoadData();
+        await HandleQueryParameters();
+    }
+
+    private async Task HandleQueryParameters()
+    {
         // Check if there's a requestId query parameter to auto-select a request
         var uri = new Uri(NavigationManager.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
@@ -95,6 +109,28 @@
                 SelectRequest(request);
             }
         }
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        try
+        {
+            // Reload data when location changes
+            if (EnvironmentId != Guid.Empty && e.Location.Contains($"/environment/{EnvironmentId}"))
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reloading data on location change: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
     }
 
     private async Task LoadData()
