@@ -51,7 +51,7 @@ else
             <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
                 <MudTabPanel Text="Body">
                     <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween"  Class="mb-2">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2">
                             <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Class="flex-shrink-1" Style="max-width: 200px;">
                                 @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
                                 {
@@ -86,7 +86,7 @@ else
                         
                         @foreach (var header in _headers)
                         {
-                            <MudGrid Class="mb-2" >
+                            <MudGrid Class="mb-2">
                                 <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
@@ -197,7 +197,7 @@ else
                         
                         @foreach (var header in _headers)
                         {
-                            <MudGrid Class="mb-2" >
+                            <MudGrid Class="mb-2">
                                 <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
