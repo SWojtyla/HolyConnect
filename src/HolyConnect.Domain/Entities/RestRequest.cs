@@ -7,6 +7,7 @@ public class RestRequest : Request
     public string? ContentType { get; set; }
     public BodyType BodyType { get; set; } = BodyType.Json;
     public Dictionary<string, string> QueryParameters { get; set; } = new();
+    public HashSet<string> DisabledQueryParameters { get; set; } = new();
     public override RequestType Type => RequestType.Rest;
 }
 

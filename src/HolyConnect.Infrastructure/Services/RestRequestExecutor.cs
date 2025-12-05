@@ -36,14 +36,14 @@ public class RestRequestExecutor : IRequestExecutor
         {
             var httpRequest = CreateHttpRequestMessage(restRequest);
             
-            // Capture the sent request details
+            // Capture the sent request details (only enabled parameters)
             var sentRequest = new SentRequest
             {
                 Url = httpRequest.RequestUri?.ToString() ?? restRequest.Url,
                 Method = restRequest.Method.ToString(),
                 Headers = new Dictionary<string, string>(),
                 Body = restRequest.Body,
-                QueryParameters = new Dictionary<string, string>(restRequest.QueryParameters)
+                QueryParameters = GetEnabledQueryParameters(restRequest)
             };
 
             foreach (var header in httpRequest.Headers)
@@ -96,13 +96,23 @@ public class RestRequestExecutor : IRequestExecutor
         return response;
     }
 
+    private Dictionary<string, string> GetEnabledQueryParameters(RestRequest request)
+    {
+        return request.QueryParameters
+            .Where(kvp => !request.DisabledQueryParameters.Contains(kvp.Key))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+    }
+
     private HttpRequestMessage CreateHttpRequestMessage(RestRequest request)
     {
         var url = request.Url;
         
-        if (request.QueryParameters.Any())
+        // Only include enabled query parameters
+        var enabledQueryParams = GetEnabledQueryParameters(request);
+        
+        if (enabledQueryParams.Any())
         {
-            var queryString = string.Join("&", request.QueryParameters.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
+            var queryString = string.Join("&", enabledQueryParams.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
             url = $"{url}?{queryString}";
         }
 
@@ -120,7 +130,8 @@ public class RestRequestExecutor : IRequestExecutor
 
         var httpRequest = new HttpRequestMessage(httpMethod, url);
 
-        foreach (var header in request.Headers)
+        // Only include enabled headers
+        foreach (var header in request.Headers.Where(h => !request.DisabledHeaders.Contains(h.Key)))
         {
             httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }

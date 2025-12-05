@@ -80,4 +80,86 @@ public class RestRequestTests
         // Assert
         Assert.Equal(body, request.Body);
     }
+
+    [Fact]
+    public void DisabledHeaders_ShouldInitializeEmpty()
+    {
+        // Arrange & Act
+        var request = new RestRequest();
+
+        // Assert
+        Assert.NotNull(request.DisabledHeaders);
+        Assert.Empty(request.DisabledHeaders);
+    }
+
+    [Fact]
+    public void DisabledHeaders_ShouldBeModifiable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        request.Headers["Content-Type"] = "application/json";
+        request.Headers["Authorization"] = "Bearer token";
+
+        // Act
+        request.DisabledHeaders.Add("Authorization");
+
+        // Assert
+        Assert.Single(request.DisabledHeaders);
+        Assert.Contains("Authorization", request.DisabledHeaders);
+        Assert.DoesNotContain("Content-Type", request.DisabledHeaders);
+    }
+
+    [Fact]
+    public void DisabledQueryParameters_ShouldInitializeEmpty()
+    {
+        // Arrange & Act
+        var request = new RestRequest();
+
+        // Assert
+        Assert.NotNull(request.DisabledQueryParameters);
+        Assert.Empty(request.DisabledQueryParameters);
+    }
+
+    [Fact]
+    public void DisabledQueryParameters_ShouldBeModifiable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        request.QueryParameters["page"] = "1";
+        request.QueryParameters["limit"] = "10";
+        request.QueryParameters["filter"] = "active";
+
+        // Act
+        request.DisabledQueryParameters.Add("filter");
+
+        // Assert
+        Assert.Single(request.DisabledQueryParameters);
+        Assert.Contains("filter", request.DisabledQueryParameters);
+        Assert.DoesNotContain("page", request.DisabledQueryParameters);
+        Assert.DoesNotContain("limit", request.DisabledQueryParameters);
+    }
+
+    [Fact]
+    public void Request_CanTrackMultipleDisabledHeadersAndQueryParams()
+    {
+        // Arrange
+        var request = new RestRequest();
+        request.Headers["Content-Type"] = "application/json";
+        request.Headers["Authorization"] = "Bearer token";
+        request.Headers["Accept"] = "*/*";
+        request.QueryParameters["page"] = "1";
+        request.QueryParameters["limit"] = "10";
+
+        // Act
+        request.DisabledHeaders.Add("Authorization");
+        request.DisabledHeaders.Add("Accept");
+        request.DisabledQueryParameters.Add("limit");
+
+        // Assert
+        Assert.Equal(2, request.DisabledHeaders.Count);
+        Assert.Single(request.DisabledQueryParameters);
+        Assert.Contains("Authorization", request.DisabledHeaders);
+        Assert.Contains("Accept", request.DisabledHeaders);
+        Assert.Contains("limit", request.DisabledQueryParameters);
+    }
 }
