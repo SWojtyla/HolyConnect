@@ -250,21 +250,21 @@ else
                             <MudText Typo="Typo.body2" Class="mb-2"><strong>URL:</strong> @_response.SentRequest.Url</MudText>
                             
                             <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Headers:</strong></MudText>
-                            @foreach (var header in _response.SentRequest.Headers)
+                            @foreach (var header in @_response.SentRequest.Headers)
                             {
                                 <MudText Typo="Typo.body2">@header.Key: @header.Value</MudText>
                             }
                             
-                            @if (!string.IsNullOrEmpty(_response.SentRequest.Body))
+                            @if (!string.IsNullOrEmpty(@_response.SentRequest.Body))
                             {
                                 <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Body:</strong></MudText>
                                 <MudTextField Value="@_response.SentRequest.Body" Lines="10" Variant="Variant.Outlined" ReadOnly="true" />
                             }
                             
-                            @if (_response.SentRequest.QueryParameters.Any())
+                            @if (@_response.SentRequest.QueryParameters.Any())
                             {
                                 <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Query Parameters:</strong></MudText>
-                                @foreach (var param in _response.SentRequest.QueryParameters)
+                                @foreach (var param in @_response.SentRequest.QueryParameters)
                                 {
                                     <MudText Typo="Typo.body2">@param.Key: @param.Value</MudText>
                                 }
@@ -532,8 +532,11 @@ else
             
             foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
             {
-                Request.Headers[header.Key] = header.Value;
-                if (!header.Enabled)
+                if (header.Enabled)
+                {
+                    Request.Headers[header.Key] = header.Value;
+                }
+                else
                 {
                     Request.DisabledHeaders.Add(header.Key);
                 }
@@ -550,8 +553,11 @@ else
             
             foreach (var param in _queryParams.Where(p => !string.IsNullOrWhiteSpace(p.Key)))
             {
-                restRequest.QueryParameters[param.Key] = param.Value;
-                if (!param.Enabled)
+                if (param.Enabled)
+                {
+                    restRequest.QueryParameters[param.Key] = param.Value;
+                }
+                else
                 {
                     restRequest.DisabledQueryParameters.Add(param.Key);
                 }
