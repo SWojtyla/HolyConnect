@@ -91,7 +91,11 @@
         }
         else if (_selectedRequest != null)
         {
-            <RequestEditor Request="@_selectedRequest" OnSave="SaveRequest" OnCancel="CancelRequestEdit" />
+            <RequestEditor Request="@_selectedRequest" 
+                         Environment="@_environment" 
+                         Collection="@_selectedRequestCollection"
+                         OnSave="SaveRequest" 
+                         OnCancel="CancelRequestEdit" />
         }
         else
         {
@@ -109,6 +113,7 @@
     private IEnumerable<Request>? _environmentRequests;
     private Collection? _selectedCollection;
     private Request? _selectedRequest;
+    private Collection? _selectedRequestCollection;
 
     protected override async Task OnInitializedAsync()
     {
@@ -228,7 +233,34 @@
     {
         _selectedRequest = request;
         _selectedCollection = null;
+        
+        // Find the collection for this request
+        _selectedRequestCollection = null;
+        if (request.CollectionId.HasValue && _collections != null)
+        {
+            _selectedRequestCollection = FindCollectionById(_collections, request.CollectionId.Value);
+        }
+        
         StateHasChanged();
+    }
+
+    private Collection? FindCollectionById(IEnumerable<Collection> collections, Guid id)
+    {
+        foreach (var collection in collections)
+        {
+            if (collection.Id == id)
+            {
+                return collection;
+            }
+            
+            var found = FindCollectionById(collection.SubCollections, id);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        
+        return null;
     }
 
     private async Task ShowCreateMenu()
