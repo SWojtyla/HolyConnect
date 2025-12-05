@@ -1,4 +1,5 @@
 @inject RequestService RequestService
+@inject IFormatterService FormatterService
 @inject ISnackbar Snackbar
 
 <MudCard>
@@ -17,32 +18,143 @@
                 }
             </MudSelect>
             
-            <MudTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="10" Variant="Variant.Outlined" Class="mb-2" />
+            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
+                <MudTabPanel Text="Body">
+                    <div class="pa-4">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Style="max-width: 200px;">
+                                @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
+                                {
+                                    <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrettifyBody(restRequest))">
+                                Prettify
+                            </MudButton>
+                        </MudStack>
+                        <MudTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="12" Variant="Variant.Outlined" />
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Headers">
+                    <div class="pa-4">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
+                        <MudStack Row="true" Spacing="2" Class="mb-4">
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
+                                + JSON
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/xml"))">
+                                + XML
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                                + Auth
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Accept", "*/*"))">
+                                + Accept
+                            </MudButton>
+                        </MudStack>
+                        
+                        @foreach (var header in _headers)
+                        {
+                            <MudGrid Class="mb-2">
+                                <MudItem xs="5">
+                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="5">
+                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="2">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
+                            Add Header
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Query Params">
+                    <div class="pa-4">
+                        @foreach (var param in _queryParams)
+                        {
+                            <MudGrid Class="mb-2">
+                                <MudItem xs="5">
+                                    <MudTextField @bind-Value="param.Key" Label="Parameter Name" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="5">
+                                    <MudTextField @bind-Value="param.Value" Label="Parameter Value" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="2">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveQueryParam(param))" />
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddQueryParam" StartIcon="@Icons.Material.Filled.Add">
+                            Add Query Parameter
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
         }
         else if (Request is GraphQLRequest graphQLRequest)
         {
-            <MudTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="10" Variant="Variant.Outlined" Class="mb-2" />
-            <MudTextField @bind-Value="graphQLRequest.Variables" Label="Variables (JSON)" Lines="5" Variant="Variant.Outlined" Class="mb-2" />
+            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
+                <MudTabPanel Text="Query">
+                    <div class="pa-4">
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrettifyGraphQLQuery(graphQLRequest))">
+                                Prettify
+                            </MudButton>
+                        </MudStack>
+                        <MudTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="12" Variant="Variant.Outlined" />
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Variables">
+                    <div class="pa-4">
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrettifyGraphQLVariables(graphQLRequest))">
+                                Prettify
+                            </MudButton>
+                        </MudStack>
+                        <MudTextField @bind-Value="graphQLRequest.Variables" Label="Variables (JSON)" Lines="8" Variant="Variant.Outlined" />
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Headers">
+                    <div class="pa-4">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
+                        <MudStack Row="true" Spacing="2" Class="mb-4">
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
+                                + JSON
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                                + Auth
+                            </MudButton>
+                        </MudStack>
+                        
+                        @foreach (var header in _headers)
+                        {
+                            <MudGrid Class="mb-2">
+                                <MudItem xs="5">
+                                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="5">
+                                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="2">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
+                            Add Header
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
         }
-
-        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Headers</MudText>
-        @foreach (var header in _headers)
-        {
-            <MudGrid Class="mb-2">
-                <MudItem xs="5">
-                    <MudTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="5">
-                    <MudTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="2">
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
-                </MudItem>
-            </MudGrid>
-        }
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
-            Add Header
-        </MudButton>
     </MudCardContent>
     <MudCardActions>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExecuteRequest" StartIcon="@Icons.Material.Filled.Send">
@@ -66,16 +178,58 @@
             <MudText Typo="Typo.body2">Time: @_response.ResponseTime ms</MudText>
             <MudText Typo="Typo.body2">Size: @_response.Size bytes</MudText>
             
-            <MudTabs Class="mt-2">
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true">
                 <MudTabPanel Text="Body">
-                    <MudTextField Value="@_response.Body" Lines="20" Variant="Variant.Outlined" ReadOnly="true" />
+                    <div class="pa-4">
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="PrettifyResponseBody">
+                                Prettify
+                            </MudButton>
+                        </MudStack>
+                        <MudTextField Value="@_responseBodyDisplay" Lines="20" Variant="Variant.Outlined" ReadOnly="true" />
+                    </div>
                 </MudTabPanel>
+                
                 <MudTabPanel Text="Headers">
-                    @foreach (var header in _response.Headers)
-                    {
-                        <MudText Typo="Typo.body2">@header.Key: @header.Value</MudText>
-                    }
+                    <div class="pa-4">
+                        @foreach (var header in _response.Headers)
+                        {
+                            <MudText Typo="Typo.body2"><strong>@header.Key:</strong> @header.Value</MudText>
+                        }
+                    </div>
                 </MudTabPanel>
+                
+                @if (_response.SentRequest != null)
+                {
+                    <MudTabPanel Text="Request">
+                        <div class="pa-4">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2"><strong>What was sent:</strong></MudText>
+                            <MudText Typo="Typo.body2" Class="mb-1"><strong>Method:</strong> @_response.SentRequest.Method</MudText>
+                            <MudText Typo="Typo.body2" Class="mb-2"><strong>URL:</strong> @_response.SentRequest.Url</MudText>
+                            
+                            <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Headers:</strong></MudText>
+                            @foreach (var header in _response.SentRequest.Headers)
+                            {
+                                <MudText Typo="Typo.body2">@header.Key: @header.Value</MudText>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(_response.SentRequest.Body))
+                            {
+                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Body:</strong></MudText>
+                                <MudTextField Value="@_response.SentRequest.Body" Lines="10" Variant="Variant.Outlined" ReadOnly="true" />
+                            }
+                            
+                            @if (_response.SentRequest.QueryParameters.Any())
+                            {
+                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Query Parameters:</strong></MudText>
+                                @foreach (var param in _response.SentRequest.QueryParameters)
+                                {
+                                    <MudText Typo="Typo.body2">@param.Key: @param.Value</MudText>
+                                }
+                            }
+                        </div>
+                    </MudTabPanel>
+                }
             </MudTabs>
         </MudCardContent>
     </MudCard>
@@ -92,9 +246,17 @@
     public EventCallback OnCancel { get; set; }
 
     private List<HeaderModel> _headers = new();
+    private List<ParamModel> _queryParams = new();
     private RequestResponse? _response;
+    private string _responseBodyDisplay = string.Empty;
 
     private class HeaderModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    private class ParamModel
     {
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
@@ -105,6 +267,11 @@
         if (Request != null)
         {
             _headers = Request.Headers.Select(h => new HeaderModel { Key = h.Key, Value = h.Value }).ToList();
+            
+            if (Request is RestRequest restRequest)
+            {
+                _queryParams = restRequest.QueryParameters.Select(p => new ParamModel { Key = p.Key, Value = p.Value }).ToList();
+            }
         }
     }
 
@@ -118,6 +285,154 @@
         _headers.Remove(header);
     }
 
+    private void AddQueryParam()
+    {
+        _queryParams.Add(new ParamModel());
+    }
+
+    private void RemoveQueryParam(ParamModel param)
+    {
+        _queryParams.Remove(param);
+    }
+
+    private void AddCommonHeader(string key, string value)
+    {
+        var existingHeader = _headers.FirstOrDefault(h => h.Key == key);
+        if (existingHeader != null)
+        {
+            existingHeader.Value = value;
+        }
+        else
+        {
+            _headers.Add(new HeaderModel { Key = key, Value = value });
+        }
+        StateHasChanged();
+    }
+
+    private void PrettifyBody(RestRequest restRequest)
+    {
+        if (string.IsNullOrWhiteSpace(restRequest.Body))
+        {
+            return;
+        }
+
+        try
+        {
+            restRequest.Body = restRequest.BodyType switch
+            {
+                Domain.Entities.BodyType.Json => FormatterService.FormatJson(restRequest.Body),
+                Domain.Entities.BodyType.Xml => FormatterService.FormatXml(restRequest.Body),
+                _ => restRequest.Body
+            };
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error formatting body: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private void PrettifyGraphQLQuery(GraphQLRequest graphQLRequest)
+    {
+        if (string.IsNullOrWhiteSpace(graphQLRequest.Query))
+        {
+            return;
+        }
+
+        try
+        {
+            graphQLRequest.Query = FormatterService.FormatGraphQL(graphQLRequest.Query);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error formatting query: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private void PrettifyGraphQLVariables(GraphQLRequest graphQLRequest)
+    {
+        if (string.IsNullOrWhiteSpace(graphQLRequest.Variables))
+        {
+            return;
+        }
+
+        try
+        {
+            graphQLRequest.Variables = FormatterService.FormatJson(graphQLRequest.Variables);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error formatting variables: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private void PrettifyResponseBody()
+    {
+        if (_response == null || string.IsNullOrWhiteSpace(_response.Body))
+        {
+            return;
+        }
+
+        try
+        {
+            // Try to detect content type from headers
+            var contentType = _response.Headers.FirstOrDefault(h => 
+                h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
+
+            if (contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+            {
+                _responseBodyDisplay = FormatterService.FormatJson(_response.Body);
+            }
+            else if (contentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+            {
+                _responseBodyDisplay = FormatterService.FormatXml(_response.Body);
+            }
+            else
+            {
+                // Try to detect format by looking at content
+                var trimmedBody = _response.Body.TrimStart();
+                if (trimmedBody.StartsWith("{") || trimmedBody.StartsWith("["))
+                {
+                    var formatted = FormatterService.FormatJson(_response.Body);
+                    if (!string.IsNullOrEmpty(formatted))
+                    {
+                        _responseBodyDisplay = formatted;
+                    }
+                    else
+                    {
+                        Snackbar.Add("Could not format as JSON. Body appears to be plain text.", Severity.Info);
+                        return;
+                    }
+                }
+                else if (trimmedBody.StartsWith("<"))
+                {
+                    var formatted = FormatterService.FormatXml(_response.Body);
+                    if (!string.IsNullOrEmpty(formatted))
+                    {
+                        _responseBodyDisplay = formatted;
+                    }
+                    else
+                    {
+                        Snackbar.Add("Could not format as XML. Body appears to be plain text.", Severity.Info);
+                        return;
+                    }
+                }
+                else
+                {
+                    Snackbar.Add("Could not detect format. Body appears to be plain text.", Severity.Info);
+                    return;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error formatting response: {ex.Message}", Severity.Warning);
+        }
+    }
+
     private async Task ExecuteRequest()
     {
         if (Request == null) return;
@@ -125,7 +440,9 @@
         try
         {
             SyncHeaders();
+            SyncQueryParams();
             _response = await RequestService.ExecuteRequestAsync(Request);
+            _responseBodyDisplay = _response.Body;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -139,6 +456,7 @@
         if (Request == null) return;
 
         SyncHeaders();
+        SyncQueryParams();
         await OnSave.InvokeAsync();
     }
 
@@ -150,6 +468,18 @@
             foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
             {
                 Request.Headers[header.Key] = header.Value;
+            }
+        }
+    }
+
+    private void SyncQueryParams()
+    {
+        if (Request is RestRequest restRequest)
+        {
+            restRequest.QueryParameters.Clear();
+            foreach (var param in _queryParams.Where(p => !string.IsNullOrWhiteSpace(p.Key)))
+            {
+                restRequest.QueryParameters[param.Key] = param.Value;
             }
         }
     }

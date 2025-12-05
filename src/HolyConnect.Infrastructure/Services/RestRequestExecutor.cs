@@ -35,6 +35,32 @@ public class RestRequestExecutor : IRequestExecutor
         try
         {
             var httpRequest = CreateHttpRequestMessage(restRequest);
+            
+            // Capture the sent request details
+            var sentRequest = new SentRequest
+            {
+                Url = httpRequest.RequestUri?.ToString() ?? restRequest.Url,
+                Method = restRequest.Method.ToString(),
+                Headers = new Dictionary<string, string>(),
+                Body = restRequest.Body,
+                QueryParameters = new Dictionary<string, string>(restRequest.QueryParameters)
+            };
+
+            foreach (var header in httpRequest.Headers)
+            {
+                sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
+            }
+
+            if (httpRequest.Content?.Headers != null)
+            {
+                foreach (var header in httpRequest.Content.Headers)
+                {
+                    sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
+                }
+            }
+
+            response.SentRequest = sentRequest;
+
             var httpResponse = await _httpClient.SendAsync(httpRequest);
 
             stopwatch.Stop();
