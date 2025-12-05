@@ -105,11 +105,13 @@
             _collections = await CollectionService.GetAllCollectionsAsync();
             _collections = _collections.Where(c => c.EnvironmentId == EnvironmentId).ToList();
             
-            // Load requests for each collection
+            // Load requests for each collection (load once and group to avoid N+1 queries)
+            var allRequests = await RequestService.GetAllRequestsAsync();
+            var requestsByCollection = allRequests.GroupBy(r => r.CollectionId).ToDictionary(g => g.Key, g => g.ToList());
+            
             foreach (var collection in _collections)
             {
-                var requests = await RequestService.GetRequestsByCollectionIdAsync(collection.Id);
-                collection.Requests = requests.ToList();
+                collection.Requests = requestsByCollection.TryGetValue(collection.Id, out var requests) ? requests : new List<Request>();
             }
         }
     }
