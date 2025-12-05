@@ -1,6 +1,8 @@
 ﻿@page "/"
 @inject EnvironmentService EnvironmentService
 @inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Welcome to HolyConnect</MudText>
@@ -32,8 +34,14 @@
                         <div>
                             @foreach (var env in _environments.Take(5))
                             {
-                                <MudPaper Class="pa-2 mb-2" Style="cursor: pointer;" @onclick="@(() => NavigateToEnvironment(env.Id))">
-                                    <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" /> @env.Name
+                                <MudPaper Class="pa-2 mb-2" Style="display: flex; align-items: center; justify-content: space-between;">
+                                    <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => NavigateToEnvironment(env.Id))">
+                                        <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" /> @env.Name
+                                    </MudText>
+                                    <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameEnvironment(env))" aria-label="Rename environment" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteEnvironment(env))" aria-label="Delete environment" />
+                                    </div>
                                 </MudPaper>
                             }
                         </div>
@@ -96,5 +104,46 @@
     private void NavigateToEnvironment(Guid id)
     {
         NavigationManager.NavigateTo($"/environment/{id}");
+    }
+
+    private async Task RenameEnvironment(Domain.Entities.Environment environment)
+    {
+        var parameters = new DialogParameters
+        {
+            ["CurrentName"] = environment.Name
+        };
+
+        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Environment", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
+        {
+            environment.Name = newName;
+            await EnvironmentService.UpdateEnvironmentAsync(environment);
+            Snackbar.Add("Environment renamed successfully", Severity.Success);
+            await LoadEnvironments();
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteEnvironment(Domain.Entities.Environment environment)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the environment '{environment.Name}'? This will also delete all collections and requests within it. This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Environment", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await EnvironmentService.DeleteEnvironmentAsync(environment.Id);
+            Snackbar.Add("Environment deleted successfully", Severity.Success);
+            await LoadEnvironments();
+            StateHasChanged();
+        }
     }
 }

@@ -5,6 +5,7 @@
 @inject RequestService RequestService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.False" Style="height: calc(100vh - 64px); display: flex; padding: 0;">
@@ -14,7 +15,9 @@
             <MudToolBar Dense="true">
                 <MudText Typo="Typo.h6">@_environment.Name</MudText>
                 <MudSpacer />
-                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="CreateCollection" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="RenameEnvironment" aria-label="Rename environment" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteEnvironment" aria-label="Delete environment" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="CreateCollection" aria-label="Add collection" />
             </MudToolBar>
             
             <div>
@@ -22,7 +25,11 @@
                 {
                     @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
                     {
-                        <CollectionTreeItem Collection="@collection" OnSelect="SelectCollection" OnRequestSelect="SelectRequest" />
+                        <CollectionTreeItem Collection="@collection" 
+                                          OnSelect="SelectCollection" 
+                                          OnRequestSelect="SelectRequest"
+                                          OnCollectionUpdated="HandleCollectionUpdated"
+                                          OnRequestUpdated="HandleRequestUpdated" />
                     }
                 }
                 else
@@ -198,5 +205,92 @@
     {
         _selectedRequest = null;
         StateHasChanged();
+    }
+
+    private async Task HandleCollectionUpdated((Guid CollectionId, string NewName, bool IsDelete) updateInfo)
+    {
+        if (updateInfo.IsDelete)
+        {
+            await CollectionService.DeleteCollectionAsync(updateInfo.CollectionId);
+            Snackbar.Add("Collection deleted successfully", Severity.Success);
+        }
+        else
+        {
+            var collection = await CollectionService.GetCollectionByIdAsync(updateInfo.CollectionId);
+            if (collection != null)
+            {
+                collection.Name = updateInfo.NewName;
+                await CollectionService.UpdateCollectionAsync(collection);
+                Snackbar.Add("Collection renamed successfully", Severity.Success);
+            }
+        }
+        
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task HandleRequestUpdated((Guid RequestId, string NewName, bool IsDelete) updateInfo)
+    {
+        if (updateInfo.IsDelete)
+        {
+            await RequestService.DeleteRequestAsync(updateInfo.RequestId);
+            Snackbar.Add("Request deleted successfully", Severity.Success);
+        }
+        else
+        {
+            var request = await RequestService.GetRequestByIdAsync(updateInfo.RequestId);
+            if (request != null)
+            {
+                request.Name = updateInfo.NewName;
+                await RequestService.UpdateRequestAsync(request);
+                Snackbar.Add("Request renamed successfully", Severity.Success);
+            }
+        }
+        
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task RenameEnvironment()
+    {
+        if (_environment == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["CurrentName"] = _environment.Name
+        };
+
+        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Environment", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
+        {
+            _environment.Name = newName;
+            await EnvironmentService.UpdateEnvironmentAsync(_environment);
+            Snackbar.Add("Environment renamed successfully", Severity.Success);
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteEnvironment()
+    {
+        if (_environment == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the environment '{_environment.Name}'? This will also delete all collections and requests within it. This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Environment", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await EnvironmentService.DeleteEnvironmentAsync(_environment.Id);
+            Snackbar.Add("Environment deleted successfully", Severity.Success);
+            NavigationManager.NavigateTo("/");
+        }
     }
 }

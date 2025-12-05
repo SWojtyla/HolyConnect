@@ -1,9 +1,11 @@
+@inject IDialogService DialogService
+
 @if (Collection != null)
 {
     <div>
-        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;">
-            <MudText>
-                <span @onclick="@(() => ToggleExpanded())">
+        <MudPaper Class="pa-2 mb-1" Style="display: flex; align-items: center; justify-content: space-between;">
+            <MudText Style="flex: 1;">
+                <span @onclick="@(() => ToggleExpanded())" style="cursor: pointer;">
                     @if (HasChildren)
                     {
                         <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" />
@@ -13,10 +15,14 @@
                         <span style="display: inline-block; width: 24px;"></span>
                     }
                 </span>
-                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))">
+                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" style="cursor: pointer;">
                     <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> @Collection.Name
                 </span>
             </MudText>
+            <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameCollection())" aria-label="Rename collection" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" />
+            </div>
         </MudPaper>
         
         @if (_isExpanded)
@@ -26,10 +32,14 @@
                 {
                     @foreach (var request in Collection.Requests)
                     {
-                        <MudPaper Class="pa-2 mb-1" Style="cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
-                            <MudText>
+                        <MudPaper Class="pa-2 mb-1" Style="display: flex; align-items: center; justify-content: space-between;">
+                            <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
                             </MudText>
+                            <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" />
+                            </div>
                         </MudPaper>
                     }
                 }
@@ -38,7 +48,11 @@
                 {
                     @foreach (var subCollection in Collection.SubCollections)
                     {
-                        <CollectionTreeItem Collection="@subCollection" OnSelect="@OnSelect" OnRequestSelect="@OnRequestSelect" />
+                        <CollectionTreeItem Collection="@subCollection" 
+                                          OnSelect="@OnSelect" 
+                                          OnRequestSelect="@OnRequestSelect"
+                                          OnCollectionUpdated="@OnCollectionUpdated"
+                                          OnRequestUpdated="@OnRequestUpdated" />
                     }
                 }
             </div>
@@ -55,6 +69,12 @@
 
     [Parameter]
     public EventCallback<Request> OnRequestSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid CollectionId, string NewName, bool IsDelete)> OnCollectionUpdated { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid RequestId, string NewName, bool IsDelete)> OnRequestUpdated { get; set; }
 
     private bool _isExpanded = false;
 
@@ -83,4 +103,76 @@
         RequestType.GraphQL => Color.Secondary,
         _ => Color.Default
     };
+
+    private async Task RenameCollection()
+    {
+        if (Collection == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["CurrentName"] = Collection.Name
+        };
+
+        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Collection", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
+        {
+            await OnCollectionUpdated.InvokeAsync((Collection.Id, newName, false));
+        }
+    }
+
+    private async Task DeleteCollection()
+    {
+        if (Collection == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the collection '{Collection.Name}'? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Collection", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await OnCollectionUpdated.InvokeAsync((Collection.Id, string.Empty, true));
+        }
+    }
+
+    private async Task RenameRequest(Request request)
+    {
+        var parameters = new DialogParameters
+        {
+            ["CurrentName"] = request.Name
+        };
+
+        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Request", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
+        {
+            await OnRequestUpdated.InvokeAsync((request.Id, newName, false));
+        }
+    }
+
+    private async Task DeleteRequest(Request request)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the request '{request.Name}'? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Request", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await OnRequestUpdated.InvokeAsync((request.Id, string.Empty, true));
+        }
+    }
 }
