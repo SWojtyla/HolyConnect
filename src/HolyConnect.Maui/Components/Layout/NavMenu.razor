@@ -1,5 +1,6 @@
 ﻿@inject EnvironmentService EnvironmentService
 @inject NavigationManager NavigationManager
+@implements IDisposable
 
 <MudNavMenu>
     <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Home</MudNavLink>
@@ -30,12 +31,28 @@
 
     protected override async Task OnInitializedAsync()
     {
+        NavigationManager.LocationChanged += OnLocationChanged;
         await LoadEnvironments();
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        try
+        {
+            // Reload list whenever navigation occurs (e.g., after create/save pages)
+            await LoadEnvironments();
+            StateHasChanged();
+        }
+        catch { }
     }
 
     private async Task LoadEnvironments()
     {
         _environments = await EnvironmentService.GetAllEnvironmentsAsync();
-        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
     }
 }
