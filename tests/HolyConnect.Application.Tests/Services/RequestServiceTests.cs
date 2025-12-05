@@ -193,4 +193,61 @@ public class RequestServiceTests
         Assert.Contains("No executor found", exception.Message);
         Assert.Contains(request.Type.ToString(), exception.Message);
     }
+
+    [Fact]
+    public async Task GetRequestsByEnvironmentIdAsync_ShouldReturnRequestsWithoutCollection()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var collectionId = Guid.NewGuid();
+        var requests = new List<Request>
+        {
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request 1", EnvironmentId = environmentId, CollectionId = null },
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request 2", EnvironmentId = environmentId, CollectionId = null },
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request 3", EnvironmentId = environmentId, CollectionId = collectionId },
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request 4", EnvironmentId = Guid.NewGuid(), CollectionId = null }
+        };
+
+        _mockRepository.Setup(r => r.GetAllAsync())
+            .ReturnsAsync(requests);
+
+        // Act
+        var result = await _service.GetRequestsByEnvironmentIdAsync(environmentId);
+
+        // Assert
+        Assert.Equal(2, result.Count());
+        Assert.All(result, r =>
+        {
+            Assert.Equal(environmentId, r.EnvironmentId);
+            Assert.Null(r.CollectionId);
+        });
+    }
+
+    [Fact]
+    public async Task CreateRequestAsync_ShouldCreateRequestWithoutCollection()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var request = new RestRequest
+        {
+            Name = "Test Request",
+            Url = "https://api.example.com/test",
+            EnvironmentId = environmentId,
+            CollectionId = null
+        };
+        Request? capturedRequest = null;
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Request>()))
+            .Callback<Request>(r => capturedRequest = r)
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _service.CreateRequestAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(environmentId, capturedRequest.EnvironmentId);
+        Assert.Null(capturedRequest.CollectionId);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Request>()), Times.Once);
+    }
 }

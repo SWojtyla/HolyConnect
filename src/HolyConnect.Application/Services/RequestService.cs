@@ -38,6 +38,12 @@ public class RequestService
         return allRequests.Where(r => r.CollectionId == collectionId);
     }
 
+    public async Task<IEnumerable<Request>> GetRequestsByEnvironmentIdAsync(Guid environmentId)
+    {
+        var allRequests = await _requestRepository.GetAllAsync();
+        return allRequests.Where(r => r.EnvironmentId == environmentId && r.CollectionId == null);
+    }
+
     public async Task<Request> UpdateRequestAsync(Request request)
     {
         request.UpdatedAt = DateTime.UtcNow;
