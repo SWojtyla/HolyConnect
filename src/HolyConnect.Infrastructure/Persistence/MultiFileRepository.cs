@@ -153,6 +153,22 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
 
     public async Task<T> UpdateAsync(T entity)
     {
+        // If the readable filename changed (e.g., entity was renamed), delete the old file to avoid duplicates
+        var id = _idSelector(entity);
+        var oldPath = GetFilePath(id);
+        var newPath = GetFilePath(entity);
+        if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && File.Exists(oldPath))
+        {
+            try
+            {
+                File.Delete(oldPath);
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"Error deleting old file {oldPath}: {ex.Message}");
+            }
+        }
+
         await SaveEntityAsync(entity);
         return entity;
     }
