@@ -17,12 +17,32 @@
                 <MudSpacer />
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="RenameEnvironment" aria-label="Rename environment" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteEnvironment" aria-label="Delete environment" />
-                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="CreateCollection" aria-label="Add collection" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="ShowCreateMenu" aria-label="Add collection or request" />
             </MudToolBar>
             
             <div>
+                @* Environment-level requests *@
+                @if (_environmentRequests != null && _environmentRequests.Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-2 mt-2" Style="font-weight: 500;">Requests</MudText>
+                    @foreach (var request in _environmentRequests)
+                    {
+                        <MudPaper Class="pa-2 mb-1 ml-2" Style="display: flex; align-items: center; justify-content: space-between;">
+                            <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => SelectRequest(request))">
+                                <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
+                            </MudText>
+                            <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" />
+                            </div>
+                        </MudPaper>
+                    }
+                }
+
+                @* Collections *@
                 @if (_collections != null && _collections.Any())
                 {
+                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-2 mt-2" Style="font-weight: 500;">Collections</MudText>
                     @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
                     {
                         <CollectionTreeItem Collection="@collection" 
@@ -32,9 +52,10 @@
                                           OnRequestUpdated="HandleRequestUpdated" />
                     }
                 }
-                else
+                
+                @if ((_collections == null || !_collections.Any()) && (_environmentRequests == null || !_environmentRequests.Any()))
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-4">No collections yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-4">No collections or requests yet</MudText>
                 }
             </div>
         }
@@ -85,6 +106,7 @@
 
     private Domain.Entities.Environment? _environment;
     private IEnumerable<Collection>? _collections;
+    private IEnumerable<Request>? _environmentRequests;
     private Collection? _selectedCollection;
     private Request? _selectedRequest;
 
@@ -145,21 +167,37 @@
         _environment = await EnvironmentService.GetEnvironmentByIdAsync(EnvironmentId);
         if (_environment != null)
         {
-            _collections = await CollectionService.GetAllCollectionsAsync();
-            _collections = _collections.Where(c => c.EnvironmentId == EnvironmentId).ToList();
+            var allCollections = await CollectionService.GetAllCollectionsAsync();
+            var environmentCollections = allCollections.Where(c => c.EnvironmentId == EnvironmentId).ToList();
+            
+            // Build collection hierarchy
+            var collectionDict = environmentCollections.ToDictionary(c => c.Id);
+            foreach (var collection in environmentCollections)
+            {
+                if (collection.ParentCollectionId.HasValue && collectionDict.TryGetValue(collection.ParentCollectionId.Value, out var parent))
+                {
+                    parent.SubCollections.Add(collection);
+                }
+            }
+            
+            // Get root collections (those without a parent)
+            _collections = environmentCollections.Where(c => c.ParentCollectionId == null).ToList();
             
             // Load requests for each collection (load once and group to avoid N+1 queries)
             var allRequests = await RequestService.GetAllRequestsAsync();
-            var collectionIds = _collections.Select(c => c.Id).ToHashSet();
+            var collectionIds = environmentCollections.Select(c => c.Id).ToHashSet();
             var requestsByCollection = allRequests
-                .Where(r => collectionIds.Contains(r.CollectionId))
-                .GroupBy(r => r.CollectionId)
+                .Where(r => r.CollectionId.HasValue && collectionIds.Contains(r.CollectionId.Value))
+                .GroupBy(r => r.CollectionId!.Value)
                 .ToDictionary(g => g.Key, g => g.ToList());
             
-            foreach (var collection in _collections)
+            foreach (var collection in environmentCollections)
             {
                 collection.Requests = requestsByCollection.TryGetValue(collection.Id, out var requests) ? requests : new List<Request>();
             }
+            
+            // Load environment-level requests (requests without a collection)
+            _environmentRequests = await RequestService.GetRequestsByEnvironmentIdAsync(EnvironmentId);
         }
     }
 
@@ -177,9 +215,38 @@
         StateHasChanged();
     }
 
+    private async Task ShowCreateMenu()
+    {
+        var options = new List<string> { "New Collection", "New Request" };
+        var parameters = new DialogParameters
+        {
+            ["Options"] = options
+        };
+
+        var dialog = await DialogService.ShowAsync<SelectOptionDialog>("Create", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string selectedOption)
+        {
+            if (selectedOption == "New Collection")
+            {
+                CreateCollection();
+            }
+            else if (selectedOption == "New Request")
+            {
+                CreateEnvironmentRequest();
+            }
+        }
+    }
+
     private void CreateCollection()
     {
         NavigationManager.NavigateTo($"/environment/{EnvironmentId}/collection/create");
+    }
+
+    private void CreateEnvironmentRequest()
+    {
+        NavigationManager.NavigateTo($"/environment/{EnvironmentId}/request/create");
     }
 
     private void CreateRequest()
@@ -291,6 +358,61 @@
             await EnvironmentService.DeleteEnvironmentAsync(_environment.Id);
             Snackbar.Add("Environment deleted successfully", Severity.Success);
             NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private string GetRequestIcon(RequestType type) => type switch
+    {
+        RequestType.Rest => Icons.Material.Filled.Http,
+        RequestType.GraphQL => Icons.Material.Filled.GraphicEq,
+        _ => Icons.Material.Filled.Article
+    };
+
+    private Color GetRequestColor(RequestType type) => type switch
+    {
+        RequestType.Rest => Color.Primary,
+        RequestType.GraphQL => Color.Secondary,
+        _ => Color.Default
+    };
+
+    private async Task RenameRequest(Request request)
+    {
+        var parameters = new DialogParameters
+        {
+            ["CurrentName"] = request.Name
+        };
+
+        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Request", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
+        {
+            request.Name = newName;
+            await RequestService.UpdateRequestAsync(request);
+            Snackbar.Add("Request renamed successfully", Severity.Success);
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteRequest(Request request)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the request '{request.Name}'? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Request", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await RequestService.DeleteRequestAsync(request.Id);
+            Snackbar.Add("Request deleted successfully", Severity.Success);
+            await LoadData();
+            StateHasChanged();
         }
     }
 }

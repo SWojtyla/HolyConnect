@@ -1,0 +1,27 @@
+<MudDialog>
+    <DialogContent>
+        <MudList Clickable="true">
+            @foreach (var option in Options)
+            {
+                <MudListItem OnClick="@(() => SelectOption(option))">
+                    @option
+                </MudListItem>
+            }
+        </MudList>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public List<string> Options { get; set; } = new();
+
+    private void Cancel() => MudDialog?.Cancel();
+    
+    private void SelectOption(string option) => MudDialog?.Close(DialogResult.Ok(option));
+}
