@@ -1,6 +1,6 @@
 <MudDialog>
     <DialogContent>
-        <MudTextField @bind-Value="_newName" Label="Name" Required="true" Variant="Variant.Outlined" />
+        <MudTextField @bind-Value="_newName" Label="Name" Required="true" Variant="Variant.Outlined" Immediate="true" MaxLength="100" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>

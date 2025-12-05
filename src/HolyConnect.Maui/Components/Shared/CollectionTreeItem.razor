@@ -19,7 +19,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> @Collection.Name
                 </span>
             </MudText>
-            <div style="display: flex; gap: 4px;">
+            <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameCollection())" aria-label="Rename collection" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" />
             </div>
@@ -36,7 +36,7 @@
                             <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
                             </MudText>
-                            <div style="display: flex; gap: 4px;">
+                            <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" />
                             </div>

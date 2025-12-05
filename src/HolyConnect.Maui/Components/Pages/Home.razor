@@ -38,7 +38,7 @@
                                     <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => NavigateToEnvironment(env.Id))">
                                         <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" /> @env.Name
                                     </MudText>
-                                    <div style="display: flex; gap: 4px;">
+                                    <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
                                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameEnvironment(env))" aria-label="Rename environment" />
                                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteEnvironment(env))" aria-label="Delete environment" />
                                     </div>
