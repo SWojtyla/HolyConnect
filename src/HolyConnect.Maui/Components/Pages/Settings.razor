@@ -10,10 +10,11 @@
         <MudCardContent>
             <MudText Typo="Typo.h6" Class="mb-3">Appearance</MudText>
             
-            <MudSwitch @bind-Value="_isDarkMode" 
+            <MudSwitch Value="_isDarkMode" 
                        Label="Dark Mode" 
                        Color="Color.Primary"
-                       @onchange="OnDarkModeChanged" />
+                       T="bool"
+                       ValueChanged="OnDarkModeChanged" />
         </MudCardContent>
     </MudCard>
 
@@ -72,9 +73,23 @@
         _storagePath = settings.StoragePath;
     }
 
-    private async Task OnDarkModeChanged()
+    private async Task OnDarkModeChanged(bool value)
     {
+        _isDarkMode = value;
         await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+        
+        // Auto-save dark mode preference
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            settings.IsDarkMode = _isDarkMode;
+            await SettingsService.SaveSettingsAsync(settings);
+            Snackbar.Add("Dark mode preference saved", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving dark mode preference: {ex.Message}", Severity.Warning);
+        }
     }
 
     private async Task BrowseStoragePath()

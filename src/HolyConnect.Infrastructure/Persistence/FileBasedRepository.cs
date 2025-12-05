@@ -46,8 +46,14 @@ public class FileBasedRepository<T> : IRepository<T> where T : class
             var list = JsonSerializer.Deserialize<List<T>>(json, options);
             return list?.ToDictionary(_idSelector) ?? new Dictionary<Guid, T>();
         }
-        catch
+        catch (JsonException ex)
         {
+            Console.WriteLine($"Failed to deserialize data from {filePath}: {ex.Message}");
+            return new Dictionary<Guid, T>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data from {filePath}: {ex.Message}");
             return new Dictionary<Guid, T>();
         }
     }

@@ -37,27 +37,33 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IRepository<Domain.Entities.Environment>>(sp =>
 		{
 			var settingsService = sp.GetRequiredService<ISettingsService>();
+			// Use lazy evaluation to avoid blocking during startup
+			string GetStoragePath() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath;
 			return new FileBasedRepository<Domain.Entities.Environment>(
 				e => e.Id,
-				() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath,
+				GetStoragePath,
 				"environments.json");
 		});
 		
 		builder.Services.AddSingleton<IRepository<Collection>>(sp =>
 		{
 			var settingsService = sp.GetRequiredService<ISettingsService>();
+			// Use lazy evaluation to avoid blocking during startup
+			string GetStoragePath() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath;
 			return new FileBasedRepository<Collection>(
 				c => c.Id,
-				() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath,
+				GetStoragePath,
 				"collections.json");
 		});
 		
 		builder.Services.AddSingleton<IRepository<Request>>(sp =>
 		{
 			var settingsService = sp.GetRequiredService<ISettingsService>();
+			// Use lazy evaluation to avoid blocking during startup
+			string GetStoragePath() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath;
 			return new FileBasedRepository<Request>(
 				r => r.Id,
-				() => settingsService.GetSettingsAsync().GetAwaiter().GetResult().StoragePath,
+				GetStoragePath,
 				"requests.json");
 		});
 

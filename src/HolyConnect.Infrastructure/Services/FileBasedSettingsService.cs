@@ -20,22 +20,33 @@ public class FileBasedSettingsService : ISettingsService
     {
         if (!File.Exists(_settingsFilePath))
         {
-            return new AppSettings
-            {
-                StoragePath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "HolyConnect"),
-                IsDarkMode = false
-            };
+            return GetDefaultSettings();
         }
 
         try
         {
             var json = await File.ReadAllTextAsync(_settingsFilePath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            return JsonSerializer.Deserialize<AppSettings>(json) ?? GetDefaultSettings();
         }
-        catch
+        catch (JsonException ex)
         {
-            return new AppSettings();
+            Console.WriteLine($"Failed to deserialize settings: {ex.Message}");
+            return GetDefaultSettings();
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading settings: {ex.Message}");
+            return GetDefaultSettings();
+        }
+    }
+
+    private AppSettings GetDefaultSettings()
+    {
+        return new AppSettings
+        {
+            StoragePath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "HolyConnect"),
+            IsDarkMode = false
+        };
     }
 
     public async Task SaveSettingsAsync(AppSettings settings)
