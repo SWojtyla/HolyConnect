@@ -39,9 +39,11 @@ public class MultiFileRepositoryTests : IDisposable
         Assert.Equal(entity.Id, result.Id);
         Assert.Equal(entity.Name, result.Name);
 
-        // Verify file was created
-        var expectedFilePath = Path.Combine(_testDirectory, "test-entities", $"{entity.Id}.json");
-        Assert.True(File.Exists(expectedFilePath));
+        // Verify file was created with readable name pattern
+        var directoryPath = Path.Combine(_testDirectory, "test-entities");
+        var filePattern = $"*__{entity.Id}.json";
+        var files = Directory.GetFiles(directoryPath, filePattern);
+        Assert.True(files.Length > 0, "Expected at least one file matching the pattern");
     }
 
     [Fact]
