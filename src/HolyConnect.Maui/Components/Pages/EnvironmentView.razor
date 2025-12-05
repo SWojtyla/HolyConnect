@@ -170,18 +170,34 @@
             var allCollections = await CollectionService.GetAllCollectionsAsync();
             var environmentCollections = allCollections.Where(c => c.EnvironmentId == EnvironmentId).ToList();
             
-            // Build collection hierarchy
-            var collectionDict = environmentCollections.ToDictionary(c => c.Id);
+            // Build collection hierarchy efficiently in a single pass
+            var collectionDict = new Dictionary<Guid, Collection>();
+            var rootCollections = new List<Collection>();
+            
+            // First pass: clear existing sub-collections and index all collections
             foreach (var collection in environmentCollections)
             {
-                if (collection.ParentCollectionId.HasValue && collectionDict.TryGetValue(collection.ParentCollectionId.Value, out var parent))
+                collection.SubCollections.Clear();
+                collectionDict[collection.Id] = collection;
+            }
+            
+            // Second pass: build hierarchy and identify roots
+            foreach (var collection in environmentCollections)
+            {
+                if (collection.ParentCollectionId.HasValue)
                 {
-                    parent.SubCollections.Add(collection);
+                    if (collectionDict.TryGetValue(collection.ParentCollectionId.Value, out var parent))
+                    {
+                        parent.SubCollections.Add(collection);
+                    }
+                }
+                else
+                {
+                    rootCollections.Add(collection);
                 }
             }
             
-            // Get root collections (those without a parent)
-            _collections = environmentCollections.Where(c => c.ParentCollectionId == null).ToList();
+            _collections = rootCollections;
             
             // Load requests for each collection (load once and group to avoid N+1 queries)
             var allRequests = await RequestService.GetAllRequestsAsync();

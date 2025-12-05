@@ -18,7 +18,7 @@
     [CascadingParameter] 
     private IMudDialogInstance? MudDialog { get; set; }
 
-    [Parameter]
+    [Parameter, EditorRequired]
     public List<string> Options { get; set; } = new();
 
     private void Cancel() => MudDialog?.Cancel();

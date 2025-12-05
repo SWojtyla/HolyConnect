@@ -43,7 +43,8 @@
             var parentCollection = await CollectionService.GetCollectionByIdAsync(ParentCollectionId.Value);
             if (parentCollection == null)
             {
-                Snackbar.Add("Error: Parent collection not found", Severity.Error);
+                Snackbar.Add("The parent collection could not be found. It may have been deleted.", Severity.Error);
+                NavigationManager.NavigateTo("/");
                 return;
             }
             targetEnvironmentId = parentCollection.EnvironmentId;
@@ -54,7 +55,8 @@
         }
         else
         {
-            Snackbar.Add("Error: No environment or parent collection specified", Severity.Error);
+            Snackbar.Add("Unable to create collection: no environment or parent collection specified. Please try again.", Severity.Error);
+            NavigationManager.NavigateTo("/");
             return;
         }
 

@@ -61,7 +61,13 @@
         if (CollectionId.HasValue)
         {
             var collection = await CollectionService.GetCollectionByIdAsync(CollectionId.Value);
-            targetEnvironmentId = collection?.EnvironmentId ?? Guid.Empty;
+            if (collection == null)
+            {
+                Snackbar.Add("The collection could not be found. It may have been deleted.", Severity.Error);
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            targetEnvironmentId = collection.EnvironmentId;
         }
         else if (EnvironmentId.HasValue)
         {
@@ -69,7 +75,8 @@
         }
         else
         {
-            Snackbar.Add("Error: No environment or collection specified", Severity.Error);
+            Snackbar.Add("Unable to create request: no environment or collection specified. Please try again.", Severity.Error);
+            NavigationManager.NavigateTo("/");
             return;
         }
 
