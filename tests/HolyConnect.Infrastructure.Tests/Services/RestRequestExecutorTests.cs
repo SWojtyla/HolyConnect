@@ -147,4 +147,75 @@ public class RestRequestExecutorTests
         Assert.Contains("Error", response.StatusMessage);
         Assert.Contains("Network error", response.Body);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldCaptureSentRequest()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"message\": \"success\"}")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Post,
+            Body = "{\"test\": \"data\"}",
+            Headers = { { "Authorization", "Bearer token123" } }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(response.SentRequest);
+        Assert.Equal("Post", response.SentRequest.Method);
+        Assert.Contains("api.example.com/test", response.SentRequest.Url);
+        Assert.Equal("{\"test\": \"data\"}", response.SentRequest.Body);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldCaptureSentRequestWithQueryParameters()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            QueryParameters = { { "page", "1" }, { "limit", "10" } }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(response.SentRequest);
+        Assert.Equal(2, response.SentRequest.QueryParameters.Count);
+        Assert.Equal("1", response.SentRequest.QueryParameters["page"]);
+        Assert.Equal("10", response.SentRequest.QueryParameters["limit"]);
+    }
 }

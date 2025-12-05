@@ -366,4 +366,41 @@ public class GraphQLRequestExecutorTests
         // Assert
         Assert.Equal(200, response.StatusCode);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldCaptureSentRequest()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\": {}}")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new GraphQLRequestExecutor(httpClient);
+        var request = new GraphQLRequest
+        {
+            Url = "https://api.example.com/graphql",
+            Query = "query { user { name } }",
+            Variables = "{\"id\": \"123\"}"
+        };
+        request.Headers["Authorization"] = "Bearer token123";
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(response.SentRequest);
+        Assert.Equal("POST", response.SentRequest.Method);
+        Assert.Equal("https://api.example.com/graphql", response.SentRequest.Url);
+        Assert.NotNull(response.SentRequest.Body);
+        Assert.Contains("query", response.SentRequest.Body);
+    }
 }

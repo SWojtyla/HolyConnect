@@ -55,6 +55,31 @@ public class GraphQLRequestExecutor : IRequestExecutor
                 httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
 
+            // Capture the sent request details
+            var sentRequest = new SentRequest
+            {
+                Url = graphQLRequest.Url,
+                Method = "POST",
+                Headers = new Dictionary<string, string>(),
+                Body = json,
+                QueryParameters = new Dictionary<string, string>()
+            };
+
+            foreach (var header in httpRequest.Headers)
+            {
+                sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
+            }
+
+            if (httpRequest.Content?.Headers != null)
+            {
+                foreach (var header in httpRequest.Content.Headers)
+                {
+                    sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
+                }
+            }
+
+            response.SentRequest = sentRequest;
+
             var httpResponse = await _httpClient.SendAsync(httpRequest);
 
             stopwatch.Stop();

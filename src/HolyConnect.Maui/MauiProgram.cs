@@ -92,6 +92,7 @@ public static class MauiProgram
 		builder.Services.AddScoped<EnvironmentService>();
 		builder.Services.AddScoped<CollectionService>();
 		builder.Services.AddScoped<RequestService>();
+		builder.Services.AddScoped<IFormatterService, FormatterService>();
 
 		// Add request executors
 		builder.Services.AddScoped<IRequestExecutor, RestRequestExecutor>();
