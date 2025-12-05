@@ -14,7 +14,7 @@ public class FileBasedSettingsServiceTests : IDisposable
 
     public void Dispose()
     {
-        // Clean up is handled by the service using LocalApplicationData
+        // No cleanup needed - service uses system LocalApplicationData directory
     }
 
     [Fact]
@@ -26,7 +26,6 @@ public class FileBasedSettingsServiceTests : IDisposable
         // Assert
         Assert.NotNull(settings);
         Assert.NotEmpty(settings.StoragePath);
-        // IsDarkMode default is false
     }
 
     [Fact]
