@@ -37,17 +37,13 @@ public class RestRequestExecutor : IRequestExecutor
             var httpRequest = CreateHttpRequestMessage(restRequest);
             
             // Capture the sent request details (only enabled parameters)
-            var enabledQueryParams = restRequest.QueryParameters
-                .Where(kvp => !restRequest.DisabledQueryParameters.Contains(kvp.Key))
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            
             var sentRequest = new SentRequest
             {
                 Url = httpRequest.RequestUri?.ToString() ?? restRequest.Url,
                 Method = restRequest.Method.ToString(),
                 Headers = new Dictionary<string, string>(),
                 Body = restRequest.Body,
-                QueryParameters = enabledQueryParams
+                QueryParameters = GetEnabledQueryParameters(restRequest)
             };
 
             foreach (var header in httpRequest.Headers)
@@ -100,14 +96,19 @@ public class RestRequestExecutor : IRequestExecutor
         return response;
     }
 
+    private Dictionary<string, string> GetEnabledQueryParameters(RestRequest request)
+    {
+        return request.QueryParameters
+            .Where(kvp => !request.DisabledQueryParameters.Contains(kvp.Key))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+    }
+
     private HttpRequestMessage CreateHttpRequestMessage(RestRequest request)
     {
         var url = request.Url;
         
         // Only include enabled query parameters
-        var enabledQueryParams = request.QueryParameters
-            .Where(kvp => !request.DisabledQueryParameters.Contains(kvp.Key))
-            .ToList();
+        var enabledQueryParams = GetEnabledQueryParameters(request);
         
         if (enabledQueryParams.Any())
         {
