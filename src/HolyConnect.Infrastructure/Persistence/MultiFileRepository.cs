@@ -5,18 +5,21 @@ namespace HolyConnect.Infrastructure.Persistence;
 
 /// <summary>
 /// A repository implementation that stores each entity in a separate file for better performance with large collections.
+/// File names are readable: "<sanitized-name>__<id>.json" (no legacy support).
 /// </summary>
 public class MultiFileRepository<T> : IRepository<T> where T : class
 {
     private readonly Func<T, Guid> _idSelector;
     private readonly Func<string> _storagePathProvider;
     private readonly string _directoryName;
+    private readonly Func<T, string>? _nameSelector;
 
-    public MultiFileRepository(Func<T, Guid> idSelector, Func<string> storagePathProvider, string directoryName)
+    public MultiFileRepository(Func<T, Guid> idSelector, Func<string> storagePathProvider, string directoryName, Func<T, string>? nameSelector = null)
     {
         _idSelector = idSelector;
         _storagePathProvider = storagePathProvider;
         _directoryName = directoryName;
+        _nameSelector = nameSelector;
     }
 
     private string GetDirectoryPath()
@@ -32,9 +35,38 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         return directoryPath;
     }
 
+    private static string SanitizeFileName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        foreach (var c in Path.GetInvalidFileNameChars())
+        {
+            name = name.Replace(c, '_');
+        }
+        return name.Trim();
+    }
+
+    private string GetReadableFileName(T entity)
+    {
+        var id = _idSelector(entity);
+        var baseName = _nameSelector?.Invoke(entity);
+        var readable = SanitizeFileName(baseName ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(readable)) readable = id.ToString();
+        return $"{readable}__{id}.json";
+    }
+
     private string GetFilePath(Guid id)
     {
-        return Path.Combine(GetDirectoryPath(), $"{id}.json");
+        // Search for readable filename pattern only
+        var dir = GetDirectoryPath();
+        var match = Directory.EnumerateFiles(dir, $"*__{id}.json").FirstOrDefault();
+        return match ?? Path.Combine(dir, $"{id}.json"); // keep deterministic path if name unknown (for consistency)
+    }
+
+    private string GetFilePath(T entity)
+    {
+        var dir = GetDirectoryPath();
+        var readable = GetReadableFileName(entity);
+        return Path.Combine(dir, readable);
     }
 
     private async Task<T?> LoadEntityAsync(Guid id)
@@ -63,9 +95,7 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
 
     private async Task SaveEntityAsync(T entity)
     {
-        var id = _idSelector(entity);
-        var filePath = GetFilePath(id);
-        
+        var filePath = GetFilePath(entity);
         var options = new JsonSerializerOptions 
         { 
             WriteIndented = true,

@@ -66,7 +66,8 @@ public static class MauiProgram
 			return new MultiFileRepository<Domain.Entities.Environment>(
 				e => e.Id,
 				GetStoragePathSafe,
-				"environments");
+				"environments",
+				e => e.Name);
 		});
 		
 		builder.Services.AddSingleton<IRepository<Collection>>(sp =>
@@ -74,7 +75,8 @@ public static class MauiProgram
 			return new MultiFileRepository<Collection>(
 				c => c.Id,
 				GetStoragePathSafe,
-				"collections");
+				"collections",
+				c => c.Name);
 		});
 		
 		builder.Services.AddSingleton<IRepository<Request>>(sp =>
@@ -82,7 +84,8 @@ public static class MauiProgram
 			return new MultiFileRepository<Request>(
 				r => r.Id,
 				GetStoragePathSafe,
-				"requests");
+				"requests",
+				r => r.Name);
 		});
 
 		// Add services
