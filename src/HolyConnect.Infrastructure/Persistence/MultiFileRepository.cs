@@ -125,9 +125,16 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     public Task DeleteAsync(Guid id)
     {
         var filePath = GetFilePath(id);
-        if (File.Exists(filePath))
+        try
         {
-            File.Delete(filePath);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error deleting file {filePath}: {ex.Message}");
         }
         return Task.CompletedTask;
     }
