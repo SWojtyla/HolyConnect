@@ -137,4 +137,61 @@ public class EnvironmentServiceTests
         // Assert
         _mockRepository.Verify(r => r.DeleteAsync(id), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateEnvironmentAsync_WithVariables_ShouldPreserveVariables()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Environment",
+            Variables = new Dictionary<string, string>
+            {
+                { "API_URL", "https://api.example.com" },
+                { "AUTH_TOKEN", "Bearer token123" }
+            }
+        };
+
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()))
+            .ReturnsAsync((DomainEnvironment e) => e);
+
+        // Act
+        var result = await _service.UpdateEnvironmentAsync(environment);
+
+        // Assert
+        Assert.Equal(2, result.Variables.Count);
+        Assert.Equal("https://api.example.com", result.Variables["API_URL"]);
+        Assert.Equal("Bearer token123", result.Variables["AUTH_TOKEN"]);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateEnvironmentAsync_ModifyingVariables_ShouldUpdateCorrectly()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Environment",
+            Variables = new Dictionary<string, string>
+            {
+                { "API_URL", "https://api.example.com" }
+            }
+        };
+
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()))
+            .ReturnsAsync((DomainEnvironment e) => e);
+
+        // Act
+        environment.Variables["API_URL"] = "https://api-updated.example.com";
+        environment.Variables["NEW_VAR"] = "new_value";
+        var result = await _service.UpdateEnvironmentAsync(environment);
+
+        // Assert
+        Assert.Equal(2, result.Variables.Count);
+        Assert.Equal("https://api-updated.example.com", result.Variables["API_URL"]);
+        Assert.Equal("new_value", result.Variables["NEW_VAR"]);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()), Times.Once);
+    }
 }

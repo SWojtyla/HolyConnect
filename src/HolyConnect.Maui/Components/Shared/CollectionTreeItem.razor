@@ -22,7 +22,7 @@
             </MudText>
             <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="@(() => ShowAddMenu())" aria-label="Add sub-collection or request" />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameCollection())" aria-label="Rename collection" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditCollection())" aria-label="Edit collection" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" />
             </div>
         </MudPaper>
@@ -144,22 +144,10 @@
         NavigationManager.NavigateTo($"/collection/{Collection.Id}/request/create");
     }
 
-    private async Task RenameCollection()
+    private void EditCollection()
     {
         if (Collection == null) return;
-
-        var parameters = new DialogParameters
-        {
-            ["CurrentName"] = Collection.Name
-        };
-
-        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Collection", parameters);
-        var result = await dialog.Result;
-
-        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
-        {
-            await OnCollectionUpdated.InvokeAsync((Collection.Id, newName, false));
-        }
+        NavigationManager.NavigateTo($"/collection/{Collection.Id}/edit");
     }
 
     private async Task DeleteCollection()

@@ -15,7 +15,7 @@
             <MudToolBar Dense="true">
                 <MudText Typo="Typo.h6">@_environment.Name</MudText>
                 <MudSpacer />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="RenameEnvironment" aria-label="Rename environment" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="EditEnvironment" aria-label="Edit environment" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteEnvironment" aria-label="Delete environment" />
                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="ShowCreateMenu" aria-label="Add collection or request" />
             </MudToolBar>
@@ -333,25 +333,10 @@
         StateHasChanged();
     }
 
-    private async Task RenameEnvironment()
+    private void EditEnvironment()
     {
         if (_environment == null) return;
-
-        var parameters = new DialogParameters
-        {
-            ["CurrentName"] = _environment.Name
-        };
-
-        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Environment", parameters);
-        var result = await dialog.Result;
-
-        if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
-        {
-            _environment.Name = newName;
-            await EnvironmentService.UpdateEnvironmentAsync(_environment);
-            Snackbar.Add("Environment renamed successfully", Severity.Success);
-            StateHasChanged();
-        }
+        NavigationManager.NavigateTo($"/environment/{_environment.Id}/edit");
     }
 
     private async Task DeleteEnvironment()

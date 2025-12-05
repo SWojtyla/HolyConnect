@@ -1,0 +1,125 @@
+@page "/collection/{CollectionId:guid}/edit"
+@inject CollectionService CollectionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Edit Collection</MudText>
+
+    @if (_collection != null)
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
+                
+                <MudText Typo="Typo.h6" Class="mt-6 mb-2">Collection Variables</MudText>
+                <MudText Typo="Typo.body2" Class="mb-4">Collection variables override environment variables for requests in this collection.</MudText>
+                @foreach (var variable in _variables)
+                {
+                    <MudGrid Class="mb-2">
+                        <MudItem xs="5">
+                            <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudTextField @bind-Value="variable.Value" Label="Value" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="2">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
+                        </MudItem>
+                    </MudGrid>
+                }
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddVariable" StartIcon="@Icons.Material.Filled.Add">
+                    Add Variable
+                </MudButton>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCollection" Disabled="@(string.IsNullOrWhiteSpace(_name))">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">
+                    Cancel
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+    else
+    {
+        <MudText>Loading...</MudText>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid CollectionId { get; set; }
+
+    private Collection? _collection;
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private List<VariableModel> _variables = new();
+
+    private class VariableModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _collection = await CollectionService.GetCollectionByIdAsync(CollectionId);
+        
+        if (_collection != null)
+        {
+            _name = _collection.Name;
+            _description = _collection.Description ?? string.Empty;
+            
+            // Load existing variables
+            foreach (var kvp in _collection.Variables)
+            {
+                _variables.Add(new VariableModel { Key = kvp.Key, Value = kvp.Value });
+            }
+        }
+    }
+
+    private void AddVariable()
+    {
+        _variables.Add(new VariableModel());
+    }
+
+    private void RemoveVariable(VariableModel variable)
+    {
+        _variables.Remove(variable);
+    }
+
+    private async Task SaveCollection()
+    {
+        if (_collection == null) return;
+
+        _collection.Name = _name;
+        _collection.Description = _description;
+        
+        // Clear and rebuild variables dictionary
+        _collection.Variables.Clear();
+        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+        {
+            _collection.Variables[variable.Key] = variable.Value;
+        }
+
+        await CollectionService.UpdateCollectionAsync(_collection);
+        
+        Snackbar.Add($"Collection '{_name}' updated successfully", Severity.Success);
+        NavigationManager.NavigateTo($"/environment/{_collection.EnvironmentId}");
+    }
+
+    private void Cancel()
+    {
+        if (_collection != null)
+        {
+            NavigationManager.NavigateTo($"/environment/{_collection.EnvironmentId}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}
