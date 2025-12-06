@@ -49,7 +49,7 @@
         <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
         
         <!-- Logo -->
-        <MauiImage Include="Resources\Logo\holyconnect-logo.svg" BaseSize="200,200" />
+        <MauiImage Include="Resources\Logo\holyconnect_logo.svg" BaseSize="200,200" />
 
         <!-- Custom Fonts -->
         <MauiFont Include="Resources\Fonts\*" />
