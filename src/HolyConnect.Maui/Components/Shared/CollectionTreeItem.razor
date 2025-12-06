@@ -4,7 +4,7 @@
 @if (Collection != null)
 {
     <div>
-        <MudPaper Class="pa-2 mb-1" Style="display: flex; align-items: center; justify-content: space-between;">
+        <MudPaper Class="pa-2 mb-1" Style="@GetCollectionStyle()">
             <MudText Style="flex: 1;">
                 <span @onclick="@(() => ToggleExpanded())" style="cursor: pointer;">
                     @if (HasChildren)
@@ -17,7 +17,7 @@
                     }
                 </span>
                 <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" style="cursor: pointer;">
-                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> @Collection.Name
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="@(IsCollectionSelected ? Color.Primary : Color.Default)" /> @Collection.Name
                 </span>
             </MudText>
             <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
@@ -34,7 +34,7 @@
                 {
                     @foreach (var request in Collection.Requests)
                     {
-                        <MudPaper Class="pa-2 mb-1" Style="display: flex; align-items: center; justify-content: space-between;">
+                        <MudPaper Class="pa-2 mb-1" Style="@GetRequestStyle(request)">
                             <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
                             </MudText>
@@ -54,7 +54,9 @@
                                           OnSelect="@OnSelect" 
                                           OnRequestSelect="@OnRequestSelect"
                                           OnCollectionUpdated="@OnCollectionUpdated"
-                                          OnRequestUpdated="@OnRequestUpdated" />
+                                          OnRequestUpdated="@OnRequestUpdated"
+                                          SelectedCollectionId="@SelectedCollectionId"
+                                          SelectedRequestId="@SelectedRequestId" />
                     }
                 }
             </div>
@@ -78,11 +80,19 @@
     [Parameter]
     public EventCallback<(Guid RequestId, string NewName, bool IsDelete)> OnRequestUpdated { get; set; }
 
+    [Parameter]
+    public Guid? SelectedCollectionId { get; set; }
+
+    [Parameter]
+    public Guid? SelectedRequestId { get; set; }
+
     private bool _isExpanded = false;
 
     private bool HasChildren => 
         (Collection?.SubCollections != null && Collection.SubCollections.Any()) || 
         (Collection?.Requests != null && Collection.Requests.Any());
+
+    private bool IsCollectionSelected => Collection != null && SelectedCollectionId.HasValue && Collection.Id == SelectedCollectionId.Value;
 
     private void ToggleExpanded()
     {
@@ -90,6 +100,26 @@
         {
             _isExpanded = !_isExpanded;
         }
+    }
+
+    private string GetCollectionStyle()
+    {
+        var baseStyle = "display: flex; align-items: center; justify-content: space-between;";
+        if (IsCollectionSelected)
+        {
+            return baseStyle + " background-color: rgba(var(--mud-palette-primary-rgb), 0.12); border-left: 3px solid var(--mud-palette-primary);";
+        }
+        return baseStyle;
+    }
+
+    private string GetRequestStyle(Request request)
+    {
+        var baseStyle = "display: flex; align-items: center; justify-content: space-between;";
+        if (SelectedRequestId.HasValue && request.Id == SelectedRequestId.Value)
+        {
+            return baseStyle + " background-color: rgba(var(--mud-palette-primary-rgb), 0.12); border-left: 3px solid var(--mud-palette-primary);";
+        }
+        return baseStyle;
     }
 
     private string GetRequestIcon(RequestType type) => type switch

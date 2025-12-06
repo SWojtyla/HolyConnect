@@ -175,4 +175,41 @@ public class RequestHistoryServiceTests
         // Assert
         _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>()), Times.Exactly(3));
     }
+
+    [Fact]
+    public async Task AddHistoryEntryAsync_ShouldPreserveNavigationProperties()
+    {
+        // Arrange
+        var requestId = Guid.NewGuid();
+        var environmentId = Guid.NewGuid();
+        var collectionId = Guid.NewGuid();
+        
+        var entry = new RequestHistoryEntry
+        {
+            RequestName = "Test Request",
+            RequestType = RequestType.Rest,
+            SentRequest = new SentRequest { Url = "https://api.example.com" },
+            Response = new RequestResponse { StatusCode = 200 },
+            RequestId = requestId,
+            EnvironmentId = environmentId,
+            CollectionId = collectionId
+        };
+        RequestHistoryEntry? capturedEntry = null;
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<RequestHistoryEntry>()))
+            .Callback<RequestHistoryEntry>(e => capturedEntry = e)
+            .ReturnsAsync((RequestHistoryEntry e) => e);
+
+        _mockRepository.Setup(r => r.GetAllAsync())
+            .ReturnsAsync(new List<RequestHistoryEntry>());
+
+        // Act
+        await _service.AddHistoryEntryAsync(entry);
+
+        // Assert
+        Assert.NotNull(capturedEntry);
+        Assert.Equal(requestId, capturedEntry.RequestId);
+        Assert.Equal(environmentId, capturedEntry.EnvironmentId);
+        Assert.Equal(collectionId, capturedEntry.CollectionId);
+    }
 }

@@ -401,4 +401,83 @@ public class RequestServiceTests
         Assert.Equal("testuser", executedRequest.BasicAuthUsername);
         Assert.Equal("testpass", executedRequest.BasicAuthPassword);
     }
+
+    [Fact]
+    public async Task ExecuteRequestAsync_ShouldSaveHistoryWithNavigationProperties()
+    {
+        // Arrange
+        var mockHistoryService = new Mock<IRequestHistoryService>();
+        var environmentId = Guid.NewGuid();
+        var collectionId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Name = "Test Environment",
+            Variables = new Dictionary<string, string>()
+        };
+        
+        var request = new RestRequest
+        {
+            Id = requestId,
+            Name = "Test Request",
+            EnvironmentId = environmentId,
+            CollectionId = collectionId,
+            Url = "https://api.example.com",
+            Method = Domain.Entities.HttpMethod.Get
+        };
+        
+        var sentRequest = new SentRequest
+        {
+            Url = "https://api.example.com",
+            Method = "GET",
+            Headers = new Dictionary<string, string>(),
+            QueryParameters = new Dictionary<string, string>(),
+            Body = string.Empty
+        };
+        
+        var response = new RequestResponse
+        {
+            StatusCode = 200,
+            Body = "Success",
+            SentRequest = sentRequest
+        };
+        
+        RequestHistoryEntry? capturedHistoryEntry = null;
+        
+        mockHistoryService.Setup(h => h.AddHistoryEntryAsync(It.IsAny<RequestHistoryEntry>()))
+            .Callback<RequestHistoryEntry>(entry => capturedHistoryEntry = entry)
+            .Returns(Task.CompletedTask);
+        
+        var serviceWithHistory = new RequestService(
+            _mockRepository.Object,
+            _mockEnvironmentRepository.Object,
+            _mockCollectionRepository.Object,
+            new List<IRequestExecutor> { _mockExecutor.Object },
+            _mockVariableResolver.Object,
+            mockHistoryService.Object);
+        
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
+            .Returns<string, Domain.Entities.Environment, Collection>((input, env, coll) => input);
+        _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
+            .Returns(true);
+        _mockExecutor.Setup(e => e.ExecuteAsync(It.IsAny<Request>()))
+            .ReturnsAsync(response);
+        
+        // Act
+        await serviceWithHistory.ExecuteRequestAsync(request);
+        
+        // Assert
+        Assert.NotNull(capturedHistoryEntry);
+        Assert.Equal("Test Request", capturedHistoryEntry.RequestName);
+        Assert.Equal(RequestType.Rest, capturedHistoryEntry.RequestType);
+        Assert.Equal(requestId, capturedHistoryEntry.RequestId);
+        Assert.Equal(environmentId, capturedHistoryEntry.EnvironmentId);
+        Assert.Equal(collectionId, capturedHistoryEntry.CollectionId);
+        Assert.Equal(200, capturedHistoryEntry.Response.StatusCode);
+        mockHistoryService.Verify(h => h.AddHistoryEntryAsync(It.IsAny<RequestHistoryEntry>()), Times.Once);
+    }
 }

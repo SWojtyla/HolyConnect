@@ -91,7 +91,10 @@ public class RequestService : IRequestService
                 RequestName = request.Name,
                 RequestType = request.Type,
                 SentRequest = response.SentRequest,
-                Response = response
+                Response = response,
+                RequestId = request.Id,
+                EnvironmentId = request.EnvironmentId,
+                CollectionId = request.CollectionId
             };
             
             await _historyService.AddHistoryEntryAsync(historyEntry);
