@@ -87,6 +87,15 @@ public static class MauiProgram
 				"requests",
 				r => r.Name);
 		});
+		
+		builder.Services.AddSingleton<IRepository<RequestHistoryEntry>>(sp =>
+		{
+			return new MultiFileRepository<RequestHistoryEntry>(
+				h => h.Id,
+				GetStoragePathSafe,
+				"history",
+				h => h.RequestName);
+		});
 
 		// Add services
 		builder.Services.AddScoped<IEnvironmentService, EnvironmentService>();
@@ -94,6 +103,7 @@ public static class MauiProgram
 		builder.Services.AddScoped<IRequestService, RequestService>();
 		builder.Services.AddScoped<IFormatterService, FormatterService>();
 		builder.Services.AddScoped<IVariableResolver, VariableResolver>();
+		builder.Services.AddScoped<IRequestHistoryService, RequestHistoryService>();
 
 		// Add request executors
 		builder.Services.AddScoped<IRequestExecutor, RestRequestExecutor>();
