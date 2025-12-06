@@ -14,6 +14,8 @@ public class AppSettingsTests
         Assert.Equal(string.Empty, settings.StoragePath);
         Assert.False(settings.IsDarkMode);
         Assert.Equal(RequestLayout.Horizontal, settings.Layout);
+        Assert.Equal(ThemePreset.Default, settings.SelectedTheme);
+        Assert.NotNull(settings.CustomTheme);
     }
 
     [Fact]
@@ -79,5 +81,57 @@ public class AppSettingsTests
 
         // Assert
         Assert.Equal(layout, settings.Layout);
+    }
+
+    [Fact]
+    public void SelectedTheme_ShouldBeSettable()
+    {
+        // Arrange
+        var settings = new AppSettings();
+
+        // Act
+        settings.SelectedTheme = ThemePreset.Ocean;
+
+        // Assert
+        Assert.Equal(ThemePreset.Ocean, settings.SelectedTheme);
+    }
+
+    [Theory]
+    [InlineData(ThemePreset.Default)]
+    [InlineData(ThemePreset.Ocean)]
+    [InlineData(ThemePreset.Forest)]
+    [InlineData(ThemePreset.Sunset)]
+    [InlineData(ThemePreset.Monochrome)]
+    [InlineData(ThemePreset.OceanDark)]
+    [InlineData(ThemePreset.ForestDark)]
+    [InlineData(ThemePreset.SunsetDark)]
+    [InlineData(ThemePreset.MonochromeDark)]
+    public void SelectedTheme_ShouldSupportAllThemePresets(ThemePreset preset)
+    {
+        // Arrange
+        var settings = new AppSettings { SelectedTheme = preset };
+
+        // Assert
+        Assert.Equal(preset, settings.SelectedTheme);
+    }
+
+    [Fact]
+    public void CustomTheme_ShouldBeSettable()
+    {
+        // Arrange
+        var settings = new AppSettings();
+        var customTheme = new CustomTheme
+        {
+            Primary = "#0077be",
+            IsDarkMode = true
+        };
+
+        // Act
+        settings.CustomTheme = customTheme;
+
+        // Assert
+        Assert.Equal(customTheme, settings.CustomTheme);
+        Assert.Equal("#0077be", settings.CustomTheme.Primary);
+        Assert.True(settings.CustomTheme.IsDarkMode);
     }
 }
