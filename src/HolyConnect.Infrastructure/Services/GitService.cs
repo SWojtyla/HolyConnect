@@ -292,10 +292,96 @@ public class GitService : IGitService
     {
         return (url, usernameFromUrl, types) =>
         {
-            // Use DefaultCredentials which leverages the system's credential store
-            // This includes SSH keys from ~/.ssh and git credential helpers
+            // Try to use git's credential helper to get credentials
+            // This is the same mechanism command-line git uses
+            if (types.HasFlag(SupportedCredentialTypes.UsernamePassword))
+            {
+                try
+                {
+                    var credentials = GetCredentialsFromGit(url);
+                    if (credentials != null)
+                    {
+                        return new UsernamePasswordCredentials
+                        {
+                            Username = credentials.Username,
+                            Password = credentials.Password
+                        };
+                    }
+                }
+                catch
+                {
+                    // Fall through to default
+                }
+            }
+            
+            // For SSH, return default which should use SSH agent or default keys
             return new DefaultCredentials();
         };
+    }
+
+    private class GitCredentials
+    {
+        public string? Username { get; set; }
+        public string? Password { get; set; }
+    }
+
+    private GitCredentials? GetCredentialsFromGit(string url)
+    {
+        try
+        {
+            // Use git credential fill to get credentials from system's credential helpers
+            var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = "credential fill",
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+
+            // Send the URL to git credential fill
+            using (var writer = process.StandardInput)
+            {
+                writer.WriteLine($"url={url}");
+                writer.WriteLine();
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
+            {
+                var lines = output.Split('\n');
+                string? username = null;
+                string? password = null;
+
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith("username="))
+                        username = line.Substring("username=".Length).Trim();
+                    else if (line.StartsWith("password="))
+                        password = line.Substring("password=".Length).Trim();
+                }
+
+                if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+                {
+                    return new GitCredentials { Username = username, Password = password };
+                }
+            }
+        }
+        catch
+        {
+            // If git credential helper fails, return null
+        }
+
+        return null;
     }
 
     private string GetChangeType(FileStatus status)
