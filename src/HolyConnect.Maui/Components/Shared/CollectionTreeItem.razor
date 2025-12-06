@@ -122,8 +122,14 @@
         return ContainsRequestInSubCollections(Collection, SelectedRequestId.Value);
     }
 
-    private bool ContainsRequestInSubCollections(Collection collection, Guid requestId)
+    private bool ContainsRequestInSubCollections(Collection collection, Guid requestId, int depth = 0)
     {
+        // Prevent excessive recursion (max 50 levels should be more than enough)
+        if (depth > 50)
+        {
+            return false;
+        }
+
         if (collection.Requests?.Any(r => r.Id == requestId) == true)
         {
             return true;
@@ -136,7 +142,7 @@
 
         foreach (var subCollection in collection.SubCollections)
         {
-            if (ContainsRequestInSubCollections(subCollection, requestId))
+            if (ContainsRequestInSubCollections(subCollection, requestId, depth + 1))
             {
                 return true;
             }
