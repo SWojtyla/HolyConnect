@@ -52,3 +52,17 @@ html, body {
         z-index: 1;
     }
 }
+
+.app-logo {
+    height: 40px;
+    width: auto;
+    margin-right: 12px;
+    /* Force the logo to always display with original colors, ignoring theme */
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+.app-logo img {
+    height: 100%;
+    width: auto;
+}
