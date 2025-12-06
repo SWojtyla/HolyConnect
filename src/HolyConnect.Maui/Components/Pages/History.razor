@@ -2,6 +2,7 @@
 @inject IRequestHistoryService HistoryService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager NavigationManager
 
 <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
     <MudText Typo="Typo.h4" Class="mb-4">Request History</MudText>
@@ -20,7 +21,18 @@
                     <CardHeaderContent>
                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                             <div>
-                                <MudText Typo="Typo.h6">@entry.RequestName</MudText>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudText Typo="Typo.h6">@entry.RequestName</MudText>
+                                    @if (entry.RequestId.HasValue && entry.EnvironmentId.HasValue)
+                                    {
+                                        <MudTooltip Text="Open request">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Launch" 
+                                                         Size="Size.Small" 
+                                                         Color="Color.Primary" 
+                                                         OnClick="@(() => NavigateToRequest(entry))" />
+                                        </MudTooltip>
+                                    }
+                                </MudStack>
                                 <MudText Typo="Typo.body2" Color="Color.Default">@entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudText>
                             </div>
                             <MudChip T="RequestHistoryEntry" Color="@GetStatusColor(entry.Response.StatusCode)" Size="Size.Small">
@@ -141,5 +153,13 @@
             >= 500 => Color.Error,
             _ => Color.Default
         };
+    }
+
+    private void NavigateToRequest(RequestHistoryEntry entry)
+    {
+        if (entry.RequestId.HasValue && entry.EnvironmentId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/environment/{entry.EnvironmentId}?requestId={entry.RequestId}");
+        }
     }
 }

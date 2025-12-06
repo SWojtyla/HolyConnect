@@ -11,4 +11,9 @@ public class RequestHistoryEntry
     public RequestType RequestType { get; set; }
     public SentRequest SentRequest { get; set; } = new();
     public RequestResponse Response { get; set; } = new();
+    
+    // Navigation properties to link back to the original request
+    public Guid? RequestId { get; set; }
+    public Guid? EnvironmentId { get; set; }
+    public Guid? CollectionId { get; set; }
 }

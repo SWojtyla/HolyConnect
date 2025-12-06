@@ -23,10 +23,10 @@
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Headers">
-                    <div class="pa-4">
+                    <div class="pa-4" style="overflow-x: auto;">
                         @foreach (var header in Response.Headers)
                         {
-                            <MudText Typo="Typo.body2" Style="word-break: break-all; white-space: normal;"><strong>@header.Key:</strong> @header.Value</MudText>
+                            <MudText Typo="Typo.body2" Style="word-break: break-word; overflow-wrap: break-word; white-space: normal; max-width: 100%;"><strong>@header.Key:</strong> @header.Value</MudText>
                         }
                     </div>
                 </MudTabPanel>
