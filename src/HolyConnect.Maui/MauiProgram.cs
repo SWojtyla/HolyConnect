@@ -33,6 +33,7 @@ public static class MauiProgram
 		// Add Settings service
 		builder.Services.AddSingleton<ISettingsService, FileBasedSettingsService>();
 		builder.Services.AddSingleton<SettingsService>();
+		builder.Services.AddSingleton<ThemeService>();
 
 		// Helper to synchronously read storage path without async blocking
 		string GetStoragePathSafe()

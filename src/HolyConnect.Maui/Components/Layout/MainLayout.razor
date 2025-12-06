@@ -1,6 +1,8 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 @inject SettingsService SettingsService
+@inject Application.Services.ThemeService ThemeService
+@using MudBlazor.Utilities
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="@_isDarkMode" />
 
@@ -22,7 +24,9 @@
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.False" Style="height: 100%; padding: 0;">
             <CascadingValue Value="@DarkModeToggleCallback">
-                @Body
+                <CascadingValue Value="@ThemeChangedCallback">
+                    @Body
+                </CascadingValue>
             </CascadingValue>
         </MudContainer>
     </MudMainContent>
@@ -33,18 +37,43 @@
     private bool _isDarkMode = false;
     private MudThemeProvider? _mudThemeProvider;
     private MudTheme _theme = new MudTheme();
+    private Domain.Entities.CustomTheme? _customTheme;
 
     private EventCallback<bool> DarkModeToggleCallback => EventCallback.Factory.Create<bool>(this, ToggleDarkMode);
+    private EventCallback<Domain.Entities.CustomTheme> ThemeChangedCallback => EventCallback.Factory.Create<Domain.Entities.CustomTheme>(this, ApplyCustomTheme);
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDarkModePreference();
+        await LoadThemePreferences();
     }
 
-    private async Task LoadDarkModePreference()
+    private async Task LoadThemePreferences()
     {
         var settings = await SettingsService.GetSettingsAsync();
         _isDarkMode = settings.IsDarkMode;
+        
+        // Load custom theme if available
+        if (settings.CustomTheme != null)
+        {
+            _customTheme = settings.CustomTheme;
+            ApplyThemeColors();
+        }
+    }
+
+    private void ApplyThemeColors()
+    {
+        if (_customTheme == null) return;
+        
+        var palette = _isDarkMode ? _theme.PaletteDark : _theme.PaletteLight;
+        
+        palette.Primary = new MudColor(_customTheme.Primary);
+        palette.Secondary = new MudColor(_customTheme.Secondary);
+        palette.Background = new MudColor(_customTheme.Background);
+        palette.Surface = new MudColor(_customTheme.Surface);
+        palette.AppbarBackground = new MudColor(_customTheme.AppbarBackground);
+        palette.AppbarText = new MudColor(_customTheme.AppbarText);
+        palette.DrawerBackground = new MudColor(_customTheme.DrawerBackground);
+        palette.DrawerText = new MudColor(_customTheme.DrawerText);
     }
 
     private void ToggleDrawer()
@@ -60,6 +89,15 @@
     private async Task ToggleDarkMode(bool isDark)
     {
         _isDarkMode = isDark;
+        ApplyThemeColors();
+        StateHasChanged();
+    }
+
+    private async Task ApplyCustomTheme(Domain.Entities.CustomTheme theme)
+    {
+        _customTheme = theme;
+        _isDarkMode = theme.IsDarkMode;
+        ApplyThemeColors();
         StateHasChanged();
     }
 }

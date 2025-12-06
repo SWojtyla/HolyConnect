@@ -1,5 +1,6 @@
 @page "/settings"
 @inject SettingsService SettingsService
+@inject Application.Services.ThemeService ThemeService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -10,12 +11,27 @@
         <MudCardContent>
             <MudText Typo="Typo.h6" Class="mb-3">Appearance</MudText>
             
-            <MudSwitch Value="_isDarkMode" 
-                       Label="Dark Mode" 
-                       Color="Color.Primary"
-                       T="bool"
-                       ValueChanged="OnDarkModeChanged"
-                       Class="mb-3" />
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Theme</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">
+                Choose a color theme for the application.
+            </MudText>
+            <MudSelect Value="_selectedTheme" 
+                      ValueChanged="OnThemePresetChanged"
+                      Label="Select Theme" 
+                      Variant="Variant.Outlined" 
+                      AnchorOrigin="Origin.BottomCenter"
+                      Class="mb-3"
+                      T="Domain.Entities.ThemePreset">
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.Default">Default</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.Ocean">Ocean</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.Forest">Forest</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.Sunset">Sunset</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.Monochrome">Monochrome</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.OceanDark">Ocean Dark</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.ForestDark">Forest Dark</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.SunsetDark">Sunset Dark</MudSelectItem>
+                <MudSelectItem Value="@Domain.Entities.ThemePreset.MonochromeDark">Monochrome Dark</MudSelectItem>
+            </MudSelect>
 
             <MudText Typo="Typo.subtitle1" Class="mb-2">Request Layout</MudText>
             <MudText Typo="Typo.body2" Class="mb-2">
@@ -76,9 +92,13 @@
     private bool _isDarkMode;
     private string _storagePath = string.Empty;
     private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
+    private Domain.Entities.ThemePreset _selectedTheme = Domain.Entities.ThemePreset.Default;
 
     [CascadingParameter]
     public EventCallback<bool> OnDarkModeToggle { get; set; }
+    
+    [CascadingParameter]
+    public EventCallback<Domain.Entities.CustomTheme> OnThemeChanged { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -91,6 +111,35 @@
         _isDarkMode = settings.IsDarkMode;
         _storagePath = settings.StoragePath;
         _requestLayout = settings.Layout;
+        _selectedTheme = settings.SelectedTheme;
+    }
+
+    private async Task OnThemePresetChanged(Domain.Entities.ThemePreset preset)
+    {
+        _selectedTheme = preset;
+        var theme = ThemeService.GetThemePreset(preset);
+        
+        // Update dark mode based on theme
+        _isDarkMode = theme.IsDarkMode;
+        await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+        await OnThemeChanged.InvokeAsync(theme);
+        
+        // Auto-save theme preference
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            settings.SelectedTheme = preset;
+            settings.CustomTheme = theme;
+            settings.IsDarkMode = theme.IsDarkMode;
+            await SettingsService.SaveSettingsAsync(settings);
+            Snackbar.Add("Theme applied successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving theme: {ex.Message}", Severity.Warning);
+        }
+        
+        StateHasChanged();
     }
 
     private async Task OnDarkModeChanged(bool value)
@@ -164,15 +213,24 @@
     {
         try
         {
+            var theme = ThemeService.GetThemePreset(_selectedTheme);
+            
             var settings = new Domain.Entities.AppSettings
             {
-                IsDarkMode = _isDarkMode,
+                IsDarkMode = theme.IsDarkMode,
                 StoragePath = _storagePath,
-                Layout = _requestLayout
+                Layout = _requestLayout,
+                SelectedTheme = _selectedTheme,
+                CustomTheme = theme
             };
 
             await SettingsService.SaveSettingsAsync(settings);
-            await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+            await OnDarkModeToggle.InvokeAsync(theme.IsDarkMode);
+            await OnThemeChanged.InvokeAsync(theme);
+            
+            // Update local state
+            _isDarkMode = theme.IsDarkMode;
+            
             Snackbar.Add("Settings saved successfully!", Severity.Success);
         }
         catch (Exception ex)
