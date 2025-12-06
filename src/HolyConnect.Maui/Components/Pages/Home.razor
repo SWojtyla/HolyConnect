@@ -1,5 +1,6 @@
 ﻿@page "/"
 @inject IEnvironmentService EnvironmentService
+@inject IRequestHistoryService HistoryService
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -41,7 +42,7 @@
             </MudCard>
         </MudItem>
 
-        <MudItem xs="12" md="6" lg="8">
+        <MudItem xs="12" md="6" lg="4">
             <MudCard Elevation="2" Style="height: 100%;">
                 <MudCardContent>
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
@@ -105,6 +106,79 @@
             </MudCard>
         </MudItem>
 
+        <MudItem xs="12" md="6" lg="4">
+            <MudCard Elevation="2" Style="height: 100%;">
+                <MudCardContent>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Primary" Size="Size.Large" />
+                            <MudText Typo="Typo.h6">Recent Requests</MudText>
+                        </MudStack>
+                        @if (_historyEntries != null && _historyEntries.Any())
+                        {
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small">Last @_historyEntries.Count()</MudChip>
+                        }
+                    </MudStack>
+                    @if (_historyEntries != null && _historyEntries.Any())
+                    {
+                        <MudStack Spacing="2">
+                            @foreach (var entry in _historyEntries.Take(5))
+                            {
+                                <MudPaper Class="pa-3" Outlined="true">
+                                    <MudGrid>
+                                        <MudItem xs="12" Class="d-flex align-center justify-space-between">
+                                            <MudStack Spacing="1" Class="flex-grow-1">
+                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Http" Color="Color.Primary" Size="Size.Small" />
+                                                    <MudTooltip Text="@entry.RequestName">
+                                                        <MudText Typo="Typo.body1" Class="text-truncate">
+                                                            <strong>@entry.RequestName</strong>
+                                                        </MudText>
+                                                    </MudTooltip>
+                                                </MudStack>
+                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                    <MudChip T="string" Color="@GetStatusColor(entry.Response.StatusCode)" Size="Size.Small">
+                                                        @entry.Response.StatusCode
+                                                    </MudChip>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@entry.Response.ResponseTime ms</MudText>
+                                                </MudStack>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @entry.Timestamp.ToLocalTime().ToString("MMM dd, HH:mm")
+                                                </MudText>
+                                            </MudStack>
+                                            @if (entry.RequestId.HasValue && entry.EnvironmentId.HasValue)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.Launch" 
+                                                             Size="Size.Small" 
+                                                             Color="Color.Primary" 
+                                                             OnClick="@(() => NavigateToRequest(entry))"
+                                                             Title="Open request" />
+                                            }
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudPaper>
+                            }
+                            @if (_historyEntries.Count() > 5)
+                            {
+                                <MudButton Variant="Variant.Text" 
+                                          Color="Color.Primary" 
+                                          FullWidth="true"
+                                          OnClick="@(() => NavigationManager.NavigateTo("/history"))">
+                                    View All History
+                                </MudButton>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                            No requests executed yet. Execute a request to see history!
+                        </MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
         <MudItem xs="12">
             <MudCard Elevation="2">
                 <MudCardContent>
@@ -155,15 +229,22 @@
 
 @code {
     private IEnumerable<Domain.Entities.Environment>? _environments;
+    private IEnumerable<RequestHistoryEntry>? _historyEntries;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadEnvironments();
+        await LoadHistory();
     }
 
     private async Task LoadEnvironments()
     {
         _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+    }
+
+    private async Task LoadHistory()
+    {
+        _historyEntries = await HistoryService.GetHistoryAsync(10);
     }
 
     private void CreateEnvironment()
@@ -219,6 +300,26 @@
             Snackbar.Add("Environment deleted successfully", Severity.Success);
             await LoadEnvironments();
             StateHasChanged();
+        }
+    }
+
+    private Color GetStatusColor(int statusCode)
+    {
+        return statusCode switch
+        {
+            >= 200 and < 300 => Color.Success,
+            >= 300 and < 400 => Color.Info,
+            >= 400 and < 500 => Color.Warning,
+            >= 500 => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private void NavigateToRequest(RequestHistoryEntry entry)
+    {
+        if (entry.RequestId.HasValue && entry.EnvironmentId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/environment/{entry.EnvironmentId}?requestId={entry.RequestId}");
         }
     }
 }
