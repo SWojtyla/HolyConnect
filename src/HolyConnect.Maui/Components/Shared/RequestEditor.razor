@@ -258,27 +258,29 @@ else
         }
     </MudCardContent>
     <MudCardActions>
-        <MudButton Variant="Variant.Filled" 
-                  Color="Color.Primary" 
-                  OnClick="ExecuteRequest" 
-                  StartIcon="@Icons.Material.Filled.Send"
-                  Disabled="_isExecuting">
-            @if (_isExecuting)
-            {
-                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
-                <span>Sending...</span>
-            }
-            else
-            {
-                <span>Send</span>
-            }
-        </MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveRequestInternal" Disabled="_isExecuting">
-            Save
-        </MudButton>
-        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())" Disabled="_isExecuting">
-            Cancel
-        </MudButton>
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      OnClick="ExecuteRequest" 
+                      StartIcon="@Icons.Material.Filled.Send"
+                      Disabled="_isExecuting">
+                @if (_isExecuting)
+                {
+                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                    <span>Sending...</span>
+                }
+                else
+                {
+                    <span>Send</span>
+                }
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveRequestInternal" Disabled="_isExecuting">
+                Save
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())" Disabled="_isExecuting">
+                Cancel
+            </MudButton>
+        </MudStack>
     </MudCardActions>
 </MudCard>
     };
