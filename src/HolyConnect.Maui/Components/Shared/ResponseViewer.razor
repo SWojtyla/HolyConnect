@@ -26,7 +26,7 @@
                     <div class="pa-4">
                         @foreach (var header in Response.Headers)
                         {
-                            <MudText Typo="Typo.body2"><strong>@header.Key:</strong> @header.Value</MudText>
+                            <MudText Typo="Typo.body2" Style="word-break: break-all; white-space: normal;"><strong>@header.Key:</strong> @header.Value</MudText>
                         }
                     </div>
                 </MudTabPanel>
@@ -72,12 +72,15 @@
     public RequestResponse? Response { get; set; }
 
     private string _responseBodyDisplay = string.Empty;
+    private RequestResponse? _previousResponse;
 
     protected override void OnParametersSet()
     {
-        if (Response != null)
+        // Only reset display if we have a new response (not just a re-render)
+        if (Response != null && Response != _previousResponse)
         {
             _responseBodyDisplay = Response.Body;
+            _previousResponse = Response;
         }
     }
 

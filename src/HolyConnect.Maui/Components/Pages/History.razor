@@ -1,0 +1,145 @@
+@page "/history"
+@inject IRequestHistoryService HistoryService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Request History</MudText>
+    <MudText Typo="Typo.body1" Class="mb-4">View the last 10 executed requests and their responses</MudText>
+    
+    @if (_historyEntries != null && _historyEntries.Any())
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="ClearHistory" StartIcon="@Icons.Material.Filled.DeleteSweep" Class="mb-4">
+            Clear History
+        </MudButton>
+
+        @foreach (var entry in _historyEntries)
+        {
+            <MudCard Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <div>
+                                <MudText Typo="Typo.h6">@entry.RequestName</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Default">@entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+                            </div>
+                            <MudChip T="RequestHistoryEntry" Color="@GetStatusColor(entry.Response.StatusCode)" Size="Size.Small">
+                                @entry.Response.StatusCode - @entry.Response.StatusMessage
+                            </MudChip>
+                        </MudStack>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-2"><strong>Method:</strong> @entry.SentRequest.Method</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-2" Style="word-break: break-all;"><strong>URL:</strong> @entry.SentRequest.Url</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-2"><strong>Time:</strong> @entry.Response.ResponseTime ms</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-2"><strong>Size:</strong> @entry.Response.Size bytes</MudText>
+
+                    <MudExpansionPanels Class="mt-3">
+                        <MudExpansionPanel Text="Request Details">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2"><strong>Headers:</strong></MudText>
+                            @if (entry.SentRequest.Headers.Any())
+                            {
+                                @foreach (var header in entry.SentRequest.Headers)
+                                {
+                                    <MudText Typo="Typo.body2" Style="word-break: break-all; white-space: normal;">@header.Key: @header.Value</MudText>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Default">No headers</MudText>
+                            }
+
+                            @if (entry.SentRequest.QueryParameters.Any())
+                            {
+                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Query Parameters:</strong></MudText>
+                                @foreach (var param in entry.SentRequest.QueryParameters)
+                                {
+                                    <MudText Typo="Typo.body2">@param.Key: @param.Value</MudText>
+                                }
+                            }
+
+                            @if (!string.IsNullOrEmpty(entry.SentRequest.Body))
+                            {
+                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Body:</strong></MudText>
+                                <MudTextField Value="@entry.SentRequest.Body" Lines="10" Variant="Variant.Outlined" ReadOnly="true" />
+                            }
+                        </MudExpansionPanel>
+
+                        <MudExpansionPanel Text="Response Details">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2"><strong>Headers:</strong></MudText>
+                            @if (entry.Response.Headers.Any())
+                            {
+                                @foreach (var header in entry.Response.Headers)
+                                {
+                                    <MudText Typo="Typo.body2" Style="word-break: break-all; white-space: normal;">@header.Key: @header.Value</MudText>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Default">No headers</MudText>
+                            }
+
+                            @if (!string.IsNullOrEmpty(entry.Response.Body))
+                            {
+                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Body:</strong></MudText>
+                                <MudTextField Value="@entry.Response.Body" Lines="15" Variant="Variant.Outlined" ReadOnly="true" />
+                            }
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info">No history entries yet. Execute some requests to see them here.</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private IEnumerable<RequestHistoryEntry>? _historyEntries;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistory();
+    }
+
+    private async Task LoadHistory()
+    {
+        _historyEntries = await HistoryService.GetHistoryAsync();
+    }
+
+    private async Task ClearHistory()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = "Are you sure you want to clear all history entries? This action cannot be undone.",
+            ["ButtonText"] = "Clear",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Clear History", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await HistoryService.ClearHistoryAsync();
+            Snackbar.Add("History cleared successfully", Severity.Success);
+            await LoadHistory();
+            StateHasChanged();
+        }
+    }
+
+    private Color GetStatusColor(int statusCode)
+    {
+        return statusCode switch
+        {
+            >= 200 and < 300 => Color.Success,
+            >= 300 and < 400 => Color.Info,
+            >= 400 and < 500 => Color.Warning,
+            >= 500 => Color.Error,
+            _ => Color.Default
+        };
+    }
+}

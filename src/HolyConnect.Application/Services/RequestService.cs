@@ -10,19 +10,22 @@ public class RequestService : IRequestService
     private readonly IRepository<Collection> _collectionRepository;
     private readonly IEnumerable<IRequestExecutor> _executors;
     private readonly IVariableResolver _variableResolver;
+    private readonly IRequestHistoryService? _historyService;
 
     public RequestService(
         IRepository<Request> requestRepository,
         IRepository<Domain.Entities.Environment> environmentRepository,
         IRepository<Collection> collectionRepository,
         IEnumerable<IRequestExecutor> executors,
-        IVariableResolver variableResolver)
+        IVariableResolver variableResolver,
+        IRequestHistoryService? historyService = null)
     {
         _requestRepository = requestRepository;
         _environmentRepository = environmentRepository;
         _collectionRepository = collectionRepository;
         _executors = executors;
         _variableResolver = variableResolver;
+        _historyService = historyService;
     }
 
     public async Task<Request> CreateRequestAsync(Request request)
@@ -78,7 +81,23 @@ public class RequestService : IRequestService
         // Resolve variables before execution
         var resolvedRequest = await ResolveRequestVariablesAsync(request);
 
-        return await executor.ExecuteAsync(resolvedRequest);
+        var response = await executor.ExecuteAsync(resolvedRequest);
+
+        // Save to history if history service is available
+        if (_historyService != null && response.SentRequest != null)
+        {
+            var historyEntry = new RequestHistoryEntry
+            {
+                RequestName = request.Name,
+                RequestType = request.Type,
+                SentRequest = response.SentRequest,
+                Response = response
+            };
+            
+            await _historyService.AddHistoryEntryAsync(historyEntry);
+        }
+
+        return response;
     }
 
     private async Task<Request> ResolveRequestVariablesAsync(Request request)
