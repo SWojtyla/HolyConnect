@@ -6,25 +6,33 @@
 @if (_layout == Domain.Entities.RequestLayout.Vertical)
 {
     <!-- Vertical Layout: Request on left, Response on right -->
-    <MudGrid Class="flex-grow-1" Style="max-height: calc(100vh - 200px);">
-        <MudItem xs="6" Style="max-height: 100%; overflow-y: auto;">
-            @RequestConfigurationSection
+    <MudGrid Class="flex-grow-1" Style="height: 100%; display: flex;">
+        <MudItem xs="6" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="flex: 1; overflow-y: auto;">
+                @RequestConfigurationSection
+            </div>
         </MudItem>
-        <MudItem xs="6" Style="max-height: 100%; overflow-y: auto;">
-            @ResponseSection
+        <MudItem xs="6" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="flex: 1; overflow-y: auto;">
+                @ResponseSection
+            </div>
         </MudItem>
     </MudGrid>
 }
 else
 {
     <!-- Horizontal Layout: Request on top, Response on bottom -->
-    <div Style="max-height: calc(100vh - 200px); overflow-y: auto;">
-        @RequestConfigurationSection
+    <div Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="flex: 0 0 auto; overflow-y: auto; max-height: 60%;">
+            @RequestConfigurationSection
+        </div>
         
         @if (_response != null)
         {
             <MudDivider Class="my-4" />
-            @ResponseSection
+            <div style="flex: 1; overflow-y: auto; min-height: 0;">
+                @ResponseSection
+            </div>
         }
     </div>
 }
@@ -62,7 +70,7 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <VariableTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="12" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
+                        <VariableTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="15" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
                     </div>
                 </MudTabPanel>
                 
@@ -174,7 +182,7 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <VariableTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="12" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
+                        <VariableTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="15" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
                     </div>
                 </MudTabPanel>
                 

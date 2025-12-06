@@ -94,6 +94,57 @@
 
     private bool IsCollectionSelected => Collection != null && SelectedCollectionId.HasValue && Collection.Id == SelectedCollectionId.Value;
 
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        
+        // Auto-expand if this collection or its descendants contain the selected request
+        if (SelectedRequestId.HasValue && ShouldAutoExpand())
+        {
+            _isExpanded = true;
+        }
+    }
+
+    private bool ShouldAutoExpand()
+    {
+        if (Collection == null || !SelectedRequestId.HasValue)
+        {
+            return false;
+        }
+
+        // Check if selected request is directly in this collection
+        if (Collection.Requests?.Any(r => r.Id == SelectedRequestId.Value) == true)
+        {
+            return true;
+        }
+
+        // Check if selected request is in any subcollection (recursive)
+        return ContainsRequestInSubCollections(Collection, SelectedRequestId.Value);
+    }
+
+    private bool ContainsRequestInSubCollections(Collection collection, Guid requestId)
+    {
+        if (collection.Requests?.Any(r => r.Id == requestId) == true)
+        {
+            return true;
+        }
+
+        if (collection.SubCollections == null || !collection.SubCollections.Any())
+        {
+            return false;
+        }
+
+        foreach (var subCollection in collection.SubCollections)
+        {
+            if (ContainsRequestInSubCollections(subCollection, requestId))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void ToggleExpanded()
     {
         if (HasChildren)
