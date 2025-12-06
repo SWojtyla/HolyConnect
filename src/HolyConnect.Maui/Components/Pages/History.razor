@@ -23,7 +23,7 @@
                                 <MudText Typo="Typo.h6">@entry.RequestName</MudText>
                                 <MudText Typo="Typo.body2" Color="Color.Default">@entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudText>
                             </div>
-                            <MudChip Color="@GetStatusColor(entry.Response.StatusCode)" Size="Size.Small">
+                            <MudChip T="RequestHistoryEntry" Color="@GetStatusColor(entry.Response.StatusCode)" Size="Size.Small">
                                 @entry.Response.StatusCode - @entry.Response.StatusMessage
                             </MudChip>
                         </MudStack>
