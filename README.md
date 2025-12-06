@@ -10,6 +10,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests
 - 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
+- 🔄 **Git Integration**: Version control your collections with git support (initialize, commit, branch, push, pull)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
 - 🏗️ **Extensible Architecture**: Built with clean architecture principles for easy extension
@@ -113,6 +114,16 @@ HolyConnect/
 2. Use `{{ variableName }}` syntax in your requests
 3. Collection variables override environment variables
 4. See the [Variables Wiki](/wiki/variables) for detailed documentation
+
+### Using Git Version Control
+
+1. Navigate to the Git page from the menu
+2. Initialize a git repository for your storage path
+3. Create branches for different versions of your collections
+4. Commit your changes with descriptive messages
+5. Switch between branches to work on different versions
+6. Fetch, pull, and push to sync with remote repositories
+7. View the current branch in the app bar header
 
 ### Extracting Response Values
 

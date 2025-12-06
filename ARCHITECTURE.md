@@ -85,6 +85,7 @@ Contains business logic and orchestration:
   - `RequestService`: Coordinates request storage and execution
   - `VariableResolver`: Resolves variables in requests using environment and collection values
   - `ResponseValueExtractor`: Extracts values from JSON/XML responses using JSONPath/XPath patterns
+  - `IGitService`: Interface for git version control operations
 
 - **Use Cases**: Business workflows that orchestrate domain entities
 
@@ -113,6 +114,11 @@ Implements external concerns:
   - `RestRequestExecutor`: Executes HTTP REST requests using HttpClient
   - `GraphQLRequestExecutor`: Executes GraphQL queries
 
+- **Version Control**:
+  - `GitService`: Provides git operations using LibGit2Sharp
+  - Supports initialize, commit, branch, fetch, pull, push operations
+
+- **External Services**: HTTP clients, file systems, databases, git repositories
 - **External Services**: 
   - HTTP clients, file systems, databases
   - `ClipboardService`: Platform-specific clipboard operations using MAUI Essentials
@@ -252,9 +258,10 @@ tests/
 2. **Response Comparison**: Compare responses across requests
 3. **Mock Server**: Built-in mock server for testing
 4. **Code Generation**: Generate client code from requests
-5. **Team Collaboration**: Share collections and environments
+5. **Team Collaboration**: Share collections and environments via git remotes
 6. **Import/Export**: Support Postman, Insomnia formats
 7. **WebSocket Support**: Real-time API testing
 8. **Authentication Flows**: OAuth, JWT, API Key management
 9. **Scripting**: Pre-request and post-request scripts
 10. **Dynamic Variables**: Computed values and system variables (e.g., timestamps, random values)
+11. **Git Enhancements**: Merge conflict resolution, diff viewer, commit history

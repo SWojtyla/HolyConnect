@@ -1,0 +1,422 @@
+@page "/git"
+@inject IGitService GitService
+@inject SettingsService SettingsService
+@inject ISnackbar Snackbar
+@using HolyConnect.Application.Interfaces
+@using LibGit2Sharp
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Git Management</MudText>
+
+    @if (!_isRepository)
+    {
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">Git Not Initialized</MudText>
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    The storage path is not a git repository. Initialize git to enable version control for your collections.
+                </MudText>
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="InitializeRepository"
+                          StartIcon="@Icons.Material.Filled.AddCircle">
+                    Initialize Git Repository
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <!-- Repository Status -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">Repository Status</MudText>
+                
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2">Current Branch:</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-2">
+                            <strong>@(_currentBranch ?? "Unknown")</strong>
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.subtitle2">Pending Changes:</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-2">
+                            @if (_status?.HasChanges == true)
+                            {
+                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">
+                                    @(_status.ModifiedFiles + _status.AddedFiles + _status.DeletedFiles + _status.UntrackedFiles) files
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small">No changes</MudChip>
+                            }
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+
+                @if (_status?.HasChanges == true)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Changes:</MudText>
+                    <MudList T="string" Dense="true" Class="ml-2">
+                        @foreach (var change in _status.Changes.Take(10))
+                        {
+                            <MudListItem T="string">
+                                <MudText Typo="Typo.body2">@change</MudText>
+                            </MudListItem>
+                        }
+                        @if (_status.Changes.Count > 10)
+                        {
+                            <MudListItem T="string">
+                                <MudText Typo="Typo.caption">... and @(_status.Changes.Count - 10) more</MudText>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+
+                <MudDivider Class="my-3" />
+
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Info" 
+                          OnClick="RefreshStatus"
+                          StartIcon="@Icons.Material.Filled.Refresh"
+                          Class="mr-2">
+                    Refresh
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Branch Operations -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">Branch Operations</MudText>
+                
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Switch Branch:</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="8">
+                        <MudSelect @bind-Value="_selectedBranch" 
+                                  Label="Select Branch" 
+                                  Variant="Variant.Outlined"
+                                  T="string">
+                            @foreach (var branch in _branches)
+                            {
+                                <MudSelectItem Value="@branch">@branch</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Primary" 
+                                  OnClick="SwitchBranch"
+                                  Disabled="@(string.IsNullOrEmpty(_selectedBranch) || _selectedBranch == _currentBranch)"
+                                  FullWidth="true"
+                                  StartIcon="@Icons.Material.Filled.Sync">
+                            Switch
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-3" />
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Create New Branch:</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="8">
+                        <MudTextField @bind-Value="_newBranchName" 
+                                     Label="Branch Name" 
+                                     Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Success" 
+                                  OnClick="CreateBranch"
+                                  Disabled="@string.IsNullOrWhiteSpace(_newBranchName)"
+                                  FullWidth="true"
+                                  StartIcon="@Icons.Material.Filled.Add">
+                            Create
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Commit Changes -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">Commit Changes</MudText>
+                
+                <MudTextField @bind-Value="_commitMessage" 
+                             Label="Commit Message" 
+                             Variant="Variant.Outlined" 
+                             Lines="3"
+                             Class="mb-3" />
+                
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="CommitChanges"
+                          Disabled="@(string.IsNullOrWhiteSpace(_commitMessage) || _status?.HasChanges != true)"
+                          StartIcon="@Icons.Material.Filled.Save">
+                    Commit All Changes
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Remote Operations -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">Remote Operations</MudText>
+                
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    Sync your changes with the remote repository.
+                </MudText>
+
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Info" 
+                          OnClick="Fetch"
+                          StartIcon="@Icons.Material.Filled.CloudDownload"
+                          Class="mr-2 mb-2">
+                    Fetch
+                </MudButton>
+                
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="Pull"
+                          StartIcon="@Icons.Material.Filled.GetApp"
+                          Class="mr-2 mb-2">
+                    Pull
+                </MudButton>
+                
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Secondary" 
+                          OnClick="Push"
+                          StartIcon="@Icons.Material.Filled.Publish"
+                          Class="mb-2">
+                    Push
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    private bool _isRepository;
+    private string? _currentBranch;
+    private List<string> _branches = new();
+    private string? _selectedBranch;
+    private string _newBranchName = string.Empty;
+    private string _commitMessage = string.Empty;
+    private GitStatus? _status;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckRepository();
+    }
+
+    private async Task CheckRepository()
+    {
+        _isRepository = await GitService.IsRepositoryAsync();
+        if (_isRepository)
+        {
+            await LoadRepositoryInfo();
+        }
+    }
+
+    private async Task LoadRepositoryInfo()
+    {
+        _currentBranch = await GitService.GetCurrentBranchAsync();
+        _branches = (await GitService.GetBranchesAsync()).ToList();
+        _selectedBranch = _currentBranch;
+        _status = await GitService.GetStatusAsync();
+        StateHasChanged();
+    }
+
+    private async Task InitializeRepository()
+    {
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            var success = await GitService.InitRepositoryAsync(settings.StoragePath);
+            
+            if (success)
+            {
+                Snackbar.Add("Git repository initialized successfully!", Severity.Success);
+                await CheckRepository();
+            }
+            else
+            {
+                Snackbar.Add("Failed to initialize git repository", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error initializing repository: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RefreshStatus()
+    {
+        try
+        {
+            await LoadRepositoryInfo();
+            Snackbar.Add("Status refreshed", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SwitchBranch()
+    {
+        if (string.IsNullOrEmpty(_selectedBranch))
+            return;
+
+        try
+        {
+            var success = await GitService.CheckoutBranchAsync(_selectedBranch);
+            
+            if (success)
+            {
+                Snackbar.Add($"Switched to branch '{_selectedBranch}'", Severity.Success);
+                await LoadRepositoryInfo();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to switch to branch '{_selectedBranch}'", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error switching branch: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CreateBranch()
+    {
+        if (string.IsNullOrWhiteSpace(_newBranchName))
+            return;
+
+        try
+        {
+            var success = await GitService.CreateBranchAsync(_newBranchName);
+            
+            if (success)
+            {
+                Snackbar.Add($"Created and switched to branch '{_newBranchName}'", Severity.Success);
+                _newBranchName = string.Empty;
+                await LoadRepositoryInfo();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to create branch '{_newBranchName}'. It may already exist.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating branch: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CommitChanges()
+    {
+        if (string.IsNullOrWhiteSpace(_commitMessage))
+            return;
+
+        try
+        {
+            var success = await GitService.CommitAllAsync(_commitMessage);
+            
+            if (success)
+            {
+                Snackbar.Add("Changes committed successfully", Severity.Success);
+                _commitMessage = string.Empty;
+                await LoadRepositoryInfo();
+            }
+            else
+            {
+                Snackbar.Add("Failed to commit changes. There may be no changes to commit.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error committing changes: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Fetch()
+    {
+        try
+        {
+            var success = await GitService.FetchAsync();
+            
+            if (success)
+            {
+                Snackbar.Add("Fetched changes from remote", Severity.Success);
+                await LoadRepositoryInfo();
+            }
+            else
+            {
+                Snackbar.Add("Failed to fetch. No remote configured.", Severity.Warning);
+            }
+        }
+        catch (LibGit2Sharp.LibGit2SharpException ex)
+        {
+            Snackbar.Add($"Git error: {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error fetching: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Pull()
+    {
+        try
+        {
+            var success = await GitService.PullAsync();
+            
+            if (success)
+            {
+                Snackbar.Add("Pulled changes from remote", Severity.Success);
+                await LoadRepositoryInfo();
+            }
+            else
+            {
+                Snackbar.Add("Failed to pull. No remote configured.", Severity.Warning);
+            }
+        }
+        catch (LibGit2Sharp.LibGit2SharpException ex)
+        {
+            Snackbar.Add($"Git error: {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error pulling: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Push()
+    {
+        try
+        {
+            var success = await GitService.PushAsync();
+            
+            if (success)
+            {
+                Snackbar.Add("Pushed changes to remote", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to push. No remote configured.", Severity.Warning);
+            }
+        }
+        catch (LibGit2Sharp.LibGit2SharpException ex)
+        {
+            Snackbar.Add($"Git error: {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error pushing: {ex.Message}", Severity.Error);
+        }
+    }
+}

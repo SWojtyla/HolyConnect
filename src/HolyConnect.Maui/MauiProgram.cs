@@ -104,6 +104,7 @@ public static class MauiProgram
 		builder.Services.AddScoped<IFormatterService, FormatterService>();
 		builder.Services.AddScoped<IVariableResolver, VariableResolver>();
 		builder.Services.AddScoped<IRequestHistoryService, RequestHistoryService>();
+		builder.Services.AddScoped<IGitService>(sp => new GitService(GetStoragePathSafe));
 		builder.Services.AddScoped<IResponseValueExtractor, ResponseValueExtractor>();
 		builder.Services.AddScoped<IClipboardService, ClipboardService>();
 
