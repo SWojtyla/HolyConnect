@@ -5,27 +5,31 @@
 
 @if (Response != null)
 {
-    <MudCard Class="mt-4">
-        <MudCardContent>
-            <MudText Typo="Typo.h6">Response</MudText>
-            <MudText Typo="Typo.body2">Status: @Response.StatusCode - @Response.StatusMessage</MudText>
-            <MudText Typo="Typo.body2">Time: @Response.ResponseTime ms</MudText>
-            <MudText Typo="Typo.body2">Size: @Response.Size bytes</MudText>
+    <MudCard Style="height: 100%; display: flex; flex-direction: column;">
+        <MudCardContent Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="flex: 0 0 auto;">
+                <MudText Typo="Typo.h6">Response</MudText>
+                <MudText Typo="Typo.body2">Status: @Response.StatusCode - @Response.StatusMessage</MudText>
+                <MudText Typo="Typo.body2">Time: @Response.ResponseTime ms</MudText>
+                <MudText Typo="Typo.body2">Size: @Response.Size bytes</MudText>
+            </div>
             
-            <MudTabs Class="mt-2" Elevation="2" Rounded="true">
-                <MudTabPanel Text="Body">
-                    <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <MudTabPanel Text="Body" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="pa-4" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" Style="flex: 0 0 auto;">
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="PrettifyResponseBody">
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <MudTextField Value="@_responseBodyDisplay" Lines="30" Variant="Variant.Outlined" ReadOnly="true" />
+                        <div style="flex: 1; min-height: 0; overflow-y: auto;">
+                            <MudTextField Value="@_responseBodyDisplay" Lines="20" Variant="Variant.Outlined" ReadOnly="true" />
+                        </div>
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Headers">
-                    <div class="pa-4" style="overflow-x: auto;">
+                <MudTabPanel Text="Headers" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="pa-4" style="flex: 1; overflow-y: auto;">
                         @foreach (var header in Response.Headers)
                         {
                             <MudText Typo="Typo.body2" Style="word-break: break-word; overflow-wrap: break-word; white-space: normal; max-width: 100%;"><strong>@header.Key:</strong> @header.Value</MudText>
@@ -35,8 +39,8 @@
                 
                 @if (Response.SentRequest != null)
                 {
-                    <MudTabPanel Text="Request">
-                        <div class="pa-4">
+                    <MudTabPanel Text="Request" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                        <div class="pa-4" style="flex: 1; overflow-y: auto;">
                             <MudText Typo="Typo.subtitle1" Class="mb-2"><strong>What was sent:</strong></MudText>
                             <MudText Typo="Typo.body2" Class="mb-1"><strong>Method:</strong> @Response.SentRequest.Method</MudText>
                             <MudText Typo="Typo.body2" Class="mb-2"><strong>URL:</strong> @Response.SentRequest.Url</MudText>
@@ -65,8 +69,8 @@
                     </MudTabPanel>
                 }
                 
-                <MudTabPanel Text="Extract">
-                    <div class="pa-4">
+                <MudTabPanel Text="Extract" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="pa-4" style="flex: 1; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle1" Class="mb-3"><strong>Extract Values from Response</strong></MudText>
                         <MudText Typo="Typo.body2" Class="mb-3">
                             Use JSONPath (e.g., <code>$.data.user.id</code>) for JSON/GraphQL or XPath (e.g., <code>//user/id</code>) for XML.

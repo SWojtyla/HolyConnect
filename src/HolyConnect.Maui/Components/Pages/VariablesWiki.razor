@@ -9,7 +9,7 @@
             Variables allow you to store and reuse values across your API requests. They help you avoid repetition and make it easy to switch between different environments or configurations.
         </MudText>
         <MudText Typo="Typo.body1">
-            Variables in HolyConnect work similarly to Postman and Bruno, using the <code>{{ '{' }}{ variableName }{{ '}' }}</code> syntax.
+            Variables in HolyConnect work similarly to Postman and Bruno, using the <code>{{ variableName }}</code> syntax.
         </MudText>
     </MudPaper>
 
@@ -63,7 +63,7 @@
         </MudAlert>
         <MudText Typo="Typo.body2" Class="mb-2">Use it in your request URL:</MudText>
         <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
-            <code>{{ '{' }}{ API_URL }{{ '}' }}/v1/users</code><br />
+            <code>{{ API_URL }}/v1/users</code><br />
             Resolves to: <code>https://api.example.com/v1/users</code>
         </MudAlert>
 
@@ -76,7 +76,7 @@
         <MudText Typo="Typo.body2" Class="mb-2">Use it in a header:</MudText>
         <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
             Header Key: <code>Authorization</code><br />
-            Header Value: <code>{{ '{' }}{ AUTH_TOKEN }{{ '}' }}</code><br />
+            Header Value: <code>{{ AUTH_TOKEN }}</code><br />
             Resolves to: <code>Bearer abc123xyz</code>
         </MudAlert>
 
@@ -149,7 +149,7 @@
                 <MudText>Variables cannot reference other variables (no nested resolution)</MudText>
             </MudListItem>
             <MudListItem T="string" Icon="@Icons.Material.Filled.Info">
-                <MudText>Missing variables will remain as <code>{{ '{' }}{ variableName }{{ '}' }}</code> in the request (not replaced)</MudText>
+                <MudText>Missing variables will remain as <code>{{ variableName }}</code> in the request (not replaced)</MudText>
             </MudListItem>
         </MudList>
     </MudPaper>

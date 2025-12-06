@@ -1,4 +1,5 @@
 @page "/collection/{CollectionId:guid}/edit"
+@using Microsoft.AspNetCore.WebUtilities
 @inject ICollectionService CollectionService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -57,6 +58,7 @@
     private string _name = string.Empty;
     private string _description = string.Empty;
     private List<VariableModel> _variables = new();
+    private Guid? _requestIdToPreserve;
 
     private class VariableModel
     {
@@ -66,6 +68,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Extract requestId from query parameters
+        var uri = new Uri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("requestId", out var requestIdString) && Guid.TryParse(requestIdString, out var requestId))
+        {
+            _requestIdToPreserve = requestId;
+        }
+        
         _collection = await CollectionService.GetCollectionByIdAsync(CollectionId);
         
         if (_collection != null)
@@ -108,14 +118,24 @@
         await CollectionService.UpdateCollectionAsync(_collection);
         
         Snackbar.Add($"Collection '{_name}' updated successfully", Severity.Success);
-        NavigationManager.NavigateTo($"/environment/{_collection.EnvironmentId}");
+        NavigateBackWithRequest();
     }
 
     private void Cancel()
     {
+        NavigateBackWithRequest();
+    }
+
+    private void NavigateBackWithRequest()
+    {
         if (_collection != null)
         {
-            NavigationManager.NavigateTo($"/environment/{_collection.EnvironmentId}");
+            var url = $"/environment/{_collection.EnvironmentId}";
+            if (_requestIdToPreserve.HasValue)
+            {
+                url += $"?requestId={_requestIdToPreserve.Value}";
+            }
+            NavigationManager.NavigateTo(url);
         }
         else
         {
