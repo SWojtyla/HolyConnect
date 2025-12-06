@@ -331,4 +331,87 @@ public class VariableResolverTests
         // Assert
         Assert.Null(result);
     }
+
+    [Fact]
+    public void SetVariableValue_ToEnvironment_ShouldSetVariable()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Name = "Test",
+            Variables = new Dictionary<string, string>()
+        };
+
+        // Act
+        _variableResolver.SetVariableValue("NEW_VAR", "test_value", environment);
+
+        // Assert
+        Assert.Equal("test_value", environment.Variables["NEW_VAR"]);
+    }
+
+    [Fact]
+    public void SetVariableValue_ToEnvironment_ShouldOverwriteExisting()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Name = "Test",
+            Variables = new Dictionary<string, string>
+            {
+                ["EXISTING_VAR"] = "old_value"
+            }
+        };
+
+        // Act
+        _variableResolver.SetVariableValue("EXISTING_VAR", "new_value", environment);
+
+        // Assert
+        Assert.Equal("new_value", environment.Variables["EXISTING_VAR"]);
+    }
+
+    [Fact]
+    public void SetVariableValue_ToCollection_ShouldSetInCollection()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Name = "Test",
+            Variables = new Dictionary<string, string>()
+        };
+        var collection = new Collection
+        {
+            Name = "Test Collection",
+            Variables = new Dictionary<string, string>()
+        };
+
+        // Act
+        _variableResolver.SetVariableValue("COLL_VAR", "coll_value", environment, collection, saveToCollection: true);
+
+        // Assert
+        Assert.Equal("coll_value", collection.Variables["COLL_VAR"]);
+        Assert.False(environment.Variables.ContainsKey("COLL_VAR"));
+    }
+
+    [Fact]
+    public void SetVariableValue_ToCollectionFalse_ShouldSetInEnvironment()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Name = "Test",
+            Variables = new Dictionary<string, string>()
+        };
+        var collection = new Collection
+        {
+            Name = "Test Collection",
+            Variables = new Dictionary<string, string>()
+        };
+
+        // Act
+        _variableResolver.SetVariableValue("ENV_VAR", "env_value", environment, collection, saveToCollection: false);
+
+        // Assert
+        Assert.Equal("env_value", environment.Variables["ENV_VAR"]);
+        Assert.False(collection.Variables.ContainsKey("ENV_VAR"));
+    }
 }
