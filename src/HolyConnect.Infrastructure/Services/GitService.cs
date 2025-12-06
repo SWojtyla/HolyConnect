@@ -8,6 +8,7 @@ namespace HolyConnect.Infrastructure.Services;
 /// </summary>
 public class GitService : IGitService
 {
+    private const int SHORT_SHA_LENGTH = 7;
     private readonly Func<string> _getStoragePath;
 
     public GitService(Func<string> getStoragePath)
@@ -451,7 +452,7 @@ public class GitService : IGitService
                 .Select(c => new GitCommitInfo
                 {
                     Sha = c.Sha,
-                    ShortSha = c.Sha.Length >= 7 ? c.Sha.Substring(0, 7) : c.Sha,
+                    ShortSha = c.Sha.Length >= SHORT_SHA_LENGTH ? c.Sha.Substring(0, SHORT_SHA_LENGTH) : c.Sha,
                     Message = c.MessageShort,
                     Author = c.Author.Name,
                     Date = c.Author.When
@@ -492,7 +493,7 @@ public class GitService : IGitService
                 .Select(c => new GitCommitInfo
                 {
                     Sha = c.Sha,
-                    ShortSha = c.Sha.Length >= 7 ? c.Sha.Substring(0, 7) : c.Sha,
+                    ShortSha = c.Sha.Length >= SHORT_SHA_LENGTH ? c.Sha.Substring(0, SHORT_SHA_LENGTH) : c.Sha,
                     Message = c.MessageShort,
                     Author = c.Author.Name,
                     Date = c.Author.When

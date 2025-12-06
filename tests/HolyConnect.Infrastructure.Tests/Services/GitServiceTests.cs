@@ -376,8 +376,11 @@ public class GitServiceTests : IDisposable
             
             // Reset local branch to previous commit (simulating remote ahead)
             var headCommit = localRepo.Head.Tip;
-            var previousCommit = headCommit.Parents.First();
-            localRepo.Reset(ResetMode.Hard, previousCommit);
+            var previousCommit = headCommit.Parents.FirstOrDefault();
+            if (previousCommit != null)
+            {
+                localRepo.Reset(ResetMode.Hard, previousCommit);
+            }
             
             // Fetch to update remote tracking branch
             var remote = localRepo.Network.Remotes["origin"];
