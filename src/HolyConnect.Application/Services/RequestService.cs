@@ -11,6 +11,7 @@ public class RequestService : IRequestService
     private readonly IEnumerable<IRequestExecutor> _executors;
     private readonly IVariableResolver _variableResolver;
     private readonly IRequestHistoryService? _historyService;
+    private readonly IResponseValueExtractor? _responseValueExtractor;
 
     public RequestService(
         IRepository<Request> requestRepository,
@@ -18,7 +19,8 @@ public class RequestService : IRequestService
         IRepository<Collection> collectionRepository,
         IEnumerable<IRequestExecutor> executors,
         IVariableResolver variableResolver,
-        IRequestHistoryService? historyService = null)
+        IRequestHistoryService? historyService = null,
+        IResponseValueExtractor? responseValueExtractor = null)
     {
         _requestRepository = requestRepository;
         _environmentRepository = environmentRepository;
@@ -26,6 +28,7 @@ public class RequestService : IRequestService
         _executors = executors;
         _variableResolver = variableResolver;
         _historyService = historyService;
+        _responseValueExtractor = responseValueExtractor;
     }
 
     public async Task<Request> CreateRequestAsync(Request request)
@@ -82,6 +85,12 @@ public class RequestService : IRequestService
         var resolvedRequest = await ResolveRequestVariablesAsync(request);
 
         var response = await executor.ExecuteAsync(resolvedRequest);
+
+        // Apply response extractions if configured
+        if (_responseValueExtractor != null && request.ResponseExtractions.Any(e => e.IsEnabled))
+        {
+            await ApplyResponseExtractionsAsync(request, response);
+        }
 
         // Save to history if history service is available
         if (_historyService != null && response.SentRequest != null)
@@ -217,7 +226,8 @@ public class RequestService : IRequestService
             AuthType = source.AuthType,
             BasicAuthUsername = source.BasicAuthUsername,
             BasicAuthPassword = source.BasicAuthPassword,
-            BearerToken = source.BearerToken
+            BearerToken = source.BearerToken,
+            ResponseExtractions = new List<ResponseExtraction>(source.ResponseExtractions)
         };
     }
 
@@ -243,7 +253,65 @@ public class RequestService : IRequestService
             AuthType = source.AuthType,
             BasicAuthUsername = source.BasicAuthUsername,
             BasicAuthPassword = source.BasicAuthPassword,
-            BearerToken = source.BearerToken
+            BearerToken = source.BearerToken,
+            ResponseExtractions = new List<ResponseExtraction>(source.ResponseExtractions)
         };
+    }
+
+    private async Task ApplyResponseExtractionsAsync(Request request, RequestResponse response)
+    {
+        if (_responseValueExtractor == null || string.IsNullOrWhiteSpace(response.Body))
+        {
+            return;
+        }
+
+        // Load environment and collection for variable saving
+        var environment = await _environmentRepository.GetByIdAsync(request.EnvironmentId);
+        if (environment == null)
+        {
+            return;
+        }
+
+        Collection? collection = null;
+        if (request.CollectionId.HasValue)
+        {
+            collection = await _collectionRepository.GetByIdAsync(request.CollectionId.Value);
+        }
+
+        // Determine content type from headers
+        var contentType = response.Headers.FirstOrDefault(h => 
+            h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "application/json";
+
+        // Apply each enabled extraction
+        foreach (var extraction in request.ResponseExtractions.Where(e => e.IsEnabled))
+        {
+            try
+            {
+                var extractedValue = _responseValueExtractor.ExtractValue(response.Body, extraction.Pattern, contentType);
+                
+                if (extractedValue != null && !string.IsNullOrEmpty(extraction.VariableName))
+                {
+                    // Save to variable
+                    _variableResolver.SetVariableValue(
+                        extraction.VariableName, 
+                        extractedValue, 
+                        environment, 
+                        collection, 
+                        extraction.SaveToCollection);
+
+                    // Update the repository to persist the changes
+                    await _environmentRepository.UpdateAsync(environment);
+                    if (collection != null && extraction.SaveToCollection)
+                    {
+                        await _collectionRepository.UpdateAsync(collection);
+                    }
+                }
+            }
+            catch
+            {
+                // Silently fail for individual extraction errors
+                // This allows other extractions to proceed
+            }
+        }
     }
 }

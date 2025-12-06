@@ -156,6 +156,12 @@ else
                         }
                     </div>
                 </MudTabPanel>
+                
+                <MudTabPanel Text="Extractions">
+                    <div class="pa-4">
+                        <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
+                    </div>
+                </MudTabPanel>
             </MudTabs>
         }
         else if (Request is GraphQLRequest graphQLRequest)
@@ -240,6 +246,12 @@ else
                         {
                             <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
                         }
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Extractions">
+                    <div class="pa-4">
+                        <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
                     </div>
                 </MudTabPanel>
             </MudTabs>

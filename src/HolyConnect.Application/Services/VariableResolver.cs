@@ -65,4 +65,16 @@ public class VariableResolver : IVariableResolver
 
         return null;
     }
+
+    public void SetVariableValue(string variableName, string value, Domain.Entities.Environment environment, Collection? collection = null, bool saveToCollection = false)
+    {
+        if (saveToCollection && collection != null)
+        {
+            collection.Variables[variableName] = value;
+        }
+        else
+        {
+            environment.Variables[variableName] = value;
+        }
+    }
 }
