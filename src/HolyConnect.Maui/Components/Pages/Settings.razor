@@ -89,7 +89,6 @@
 </MudContainer>
 
 @code {
-    private bool _isDarkMode;
     private string _storagePath = string.Empty;
     private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
     private Domain.Entities.ThemePreset _selectedTheme = Domain.Entities.ThemePreset.Default;
@@ -108,7 +107,6 @@
     private async Task LoadSettings()
     {
         var settings = await SettingsService.GetSettingsAsync();
-        _isDarkMode = settings.IsDarkMode;
         _storagePath = settings.StoragePath;
         _requestLayout = settings.Layout;
         _selectedTheme = settings.SelectedTheme;
@@ -119,9 +117,8 @@
         _selectedTheme = preset;
         var theme = ThemeService.GetThemePreset(preset);
         
-        // Update dark mode based on theme
-        _isDarkMode = theme.IsDarkMode;
-        await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+        // Update dark mode and theme based on preset
+        await OnDarkModeToggle.InvokeAsync(theme.IsDarkMode);
         await OnThemeChanged.InvokeAsync(theme);
         
         // Auto-save theme preference
@@ -140,25 +137,6 @@
         }
         
         StateHasChanged();
-    }
-
-    private async Task OnDarkModeChanged(bool value)
-    {
-        _isDarkMode = value;
-        await OnDarkModeToggle.InvokeAsync(_isDarkMode);
-        
-        // Auto-save dark mode preference
-        try
-        {
-            var settings = await SettingsService.GetSettingsAsync();
-            settings.IsDarkMode = _isDarkMode;
-            await SettingsService.SaveSettingsAsync(settings);
-            Snackbar.Add("Dark mode preference saved", Severity.Info);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error saving dark mode preference: {ex.Message}", Severity.Warning);
-        }
     }
 
     private async Task BrowseStoragePath()
@@ -213,23 +191,20 @@
     {
         try
         {
+            // Load existing settings to avoid data loss
+            var settings = await SettingsService.GetSettingsAsync();
             var theme = ThemeService.GetThemePreset(_selectedTheme);
             
-            var settings = new Domain.Entities.AppSettings
-            {
-                IsDarkMode = theme.IsDarkMode,
-                StoragePath = _storagePath,
-                Layout = _requestLayout,
-                SelectedTheme = _selectedTheme,
-                CustomTheme = theme
-            };
+            // Update only the changed properties
+            settings.IsDarkMode = theme.IsDarkMode;
+            settings.StoragePath = _storagePath;
+            settings.Layout = _requestLayout;
+            settings.SelectedTheme = _selectedTheme;
+            settings.CustomTheme = theme;
 
             await SettingsService.SaveSettingsAsync(settings);
             await OnDarkModeToggle.InvokeAsync(theme.IsDarkMode);
             await OnThemeChanged.InvokeAsync(theme);
-            
-            // Update local state
-            _isDarkMode = theme.IsDarkMode;
             
             Snackbar.Add("Settings saved successfully!", Severity.Success);
         }
