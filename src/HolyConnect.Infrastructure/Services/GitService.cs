@@ -192,7 +192,8 @@ public class GitService : IGitService
 
             using var repo = new Repository(repoPath);
             
-            // Stage all changes
+            // Stage all changes (respects .gitignore if present)
+            // Using "*" to stage all modified, added, and deleted files
             Commands.Stage(repo, "*");
             
             var signature = GetSignature(repo);
