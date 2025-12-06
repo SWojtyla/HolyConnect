@@ -2,6 +2,7 @@
 @inject IGitService GitService
 @inject SettingsService SettingsService
 @inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
 @using HolyConnect.Application.Interfaces
 @using LibGit2Sharp
 
@@ -71,10 +72,10 @@
                     <MudItem xs="12" sm="6" md="3">
                         <MudPaper Class="pa-3" Outlined="true">
                             <MudStack Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Add" Color="@(_status?.AddedFiles > 0 ? Color.Success : Color.Default)" />
-                                <MudText Typo="Typo.caption">Added</MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Color="@(_incomingCommits.Any() ? Color.Info : Color.Default)" />
+                                <MudText Typo="Typo.caption">Incoming</MudText>
                                 <MudText Typo="Typo.body1">
-                                    <strong>@(_status?.AddedFiles ?? 0) files</strong>
+                                    <strong>@_incomingCommits.Count() commits</strong>
                                 </MudText>
                             </MudStack>
                         </MudPaper>
@@ -82,15 +83,69 @@
                     <MudItem xs="12" sm="6" md="3">
                         <MudPaper Class="pa-3" Outlined="true">
                             <MudStack Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Delete" Color="@(_status?.DeletedFiles > 0 ? Color.Error : Color.Default)" />
-                                <MudText Typo="Typo.caption">Deleted</MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="@(_outgoingCommits.Any() ? Color.Warning : Color.Default)" />
+                                <MudText Typo="Typo.caption">Outgoing</MudText>
                                 <MudText Typo="Typo.body1">
-                                    <strong>@(_status?.DeletedFiles ?? 0) files</strong>
+                                    <strong>@_outgoingCommits.Count() commits</strong>
                                 </MudText>
                             </MudStack>
                         </MudPaper>
                     </MudItem>
                 </MudGrid>
+
+                @if (_incomingCommits.Any() || _outgoingCommits.Any())
+                {
+                    <MudGrid Class="mt-3">
+                        @if (_incomingCommits.Any())
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">Incoming Commits:</MudText>
+                                <MudList T="string" Dense="true" Class="ml-2">
+                                    @foreach (var commit in _incomingCommits.Take(5))
+                                    {
+                                        <MudListItem T="string">
+                                            <MudText Typo="Typo.body2">
+                                                <strong>@commit.ShortSha</strong> - @commit.Message
+                                                <br />
+                                                <span style="font-size: 0.8em; color: gray;">@commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm")</span>
+                                            </MudText>
+                                        </MudListItem>
+                                    }
+                                    @if (_incomingCommits.Count() > 5)
+                                    {
+                                        <MudListItem T="string">
+                                            <MudText Typo="Typo.caption">... and @(_incomingCommits.Count() - 5) more</MudText>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            </MudItem>
+                        }
+                        @if (_outgoingCommits.Any())
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">Outgoing Commits:</MudText>
+                                <MudList T="string" Dense="true" Class="ml-2">
+                                    @foreach (var commit in _outgoingCommits.Take(5))
+                                    {
+                                        <MudListItem T="string">
+                                            <MudText Typo="Typo.body2">
+                                                <strong>@commit.ShortSha</strong> - @commit.Message
+                                                <br />
+                                                <span style="font-size: 0.8em; color: gray;">@commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm")</span>
+                                            </MudText>
+                                        </MudListItem>
+                                    }
+                                    @if (_outgoingCommits.Count() > 5)
+                                    {
+                                        <MudListItem T="string">
+                                            <MudText Typo="Typo.caption">... and @(_outgoingCommits.Count() - 5) more</MudText>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
 
                 @if (_status?.HasChanges == true)
                 {
@@ -161,6 +216,33 @@
                                   FullWidth="true"
                                   StartIcon="@Icons.Material.Filled.Add">
                             Create
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-3" />
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Delete Branch:</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="8">
+                        <MudSelect @bind-Value="_branchToDelete" 
+                                  Label="Select Branch to Delete" 
+                                  Variant="Variant.Outlined"
+                                  T="string">
+                            @foreach (var branch in _branches.Where(b => b != _currentBranch))
+                            {
+                                <MudSelectItem Value="@branch">@branch</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Error" 
+                                  OnClick="DeleteBranch"
+                                  Disabled="@string.IsNullOrEmpty(_branchToDelete)"
+                                  FullWidth="true"
+                                  StartIcon="@Icons.Material.Filled.Delete">
+                            Delete
                         </MudButton>
                     </MudItem>
                 </MudGrid>
@@ -253,9 +335,12 @@
     private string? _currentBranch;
     private List<string> _branches = new();
     private string? _selectedBranch;
+    private string? _branchToDelete;
     private string _newBranchName = string.Empty;
     private string _commitMessage = string.Empty;
     private GitStatus? _status;
+    private IEnumerable<GitCommitInfo> _incomingCommits = Enumerable.Empty<GitCommitInfo>();
+    private IEnumerable<GitCommitInfo> _outgoingCommits = Enumerable.Empty<GitCommitInfo>();
     private bool _isLoading;
     private bool _isFetching;
     private bool _isPulling;
@@ -281,6 +366,8 @@
         _branches = (await GitService.GetBranchesAsync()).ToList();
         _selectedBranch = _currentBranch;
         _status = await GitService.GetStatusAsync();
+        _incomingCommits = await GitService.GetIncomingCommitsAsync();
+        _outgoingCommits = await GitService.GetOutgoingCommitsAsync();
         StateHasChanged();
     }
 
@@ -338,8 +425,11 @@
             
             if (success)
             {
-                Snackbar.Add($"Switched to branch '{_selectedBranch}'", Severity.Success);
+                Snackbar.Add($"Switched to branch '{_selectedBranch}'. Collections and environments will be reloaded.", Severity.Success);
                 await LoadRepositoryInfo();
+                // Force navigation refresh to reload all data from the new branch
+                // This ensures collections, environments, and requests are in sync
+                NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
             }
             else
             {
@@ -375,6 +465,32 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error creating branch: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteBranch()
+    {
+        if (string.IsNullOrEmpty(_branchToDelete))
+            return;
+
+        try
+        {
+            var success = await GitService.DeleteBranchAsync(_branchToDelete);
+            
+            if (success)
+            {
+                Snackbar.Add($"Branch '{_branchToDelete}' deleted successfully", Severity.Success);
+                _branchToDelete = null;
+                await LoadRepositoryInfo();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete branch '{_branchToDelete}'. Make sure you're not on that branch.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting branch: {ex.Message}", Severity.Error);
         }
     }
 
@@ -450,8 +566,10 @@
             
             if (success)
             {
-                Snackbar.Add("Successfully pulled changes from remote", Severity.Success);
+                Snackbar.Add("Successfully pulled changes from remote. Collections and environments will be reloaded.", Severity.Success);
                 await LoadRepositoryInfo();
+                // Force navigation refresh to reload all data from the pulled changes
+                NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
             }
             else
             {

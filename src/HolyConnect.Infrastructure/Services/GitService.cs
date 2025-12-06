@@ -398,4 +398,112 @@ public class GitService : IGitService
             _ => "Changed"
         };
     }
+
+    public Task<bool> DeleteBranchAsync(string branchName)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            var branch = repo.Branches[branchName];
+            if (branch == null)
+                return Task.FromResult(false);
+
+            // Cannot delete current branch
+            if (branch.IsCurrentRepositoryHead)
+                return Task.FromResult(false);
+
+            repo.Branches.Remove(branch);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<IEnumerable<GitCommitInfo>> GetIncomingCommitsAsync()
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+
+            using var repo = new Repository(repoPath);
+            var currentBranch = repo.Head;
+            
+            // Check if there's a tracked branch
+            if (currentBranch.TrackedBranch == null)
+                return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+
+            // Get commits that are in remote but not in local
+            var filter = new CommitFilter
+            {
+                IncludeReachableFrom = currentBranch.TrackedBranch,
+                ExcludeReachableFrom = currentBranch
+            };
+
+            var incomingCommits = repo.Commits.QueryBy(filter)
+                .Select(c => new GitCommitInfo
+                {
+                    Sha = c.Sha,
+                    ShortSha = c.Sha.Substring(0, 7),
+                    Message = c.MessageShort,
+                    Author = c.Author.Name,
+                    Date = c.Author.When
+                })
+                .ToList();
+
+            return Task.FromResult<IEnumerable<GitCommitInfo>>(incomingCommits);
+        }
+        catch
+        {
+            return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+        }
+    }
+
+    public Task<IEnumerable<GitCommitInfo>> GetOutgoingCommitsAsync()
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+
+            using var repo = new Repository(repoPath);
+            var currentBranch = repo.Head;
+            
+            // Check if there's a tracked branch
+            if (currentBranch.TrackedBranch == null)
+                return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+
+            // Get commits that are in local but not in remote
+            var filter = new CommitFilter
+            {
+                IncludeReachableFrom = currentBranch,
+                ExcludeReachableFrom = currentBranch.TrackedBranch
+            };
+
+            var outgoingCommits = repo.Commits.QueryBy(filter)
+                .Select(c => new GitCommitInfo
+                {
+                    Sha = c.Sha,
+                    ShortSha = c.Sha.Substring(0, 7),
+                    Message = c.MessageShort,
+                    Author = c.Author.Name,
+                    Date = c.Author.When
+                })
+                .ToList();
+
+            return Task.FromResult<IEnumerable<GitCommitInfo>>(outgoingCommits);
+        }
+        catch
+        {
+            return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+        }
+    }
 }

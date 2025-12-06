@@ -59,6 +59,21 @@ public interface IGitService
     /// Checks if the storage path is a git repository
     /// </summary>
     Task<bool> IsRepositoryAsync();
+
+    /// <summary>
+    /// Deletes the specified branch
+    /// </summary>
+    Task<bool> DeleteBranchAsync(string branchName);
+
+    /// <summary>
+    /// Gets incoming commits (commits in remote that are not in local)
+    /// </summary>
+    Task<IEnumerable<GitCommitInfo>> GetIncomingCommitsAsync();
+
+    /// <summary>
+    /// Gets outgoing commits (commits in local that are not pushed to remote)
+    /// </summary>
+    Task<IEnumerable<GitCommitInfo>> GetOutgoingCommitsAsync();
 }
 
 /// <summary>
@@ -72,4 +87,16 @@ public class GitStatus
     public int DeletedFiles { get; set; }
     public int UntrackedFiles { get; set; }
     public List<string> Changes { get; set; } = new();
+}
+
+/// <summary>
+/// Represents information about a git commit
+/// </summary>
+public class GitCommitInfo
+{
+    public string Sha { get; set; } = string.Empty;
+    public string ShortSha { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string Author { get; set; } = string.Empty;
+    public DateTimeOffset Date { get; set; }
 }
