@@ -234,7 +234,7 @@
                                   OnClick="Push"
                                   StartIcon="@Icons.Material.Filled.Publish"
                                   FullWidth="true"
-                                  Disabled="_isLoading || _status?.HasChanges == false">
+                                  Disabled="(_isLoading || (_status?.HasChanges == false))">
                             @if (_isPushing)
                             {
                                 <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
