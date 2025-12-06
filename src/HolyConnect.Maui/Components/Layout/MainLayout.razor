@@ -93,7 +93,7 @@
         StateHasChanged();
     }
 
-    private async Task ApplyCustomTheme(Domain.Entities.CustomTheme theme)
+    private void ApplyCustomTheme(Domain.Entities.CustomTheme theme)
     {
         _customTheme = theme;
         _isDarkMode = theme.IsDarkMode;
