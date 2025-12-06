@@ -1,6 +1,9 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 @inject SettingsService SettingsService
+@inject IGitService GitService
+@using HolyConnect.Application.Interfaces
+@implements IDisposable
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="@_isDarkMode" />
 
@@ -9,6 +12,17 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
         <MudText Typo="Typo.h6">HolyConnect</MudText>
         <MudSpacer />
+        @if (_isGitRepository && !string.IsNullOrEmpty(_currentBranch))
+        {
+            <MudChip T="string" 
+                     Icon="@Icons.Material.Filled.Source" 
+                     Color="Color.Info" 
+                     Size="Size.Small" 
+                     OnClick="NavigateToGit"
+                     Class="mr-2">
+                @_currentBranch
+            </MudChip>
+        }
         <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" OnClick="NavigateToSettings" />
     </MudAppBar>
     
@@ -33,18 +47,57 @@
     private bool _isDarkMode = false;
     private MudThemeProvider? _mudThemeProvider;
     private MudTheme _theme = new MudTheme();
+    private bool _isGitRepository = false;
+    private string? _currentBranch;
+    private System.Threading.Timer? _gitStatusTimer;
 
     private EventCallback<bool> DarkModeToggleCallback => EventCallback.Factory.Create<bool>(this, ToggleDarkMode);
 
     protected override async Task OnInitializedAsync()
     {
+        NavigationManager.LocationChanged += OnLocationChanged;
         await LoadDarkModePreference();
+        await LoadGitStatus();
+        
+        // Refresh git status every 10 seconds
+        _gitStatusTimer = new System.Threading.Timer(async _ => 
+        {
+            await LoadGitStatus();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
     }
 
     private async Task LoadDarkModePreference()
     {
         var settings = await SettingsService.GetSettingsAsync();
         _isDarkMode = settings.IsDarkMode;
+    }
+
+    private async Task LoadGitStatus()
+    {
+        try
+        {
+            _isGitRepository = await GitService.IsRepositoryAsync();
+            if (_isGitRepository)
+            {
+                _currentBranch = await GitService.GetCurrentBranchAsync();
+            }
+        }
+        catch
+        {
+            _isGitRepository = false;
+            _currentBranch = null;
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        try
+        {
+            await LoadGitStatus();
+            StateHasChanged();
+        }
+        catch { }
     }
 
     private void ToggleDrawer()
@@ -57,9 +110,20 @@
         NavigationManager.NavigateTo("/settings");
     }
 
+    private void NavigateToGit()
+    {
+        NavigationManager.NavigateTo("/git");
+    }
+
     private async Task ToggleDarkMode(bool isDark)
     {
         _isDarkMode = isDark;
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        _gitStatusTimer?.Dispose();
     }
 }
