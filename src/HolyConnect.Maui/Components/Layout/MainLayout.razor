@@ -97,7 +97,11 @@
             await LoadGitStatus();
             StateHasChanged();
         }
-        catch { }
+        catch (Exception)
+        {
+            // Silently ignore errors when loading git status during navigation
+            // This is acceptable as git status is a non-critical UI feature
+        }
     }
 
     private void ToggleDrawer()

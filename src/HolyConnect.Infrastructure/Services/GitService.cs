@@ -1,6 +1,5 @@
 using HolyConnect.Application.Interfaces;
 using LibGit2Sharp;
-using System.Text;
 
 namespace HolyConnect.Infrastructure.Services;
 
