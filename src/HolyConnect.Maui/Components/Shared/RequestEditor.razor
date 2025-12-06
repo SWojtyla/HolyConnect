@@ -258,13 +258,25 @@ else
         }
     </MudCardContent>
     <MudCardActions>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExecuteRequest" StartIcon="@Icons.Material.Filled.Send">
-            Send
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  OnClick="ExecuteRequest" 
+                  StartIcon="@Icons.Material.Filled.Send"
+                  Disabled="_isExecuting">
+            @if (_isExecuting)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                <span>Sending...</span>
+            }
+            else
+            {
+                <span>Send</span>
+            }
         </MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveRequestInternal">
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveRequestInternal" Disabled="_isExecuting">
             Save
         </MudButton>
-        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())">
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())" Disabled="_isExecuting">
             Cancel
         </MudButton>
     </MudCardActions>
@@ -297,6 +309,7 @@ else
     private List<ParamModel> _queryParams = new();
     private RequestResponse? _response;
     private Domain.Entities.RequestLayout _layout = Domain.Entities.RequestLayout.Horizontal;
+    private bool _isExecuting;
 
     private class HeaderModel
     {
@@ -438,16 +451,24 @@ else
     {
         if (Request == null) return;
 
+        _isExecuting = true;
+        StateHasChanged();
+
         try
         {
             SyncHeaders();
             SyncQueryParams();
             _response = await RequestService.ExecuteRequestAsync(Request);
-            StateHasChanged();
+            Snackbar.Add("Request executed successfully", Severity.Success);
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error executing request: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isExecuting = false;
+            StateHasChanged();
         }
     }
 

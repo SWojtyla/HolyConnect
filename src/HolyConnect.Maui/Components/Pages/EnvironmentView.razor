@@ -9,32 +9,40 @@
 @implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.False" Class="d-flex pa-0" Style="height: calc(100vh - 64px);">
-    <MudPaper Elevation="2" Class="overflow-y-auto flex-shrink-0" Style="width: 300px; min-width: 300px; border-right: 1px solid #e0e0e0;">
+    <MudPaper Elevation="2" Class="overflow-y-auto flex-shrink-0" Style="width: 320px; min-width: 320px; border-right: 1px solid var(--mud-palette-divider);">
         @if (_environment != null)
         {
-            <MudToolBar Dense="true" Style="background-color: var(--mud-palette-primary); color: white;">
-                <MudText Typo="Typo.h6">@_environment.Name</MudText>
+            <MudToolBar Dense="true" Class="mud-theme-primary">
+                <MudTooltip Text="@_environment.Name">
+                    <MudText Typo="Typo.h6" Class="text-truncate">@_environment.Name</MudText>
+                </MudTooltip>
                 <MudSpacer />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="EditEnvironment" aria-label="Edit environment" Color="Color.Inherit" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Inherit" OnClick="DeleteEnvironment" aria-label="Delete environment" />
-                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="ShowCreateMenu" aria-label="Add collection or request" Color="Color.Inherit" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="EditEnvironment" Title="Edit environment" Color="Color.Inherit" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Inherit" OnClick="DeleteEnvironment" Title="Delete environment" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="ShowCreateMenu" Title="Add collection or request" Color="Color.Inherit" />
             </MudToolBar>
             
             <div>
                 @* Environment-level requests *@
                 @if (_environmentRequests != null && _environmentRequests.Any())
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-2 mt-2 font-weight-medium">Requests</MudText>
+                    <MudText Typo="Typo.body2" Class="pa-2 mt-2" Color="Color.Primary"><strong>Requests</strong></MudText>
                     @foreach (var request in _environmentRequests)
                     {
-                        <MudPaper Class="pa-2 mb-1 ml-2" Style="@GetEnvironmentRequestStyle(request)">
+                        <MudPaper Class="@($"pa-3 mb-1 mx-2 cursor-pointer {(request.Id == _selectedRequest?.Id ? "mud-theme-primary" : "")}")" 
+                                 Outlined="true"
+                                 Style="@(request.Id == _selectedRequest?.Id ? "border-color: var(--mud-palette-primary);" : "")"
+                                 @onclick="@(() => SelectRequest(request))">
                             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                <MudText Class="flex-grow-1 cursor-pointer" @onclick="@(() => SelectRequest(request))">
-                                    <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
-                                </MudText>
-                                <MudStack Row="true" Spacing="1" @onclick:stopPropagation="true">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" />
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" />
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="flex-grow-1" Style="min-width: 0;">
+                                    <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" />
+                                    <MudTooltip Text="@request.Name">
+                                        <MudText Class="text-truncate">@request.Name</MudText>
+                                    </MudTooltip>
+                                </MudStack>
+                                <MudStack Row="true" Spacing="0" @onclick:stopPropagation="true" Class="flex-shrink-0">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" Title="Rename request" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" Title="Delete request" />
                                 </MudStack>
                             </MudStack>
                         </MudPaper>
@@ -44,7 +52,7 @@
                 @* Collections *@
                 @if (_collections != null && _collections.Any())
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-2 mt-2 font-weight-medium">Collections</MudText>
+                    <MudText Typo="Typo.body2" Class="pa-2 mt-3" Color="Color.Primary"><strong>Collections</strong></MudText>
                     @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
                     {
                         <CollectionTreeItem Collection="@collection" 
@@ -59,39 +67,58 @@
                 
                 @if ((_collections == null || !_collections.Any()) && (_environmentRequests == null || !_environmentRequests.Any()))
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-4">No collections or requests yet</MudText>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="ma-4">
+                        No collections or requests yet. Click the + button to add one!
+                    </MudAlert>
                 }
             </div>
         }
     </MudPaper>
 
-    <MudPaper Class="flex-grow-1 overflow-y-auto pa-4">
+    <MudPaper Class="flex-grow-1 overflow-y-auto pa-4" Elevation="0">
         @if (_selectedCollection != null)
         {
             <MudBreadcrumbs Items="@GetBreadcrumbs()" Class="mb-4"></MudBreadcrumbs>
-            <MudText Typo="Typo.h5" Class="mb-4">@_selectedCollection.Name</MudText>
-            <MudText Typo="Typo.body1" Class="mb-4">@_selectedCollection.Description</MudText>
-            
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateRequest" StartIcon="@Icons.Material.Filled.Add">
-                New Request
-            </MudButton>
-
-            <MudText Typo="Typo.h6" Class="mt-4 mb-2">Requests</MudText>
-            @if (_selectedCollection.Requests != null && _selectedCollection.Requests.Any())
-            {
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
                 <div>
-                    @foreach (var request in _selectedCollection.Requests)
+                    <MudText Typo="Typo.h5" Class="mb-2">@_selectedCollection.Name</MudText>
+                    @if (!string.IsNullOrEmpty(_selectedCollection.Description))
                     {
-                        <MudPaper Class="pa-2 mb-2 cursor-pointer" @onclick="@(() => SelectRequest(request))">
-                            <MudText>@request.Name</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Default">@request.Type</MudText>
-                        </MudPaper>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">@_selectedCollection.Description</MudText>
                     }
                 </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateRequest" StartIcon="@Icons.Material.Filled.Add">
+                    New Request
+                </MudButton>
+            </MudStack>
+
+            <MudText Typo="Typo.h6" Class="mb-3">Requests in this Collection</MudText>
+            @if (_selectedCollection.Requests != null && _selectedCollection.Requests.Any())
+            {
+                <MudGrid Spacing="2">
+                    @foreach (var request in _selectedCollection.Requests)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudPaper Class="pa-3 cursor-pointer" Outlined="true" @onclick="@(() => SelectRequest(request))">
+                                <MudStack Spacing="1">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" />
+                                        <MudTooltip Text="@request.Name">
+                                            <MudText Typo="Typo.subtitle1" Class="text-truncate"><strong>@request.Name</strong></MudText>
+                                        </MudTooltip>
+                                    </MudStack>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetRequestColor(request.Type)">@request.Type</MudChip>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
             }
             else
             {
-                <MudText Typo="Typo.body2" Color="Color.Default">No requests in this collection</MudText>
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    No requests in this collection. Click "New Request" to add one!
+                </MudAlert>
             }
         }
         else if (_selectedRequest != null)
@@ -105,8 +132,27 @@
         }
         else
         {
-            <MudBreadcrumbs Items="@GetBreadcrumbs()" Class="mb-4"></MudBreadcrumbs>
-            <MudText Typo="Typo.h6">Select a collection to view its requests</MudText>
+            <div Class="d-flex flex-column align-center justify-center" Style="height: 100%;">
+                <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Large" Color="Color.Primary" Class="mb-4" Style="font-size: 5rem;" />
+                <MudText Typo="Typo.h5" Class="mb-2">Welcome to @(_environment?.Name ?? "Environment")</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mb-4">
+                    Select a collection or request from the sidebar to get started
+                </MudText>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              StartIcon="@Icons.Material.Filled.Add"
+                              OnClick="ShowCreateMenu">
+                        Create New
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" 
+                              Color="Color.Primary" 
+                              StartIcon="@Icons.Material.Filled.History"
+                              OnClick="@(() => NavigationManager.NavigateTo("/history"))">
+                        View History
+                    </MudButton>
+                </MudStack>
+            </div>
         }
     </MudPaper>
 </MudContainer>
@@ -414,14 +460,7 @@
         _ => Color.Default
     };
 
-    private string GetEnvironmentRequestStyle(Request request)
-    {
-        if (_selectedRequest != null && request.Id == _selectedRequest.Id)
-        {
-            return "background-color: rgba(var(--mud-palette-primary-rgb), 0.12); border-left: 3px solid var(--mud-palette-primary);";
-        }
-        return string.Empty;
-    }
+
 
     private List<BreadcrumbItem> GetBreadcrumbs()
     {
