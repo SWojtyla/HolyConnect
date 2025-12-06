@@ -64,6 +64,7 @@ The innermost layer containing:
   - `RestRequest`: HTTP REST API requests
   - `GraphQLRequest`: GraphQL queries and mutations
   - `RequestResponse`: Response data from executed requests
+  - `ResponseExtraction`: Rules for extracting values from response bodies
 
 - **Business Rules**: Domain logic independent of external concerns
 - **No Framework Dependencies**: Pure C# classes
@@ -75,12 +76,15 @@ Contains business logic and orchestration:
 - **Service Interfaces**:
   - `IRepository<T>`: Generic repository pattern for data access
   - `IRequestExecutor`: Interface for executing different request types
+  - `IResponseValueExtractor`: Interface for extracting values from response bodies
+  - `IClipboardService`: Interface for clipboard operations
 
 - **Application Services**:
   - `EnvironmentService`: Manages environment CRUD operations
   - `CollectionService`: Handles collection management
   - `RequestService`: Coordinates request storage and execution
   - `VariableResolver`: Resolves variables in requests using environment and collection values
+  - `ResponseValueExtractor`: Extracts values from JSON/XML responses using JSONPath/XPath patterns
   - `IGitService`: Interface for git version control operations
 
 - **Use Cases**: Business workflows that orchestrate domain entities
@@ -90,6 +94,13 @@ Contains business logic and orchestration:
   - Resolved before request execution in `RequestService`
   - Collection variables take precedence over environment variables
   - Supports URL, headers, query parameters, and request body
+
+- **Response Value Extraction**:
+  - Supports JSONPath for JSON/GraphQL responses (e.g., `$.data.user.id`)
+  - Supports XPath for XML responses (e.g., `//user/id`)
+  - Automatic extraction after request execution using configured rules
+  - Extracted values can be saved to environment or collection variables
+  - Ad-hoc extraction available via UI for manual value extraction
 
 ### 3. Infrastructure Layer (HolyConnect.Infrastructure)
 **Dependencies**: Application Layer, Domain Layer
@@ -108,6 +119,9 @@ Implements external concerns:
   - Supports initialize, commit, branch, fetch, pull, push operations
 
 - **External Services**: HTTP clients, file systems, databases, git repositories
+- **External Services**: 
+  - HTTP clients, file systems, databases
+  - `ClipboardService`: Platform-specific clipboard operations using MAUI Essentials
 
 ### 4. Presentation Layer (HolyConnect.Maui)
 **Dependencies**: All layers

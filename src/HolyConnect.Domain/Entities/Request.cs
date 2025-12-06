@@ -19,6 +19,7 @@ public abstract class Request
     public string? BasicAuthUsername { get; set; }
     public string? BasicAuthPassword { get; set; }
     public string? BearerToken { get; set; }
+    public List<ResponseExtraction> ResponseExtractions { get; set; } = new();
 }
 
 public enum RequestType

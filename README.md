@@ -11,6 +11,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 💾 **Request Storage**: Save and reuse your API requests
 - 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
 - 🔄 **Git Integration**: Version control your collections with git support (initialize, commit, branch, push, pull)
+- 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
 - 🏗️ **Extensible Architecture**: Built with clean architecture principles for easy extension
 
@@ -123,6 +124,23 @@ HolyConnect/
 5. Switch between branches to work on different versions
 6. Fetch, pull, and push to sync with remote repositories
 7. View the current branch in the app bar header
+
+### Extracting Response Values
+
+1. **Ad-hoc extraction** (Extract tab in response):
+   - Enter a JSONPath pattern (e.g., `$.data.user.id`) for JSON/GraphQL
+   - Or XPath pattern (e.g., `//user/id`) for XML
+   - Click "Extract" to see the value
+   - Click "Copy to Clipboard" to copy the extracted value
+
+2. **Automated extraction** (Extractions tab in request):
+   - Add extraction rules to automatically capture values after each request
+   - Specify the pattern, variable name, and save location (environment or collection)
+   - Extracted values are automatically saved to variables for reuse in subsequent requests
+
+**Example patterns:**
+- JSON: `$.data.user.id`, `$.items[0].name`, `$.response.token`
+- XML: `//user/id`, `//items/item[1]/name`, `//response/token`
 
 ## Extending the Application
 

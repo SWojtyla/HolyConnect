@@ -41,4 +41,14 @@ public interface IVariableResolver
     /// <param name="collection">Optional collection containing variables</param>
     /// <returns>The variable value if found, null otherwise</returns>
     string? GetVariableValue(string variableName, Domain.Entities.Environment environment, Collection? collection = null);
+
+    /// <summary>
+    /// Sets a variable value in the environment or collection.
+    /// </summary>
+    /// <param name="variableName">The name of the variable to set</param>
+    /// <param name="value">The value to set</param>
+    /// <param name="environment">The environment to update</param>
+    /// <param name="collection">Optional collection to update</param>
+    /// <param name="saveToCollection">If true and collection is provided, save to collection; otherwise save to environment</param>
+    void SetVariableValue(string variableName, string value, Domain.Entities.Environment environment, Collection? collection = null, bool saveToCollection = false);
 }
