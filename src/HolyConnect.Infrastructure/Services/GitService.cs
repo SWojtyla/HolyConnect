@@ -143,8 +143,13 @@ public class GitService : IGitService
         if (remote == null)
             return Task.FromResult(false);
 
+        var options = new FetchOptions
+        {
+            CredentialsProvider = GetCredentialsProvider()
+        };
+        
         var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-        Commands.Fetch(repo, remote.Name, refSpecs, null, "fetch");
+        Commands.Fetch(repo, remote.Name, refSpecs, options, "fetch");
         return Task.FromResult(true);
     }
 
@@ -162,7 +167,13 @@ public class GitService : IGitService
             return Task.FromResult(false);
 
         var signature = GetSignature(repo);
-        var options = new PullOptions();
+        var options = new PullOptions
+        {
+            FetchOptions = new FetchOptions
+            {
+                CredentialsProvider = GetCredentialsProvider()
+            }
+        };
         
         Commands.Pull(repo, signature, options);
         return Task.FromResult(true);
@@ -215,8 +226,11 @@ public class GitService : IGitService
         if (remote == null)
             return Task.FromResult(false);
 
-        // Set up push options with default credentials provider
-        var options = new PushOptions();
+        // Set up push options with credentials provider
+        var options = new PushOptions
+        {
+            CredentialsProvider = GetCredentialsProvider()
+        };
         
         // If branch doesn't have upstream, set it
         if (branch.TrackedBranch == null)
@@ -272,6 +286,16 @@ public class GitService : IGitService
         var name = repo.Config.Get<string>("user.name")?.Value ?? "HolyConnect User";
         var email = repo.Config.Get<string>("user.email")?.Value ?? "user@holyconnect.local";
         return new Signature(name, email, DateTimeOffset.Now);
+    }
+
+    private LibGit2Sharp.Handlers.CredentialsHandler GetCredentialsProvider()
+    {
+        return (url, usernameFromUrl, types) =>
+        {
+            // Use DefaultCredentials which leverages the system's credential store
+            // This includes SSH keys from ~/.ssh and git credential helpers
+            return new DefaultCredentials();
+        };
     }
 
     private string GetChangeType(FileStatus status)
