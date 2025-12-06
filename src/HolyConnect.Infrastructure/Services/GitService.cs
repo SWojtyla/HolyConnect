@@ -132,54 +132,40 @@ public class GitService : IGitService
 
     public Task<bool> FetchAsync()
     {
-        try
-        {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
-                return Task.FromResult(false);
-
-            using var repo = new Repository(repoPath);
-            
-            // Check if there's a remote configured
-            var remote = repo.Network.Remotes.FirstOrDefault();
-            if (remote == null)
-                return Task.FromResult(false);
-
-            var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-            Commands.Fetch(repo, remote.Name, refSpecs, null, "fetch");
-            return Task.FromResult(true);
-        }
-        catch
-        {
+        var repoPath = GetRepositoryPath();
+        if (!Repository.IsValid(repoPath))
             return Task.FromResult(false);
-        }
+
+        using var repo = new Repository(repoPath);
+        
+        // Check if there's a remote configured
+        var remote = repo.Network.Remotes.FirstOrDefault();
+        if (remote == null)
+            return Task.FromResult(false);
+
+        var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+        Commands.Fetch(repo, remote.Name, refSpecs, null, "fetch");
+        return Task.FromResult(true);
     }
 
     public Task<bool> PullAsync()
     {
-        try
-        {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
-                return Task.FromResult(false);
-
-            using var repo = new Repository(repoPath);
-            
-            // Check if there's a remote configured
-            var remote = repo.Network.Remotes.FirstOrDefault();
-            if (remote == null)
-                return Task.FromResult(false);
-
-            var signature = GetSignature(repo);
-            var options = new PullOptions();
-            
-            Commands.Pull(repo, signature, options);
-            return Task.FromResult(true);
-        }
-        catch
-        {
+        var repoPath = GetRepositoryPath();
+        if (!Repository.IsValid(repoPath))
             return Task.FromResult(false);
-        }
+
+        using var repo = new Repository(repoPath);
+        
+        // Check if there's a remote configured
+        var remote = repo.Network.Remotes.FirstOrDefault();
+        if (remote == null)
+            return Task.FromResult(false);
+
+        var signature = GetSignature(repo);
+        var options = new PullOptions();
+        
+        Commands.Pull(repo, signature, options);
+        return Task.FromResult(true);
     }
 
     public Task<bool> CommitAllAsync(string message)
@@ -214,31 +200,34 @@ public class GitService : IGitService
 
     public Task<bool> PushAsync()
     {
-        try
-        {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
-                return Task.FromResult(false);
-
-            using var repo = new Repository(repoPath);
-            
-            var branch = repo.Head;
-            if (branch == null)
-                return Task.FromResult(false);
-
-            // Check if there's a remote configured
-            var remote = repo.Network.Remotes.FirstOrDefault();
-            if (remote == null)
-                return Task.FromResult(false);
-
-            var options = new PushOptions();
-            repo.Network.Push(branch, options);
-            return Task.FromResult(true);
-        }
-        catch
-        {
+        var repoPath = GetRepositoryPath();
+        if (!Repository.IsValid(repoPath))
             return Task.FromResult(false);
+
+        using var repo = new Repository(repoPath);
+        
+        var branch = repo.Head;
+        if (branch == null)
+            return Task.FromResult(false);
+
+        // Check if there's a remote configured
+        var remote = repo.Network.Remotes.FirstOrDefault();
+        if (remote == null)
+            return Task.FromResult(false);
+
+        // Set up push options with default credentials provider
+        var options = new PushOptions();
+        
+        // If branch doesn't have upstream, set it
+        if (branch.TrackedBranch == null)
+        {
+            repo.Branches.Update(branch,
+                b => b.Remote = remote.Name,
+                b => b.UpstreamBranch = branch.CanonicalName);
         }
+        
+        repo.Network.Push(branch, options);
+        return Task.FromResult(true);
     }
 
     public Task<GitStatus> GetStatusAsync()

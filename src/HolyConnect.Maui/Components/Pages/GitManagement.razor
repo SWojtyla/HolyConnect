@@ -3,6 +3,7 @@
 @inject SettingsService SettingsService
 @inject ISnackbar Snackbar
 @using HolyConnect.Application.Interfaces
+@using LibGit2Sharp
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Git Management</MudText>
@@ -355,8 +356,12 @@
             }
             else
             {
-                Snackbar.Add("Failed to fetch. No remote may be configured.", Severity.Warning);
+                Snackbar.Add("Failed to fetch. No remote configured.", Severity.Warning);
             }
+        }
+        catch (LibGit2Sharp.LibGit2SharpException ex)
+        {
+            Snackbar.Add($"Git error: {ex.Message}", Severity.Error);
         }
         catch (Exception ex)
         {
@@ -377,8 +382,12 @@
             }
             else
             {
-                Snackbar.Add("Failed to pull. No remote may be configured.", Severity.Warning);
+                Snackbar.Add("Failed to pull. No remote configured.", Severity.Warning);
             }
+        }
+        catch (LibGit2Sharp.LibGit2SharpException ex)
+        {
+            Snackbar.Add($"Git error: {ex.Message}", Severity.Error);
         }
         catch (Exception ex)
         {
@@ -398,8 +407,12 @@
             }
             else
             {
-                Snackbar.Add("Failed to push. No remote may be configured or no commits to push.", Severity.Warning);
+                Snackbar.Add("Failed to push. No remote configured.", Severity.Warning);
             }
+        }
+        catch (LibGit2Sharp.LibGit2SharpException ex)
+        {
+            Snackbar.Add($"Git error: {ex.Message}", Severity.Error);
         }
         catch (Exception ex)
         {
