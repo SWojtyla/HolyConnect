@@ -234,7 +234,14 @@
     private void EditCollection()
     {
         if (Collection == null) return;
-        NavigationManager.NavigateTo($"/collection/{Collection.Id}/edit");
+        
+        // Preserve the selected request when navigating to edit
+        var url = $"/collection/{Collection.Id}/edit";
+        if (SelectedRequestId.HasValue)
+        {
+            url += $"?requestId={SelectedRequestId.Value}";
+        }
+        NavigationManager.NavigateTo(url);
     }
 
     private async Task DeleteCollection()

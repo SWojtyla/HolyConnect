@@ -462,7 +462,14 @@
     private void EditEnvironment()
     {
         if (_environment == null) return;
-        NavigationManager.NavigateTo($"/environment/{_environment.Id}/edit");
+        
+        // Preserve the selected request when navigating to edit
+        var url = $"/environment/{_environment.Id}/edit";
+        if (_selectedRequest != null)
+        {
+            url += $"?requestId={_selectedRequest.Id}";
+        }
+        NavigationManager.NavigateTo(url);
     }
 
     private async Task DeleteEnvironment()
