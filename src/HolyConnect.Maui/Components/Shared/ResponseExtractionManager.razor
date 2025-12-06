@@ -1,7 +1,7 @@
 @using HolyConnect.Domain.Entities
 @inject ISnackbar Snackbar
 
-<MudPaper Class="pa-4 mt-3" Elevation="2">
+<MudPaper Class="pa-4" Elevation="0">
     <MudText Typo="Typo.h6" Class="mb-3">Response Extraction Rules</MudText>
     <MudText Typo="Typo.body2" Class="mb-3">
         Define rules to automatically extract values from responses and save them as variables.
@@ -53,11 +53,17 @@
     </MudButton>
 </MudPaper>
 
-<MudDialog @bind-Visible="_showDialog" Options="_dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">@(_editingExtraction?.Id == Guid.Empty ? "Add" : "Edit") Extraction Rule</MudText>
-    </TitleContent>
-    <DialogContent>
+@if (_showForm)
+{
+    <MudPaper Class="pa-4 mt-3" Elevation="2">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.h6">@(_editingExtraction?.Id == Guid.Empty ? "Add" : "Edit") Extraction Rule</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                          Size="Size.Small" 
+                          OnClick="CancelEdit" 
+                          Title="Close" />
+        </MudStack>
+        
         <MudTextField @bind-Value="_editingExtraction!.Name" 
                       Label="Name" 
                       Variant="Variant.Outlined"
@@ -90,18 +96,20 @@
         
         <MudCheckBox @bind-Value="_editingExtraction!.IsEnabled" 
                      Label="Enabled" 
-                     Color="Color.Primary" />
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CancelEdit">Cancel</MudButton>
-        <MudButton Color="Color.Primary" 
-                   Variant="Variant.Filled" 
-                   OnClick="SaveExtraction"
-                   Disabled="@(!IsExtractionValid())">
-            Save
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+                     Color="Color.Primary" 
+                     Class="mb-3" />
+        
+        <MudStack Row="true" Spacing="2">
+            <MudButton Color="Color.Primary" 
+                       Variant="Variant.Filled" 
+                       OnClick="SaveExtraction"
+                       Disabled="@(!IsExtractionValid())">
+                Save
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="CancelEdit">Cancel</MudButton>
+        </MudStack>
+    </MudPaper>
+}
 
 @code {
     [Parameter]
@@ -110,9 +118,8 @@
     [Parameter]
     public EventCallback<List<ResponseExtraction>> ExtractionsChanged { get; set; }
 
-    private bool _showDialog = false;
+    private bool _showForm = false;
     private ResponseExtraction? _editingExtraction;
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
     private void AddNewExtraction()
     {
@@ -125,7 +132,7 @@
             SaveToCollection = false,
             IsEnabled = true
         };
-        _showDialog = true;
+        _showForm = true;
     }
 
     private void EditExtraction(ResponseExtraction extraction)
@@ -139,7 +146,7 @@
             SaveToCollection = extraction.SaveToCollection,
             IsEnabled = extraction.IsEnabled
         };
-        _showDialog = true;
+        _showForm = true;
     }
 
     private void DeleteExtraction(ResponseExtraction extraction)
@@ -151,7 +158,7 @@
 
     private void CancelEdit()
     {
-        _showDialog = false;
+        _showForm = false;
         _editingExtraction = null;
     }
 
@@ -184,7 +191,7 @@
             }
         }
 
-        _showDialog = false;
+        _showForm = false;
         _editingExtraction = null;
         NotifyChange();
     }

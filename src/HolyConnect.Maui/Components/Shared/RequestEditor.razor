@@ -6,11 +6,11 @@
 @if (_layout == Domain.Entities.RequestLayout.Vertical)
 {
     <!-- Vertical Layout: Request on left, Response on right -->
-    <MudGrid Class="flex-grow-1">
-        <MudItem xs="6" Class="overflow-y-auto">
+    <MudGrid Class="flex-grow-1" Style="height: 100%;">
+        <MudItem xs="6" Style="height: 100%; overflow-y: auto;">
             @RequestConfigurationSection
         </MudItem>
-        <MudItem xs="6" Class="overflow-y-auto">
+        <MudItem xs="6" Style="height: 100%; overflow-y: auto;">
             @ResponseSection
         </MudItem>
     </MudGrid>
@@ -18,7 +18,7 @@
 else
 {
     <!-- Horizontal Layout: Request on top, Response on bottom -->
-    <div>
+    <div Style="height: 100%; display: flex; flex-direction: column; overflow-y: auto;">
         @RequestConfigurationSection
         
         @if (_response != null)
