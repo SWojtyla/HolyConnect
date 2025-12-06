@@ -5,8 +5,11 @@
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Welcome to HolyConnect</MudText>
-    <MudText Typo="Typo.body1" Class="mb-6">
+    <MudStack AlignItems="AlignItems.Center" Class="mb-4">
+        <MudImage Src="holyconnect-logo.svg" Alt="HolyConnect Logo" Height="120" Class="mb-2" />
+        <MudText Typo="Typo.h4">Welcome to HolyConnect</MudText>
+    </MudStack>
+    <MudText Typo="Typo.body1" Class="mb-6" Align="Align.Center">
         A powerful API testing tool for REST, GraphQL, and more. Get started by creating an environment or exploring your existing collections.
     </MudText>
 
