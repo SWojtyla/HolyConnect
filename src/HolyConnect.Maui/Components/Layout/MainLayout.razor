@@ -64,16 +64,28 @@
     {
         if (_customTheme == null) return;
         
-        var palette = _isDarkMode ? _theme.PaletteDark : _theme.PaletteLight;
-        
-        palette.Primary = new MudColor(_customTheme.Primary);
-        palette.Secondary = new MudColor(_customTheme.Secondary);
-        palette.Background = new MudColor(_customTheme.Background);
-        palette.Surface = new MudColor(_customTheme.Surface);
-        palette.AppbarBackground = new MudColor(_customTheme.AppbarBackground);
-        palette.AppbarText = new MudColor(_customTheme.AppbarText);
-        palette.DrawerBackground = new MudColor(_customTheme.DrawerBackground);
-        palette.DrawerText = new MudColor(_customTheme.DrawerText);
+        if (_isDarkMode)
+        {
+            _theme.PaletteDark.Primary = new MudColor(_customTheme.Primary);
+            _theme.PaletteDark.Secondary = new MudColor(_customTheme.Secondary);
+            _theme.PaletteDark.Background = new MudColor(_customTheme.Background);
+            _theme.PaletteDark.Surface = new MudColor(_customTheme.Surface);
+            _theme.PaletteDark.AppbarBackground = new MudColor(_customTheme.AppbarBackground);
+            _theme.PaletteDark.AppbarText = new MudColor(_customTheme.AppbarText);
+            _theme.PaletteDark.DrawerBackground = new MudColor(_customTheme.DrawerBackground);
+            _theme.PaletteDark.DrawerText = new MudColor(_customTheme.DrawerText);
+        }
+        else
+        {
+            _theme.PaletteLight.Primary = new MudColor(_customTheme.Primary);
+            _theme.PaletteLight.Secondary = new MudColor(_customTheme.Secondary);
+            _theme.PaletteLight.Background = new MudColor(_customTheme.Background);
+            _theme.PaletteLight.Surface = new MudColor(_customTheme.Surface);
+            _theme.PaletteLight.AppbarBackground = new MudColor(_customTheme.AppbarBackground);
+            _theme.PaletteLight.AppbarText = new MudColor(_customTheme.AppbarText);
+            _theme.PaletteLight.DrawerBackground = new MudColor(_customTheme.DrawerBackground);
+            _theme.PaletteLight.DrawerText = new MudColor(_customTheme.DrawerText);
+        }
     }
 
     private void ToggleDrawer()
