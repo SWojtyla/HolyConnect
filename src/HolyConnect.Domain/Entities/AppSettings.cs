@@ -17,9 +17,13 @@ public enum RequestLayout
 public enum ThemePreset
 {
     Default,
-    LightContrast,
-    LightSoft,
+    Ocean,
+    Forest,
+    Sunset,
+    Monochrome,
     Dark,
-    DarkContrast,
-    DarkHighSaturation
+    OceanDark,
+    ForestDark,
+    SunsetDark,
+    MonochromeDark
 }

@@ -9,11 +9,15 @@ public static class ThemeProvider
     {
         return preset switch
         {
-            ThemePreset.LightContrast => CreateLightContrastTheme(),
-            ThemePreset.LightSoft => CreateLightSoftTheme(),
+            ThemePreset.Ocean => CreateOceanTheme(),
+            ThemePreset.Forest => CreateForestTheme(),
+            ThemePreset.Sunset => CreateSunsetTheme(),
+            ThemePreset.Monochrome => CreateMonochromeTheme(),
             ThemePreset.Dark => CreateDarkTheme(),
-            ThemePreset.DarkContrast => CreateDarkContrastTheme(),
-            ThemePreset.DarkHighSaturation => CreateDarkHighSaturationTheme(),
+            ThemePreset.OceanDark => CreateOceanDarkTheme(),
+            ThemePreset.ForestDark => CreateForestDarkTheme(),
+            ThemePreset.SunsetDark => CreateSunsetDarkTheme(),
+            ThemePreset.MonochromeDark => CreateMonochromeDarkTheme(),
             _ => CreateDefaultTheme()
         };
     }
@@ -21,8 +25,10 @@ public static class ThemeProvider
     public static bool IsThemeDark(ThemePreset preset)
     {
         return preset == ThemePreset.Dark ||
-               preset == ThemePreset.DarkContrast ||
-               preset == ThemePreset.DarkHighSaturation;
+               preset == ThemePreset.OceanDark ||
+               preset == ThemePreset.ForestDark ||
+               preset == ThemePreset.SunsetDark ||
+               preset == ThemePreset.MonochromeDark;
     }
 
     public static string GetThemeName(ThemePreset preset)
@@ -30,11 +36,15 @@ public static class ThemeProvider
         return preset switch
         {
             ThemePreset.Default => "Default Light",
-            ThemePreset.LightContrast => "Light Contrast",
-            ThemePreset.LightSoft => "Light Soft",
+            ThemePreset.Ocean => "Ocean",
+            ThemePreset.Forest => "Forest",
+            ThemePreset.Sunset => "Sunset",
+            ThemePreset.Monochrome => "Monochrome",
             ThemePreset.Dark => "Dark",
-            ThemePreset.DarkContrast => "Dark Contrast",
-            ThemePreset.DarkHighSaturation => "Dark Vibrant",
+            ThemePreset.OceanDark => "Ocean Dark",
+            ThemePreset.ForestDark => "Forest Dark",
+            ThemePreset.SunsetDark => "Sunset Dark",
+            ThemePreset.MonochromeDark => "Monochrome Dark",
             _ => "Default"
         };
     }
@@ -44,11 +54,15 @@ public static class ThemeProvider
         return preset switch
         {
             ThemePreset.Default => "Clean and minimal light theme with standard colors",
-            ThemePreset.LightContrast => "High contrast light theme for better readability",
-            ThemePreset.LightSoft => "Soft, muted light theme with gentle colors",
+            ThemePreset.Ocean => "Cool and calming blue theme inspired by the ocean",
+            ThemePreset.Forest => "Natural green theme inspired by the forest",
+            ThemePreset.Sunset => "Warm orange theme inspired by sunset colors",
+            ThemePreset.Monochrome => "Minimalist grayscale theme with subtle contrasts",
             ThemePreset.Dark => "Classic dark theme with balanced colors",
-            ThemePreset.DarkContrast => "High contrast dark theme for enhanced visibility",
-            ThemePreset.DarkHighSaturation => "Vibrant dark theme with rich, saturated colors",
+            ThemePreset.OceanDark => "Dark theme with ocean-inspired blue accents",
+            ThemePreset.ForestDark => "Dark theme with forest-inspired green accents",
+            ThemePreset.SunsetDark => "Dark theme with sunset-inspired warm accents",
+            ThemePreset.MonochromeDark => "Dark theme with monochrome grayscale palette",
             _ => "Default theme"
         };
     }
@@ -76,48 +90,98 @@ public static class ThemeProvider
         };
     }
 
-    private static MudTheme CreateLightContrastTheme()
+    private static MudTheme CreateOceanTheme()
     {
         return new MudTheme
         {
             PaletteLight = new PaletteLight
             {
-                Primary = "#0050C8",
-                Secondary = "#E91E63",
-                Success = "#2E7D32",
-                Info = "#01579B",
-                Warning = "#E65100",
-                Error = "#C62828",
-                AppbarBackground = "#0050C8",
-                Background = "#FFFFFF",
-                Surface = "#F5F5F5",
-                DrawerBackground = "#FAFAFA",
-                DrawerText = "rgba(0,0,0, 0.95)",
-                TextPrimary = "rgba(0,0,0, 0.95)",
-                TextSecondary = "rgba(0,0,0, 0.70)"
+                Primary = "#0077be",
+                Secondary = "#00a8cc",
+                Success = "#4CAF50",
+                Info = "#2196F3",
+                Warning = "#FF9800",
+                Error = "#F44336",
+                AppbarBackground = "#005f99",
+                AppbarText = "#ffffff",
+                Background = "#e6f3f9",
+                Surface = "#ffffff",
+                DrawerBackground = "#b3ddf2",
+                DrawerText = "#003d66",
+                TextPrimary = "rgba(0,0,0, 0.87)",
+                TextSecondary = "rgba(0,0,0, 0.54)"
             }
         };
     }
 
-    private static MudTheme CreateLightSoftTheme()
+    private static MudTheme CreateForestTheme()
     {
         return new MudTheme
         {
             PaletteLight = new PaletteLight
             {
-                Primary = "#7986CB",
-                Secondary = "#F48FB1",
-                Success = "#81C784",
-                Info = "#64B5F6",
-                Warning = "#FFB74D",
-                Error = "#E57373",
-                AppbarBackground = "#7986CB",
-                Background = "#FAFAFA",
-                Surface = "#FFFFFF",
-                DrawerBackground = "#FFFFFF",
-                DrawerText = "rgba(0,0,0, 0.75)",
-                TextPrimary = "rgba(0,0,0, 0.75)",
-                TextSecondary = "rgba(0,0,0, 0.45)"
+                Primary = "#2d5016",
+                Secondary = "#6b8e23",
+                Success = "#4CAF50",
+                Info = "#2196F3",
+                Warning = "#FF9800",
+                Error = "#F44336",
+                AppbarBackground = "#2d5016",
+                AppbarText = "#ffffff",
+                Background = "#f0f4e8",
+                Surface = "#ffffff",
+                DrawerBackground = "#d4e4c0",
+                DrawerText = "#1a2e0d",
+                TextPrimary = "rgba(0,0,0, 0.87)",
+                TextSecondary = "rgba(0,0,0, 0.54)"
+            }
+        };
+    }
+
+    private static MudTheme CreateSunsetTheme()
+    {
+        return new MudTheme
+        {
+            PaletteLight = new PaletteLight
+            {
+                Primary = "#ff6b35",
+                Secondary = "#f7931e",
+                Success = "#4CAF50",
+                Info = "#2196F3",
+                Warning = "#FF9800",
+                Error = "#F44336",
+                AppbarBackground = "#d84315",
+                AppbarText = "#ffffff",
+                Background = "#fff3e0",
+                Surface = "#ffffff",
+                DrawerBackground = "#ffe0b2",
+                DrawerText = "#8b2e0b",
+                TextPrimary = "rgba(0,0,0, 0.87)",
+                TextSecondary = "rgba(0,0,0, 0.54)"
+            }
+        };
+    }
+
+    private static MudTheme CreateMonochromeTheme()
+    {
+        return new MudTheme
+        {
+            PaletteLight = new PaletteLight
+            {
+                Primary = "#424242",
+                Secondary = "#757575",
+                Success = "#4CAF50",
+                Info = "#2196F3",
+                Warning = "#FF9800",
+                Error = "#F44336",
+                AppbarBackground = "#212121",
+                AppbarText = "#ffffff",
+                Background = "#fafafa",
+                Surface = "#ffffff",
+                DrawerBackground = "#e0e0e0",
+                DrawerText = "#212121",
+                TextPrimary = "rgba(0,0,0, 0.87)",
+                TextSecondary = "rgba(0,0,0, 0.54)"
             }
         };
     }
@@ -145,48 +209,98 @@ public static class ThemeProvider
         };
     }
 
-    private static MudTheme CreateDarkContrastTheme()
+    private static MudTheme CreateOceanDarkTheme()
     {
         return new MudTheme
         {
             PaletteDark = new PaletteDark
             {
-                Primary = "#90CAF9",
-                Secondary = "#F48FB1",
-                Success = "#81C784",
-                Info = "#64B5F6",
-                Warning = "#FFB74D",
-                Error = "#FF8A80",
-                AppbarBackground = "#000000",
-                Background = "#000000",
-                Surface = "#121212",
-                DrawerBackground = "#0A0A0A",
-                DrawerText = "rgba(255,255,255, 0.95)",
-                TextPrimary = "rgba(255,255,255, 0.95)",
-                TextSecondary = "rgba(255,255,255, 0.70)"
+                Primary = "#4fc3f7",
+                Secondary = "#29b6f6",
+                Success = "#66BB6A",
+                Info = "#42A5F5",
+                Warning = "#FFA726",
+                Error = "#EF5350",
+                AppbarBackground = "#0a4d6e",
+                AppbarText = "#e0f7ff",
+                Background = "#0d1117",
+                Surface = "#1e2530",
+                DrawerBackground = "#1a2332",
+                DrawerText = "#b3e5fc",
+                TextPrimary = "rgba(255,255,255, 0.87)",
+                TextSecondary = "rgba(255,255,255, 0.54)"
             }
         };
     }
 
-    private static MudTheme CreateDarkHighSaturationTheme()
+    private static MudTheme CreateForestDarkTheme()
     {
         return new MudTheme
         {
             PaletteDark = new PaletteDark
             {
-                Primary = "#BB86FC",
-                Secondary = "#FF4081",
-                Success = "#00E676",
-                Info = "#00B8D4",
-                Warning = "#FFD740",
-                Error = "#FF5252",
-                AppbarBackground = "#1A1A2E",
-                Background = "#0F0F1E",
-                Surface = "#1A1A2E",
-                DrawerBackground = "#16162A",
-                DrawerText = "rgba(255,255,255, 0.90)",
-                TextPrimary = "rgba(255,255,255, 0.90)",
-                TextSecondary = "rgba(255,255,255, 0.60)"
+                Primary = "#81c784",
+                Secondary = "#aed581",
+                Success = "#66BB6A",
+                Info = "#42A5F5",
+                Warning = "#FFA726",
+                Error = "#EF5350",
+                AppbarBackground = "#1b3a0f",
+                AppbarText = "#c8e6c9",
+                Background = "#1a1a1a",
+                Surface = "#2d2d2d",
+                DrawerBackground = "#212121",
+                DrawerText = "#c8e6c9",
+                TextPrimary = "rgba(255,255,255, 0.87)",
+                TextSecondary = "rgba(255,255,255, 0.54)"
+            }
+        };
+    }
+
+    private static MudTheme CreateSunsetDarkTheme()
+    {
+        return new MudTheme
+        {
+            PaletteDark = new PaletteDark
+            {
+                Primary = "#ff8a65",
+                Secondary = "#ffab91",
+                Success = "#66BB6A",
+                Info = "#42A5F5",
+                Warning = "#FFA726",
+                Error = "#EF5350",
+                AppbarBackground = "#8b2e0b",
+                AppbarText = "#ffe0b2",
+                Background = "#1a1a1a",
+                Surface = "#2d2d2d",
+                DrawerBackground = "#212121",
+                DrawerText = "#ffccbc",
+                TextPrimary = "rgba(255,255,255, 0.87)",
+                TextSecondary = "rgba(255,255,255, 0.54)"
+            }
+        };
+    }
+
+    private static MudTheme CreateMonochromeDarkTheme()
+    {
+        return new MudTheme
+        {
+            PaletteDark = new PaletteDark
+            {
+                Primary = "#9e9e9e",
+                Secondary = "#bdbdbd",
+                Success = "#66BB6A",
+                Info = "#42A5F5",
+                Warning = "#FFA726",
+                Error = "#EF5350",
+                AppbarBackground = "#0d0d0d",
+                AppbarText = "#e0e0e0",
+                Background = "#121212",
+                Surface = "#1e1e1e",
+                DrawerBackground = "#1a1a1a",
+                DrawerText = "#e0e0e0",
+                TextPrimary = "rgba(255,255,255, 0.87)",
+                TextSecondary = "rgba(255,255,255, 0.54)"
             }
         };
     }
