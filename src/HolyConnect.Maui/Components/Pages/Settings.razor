@@ -2,20 +2,72 @@
 @inject SettingsService SettingsService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@using HolyConnect.Maui.Services
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-6">
     <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
 
     <MudCard Class="mb-4">
         <MudCardContent>
             <MudText Typo="Typo.h6" Class="mb-3">Appearance</MudText>
             
-            <MudSwitch Value="_isDarkMode" 
-                       Label="Dark Mode" 
-                       Color="Color.Primary"
-                       T="bool"
-                       ValueChanged="OnDarkModeChanged"
-                       Class="mb-3" />
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Theme Preset</MudText>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                Choose a theme that matches your preference. Each theme offers unique colors and styling.
+            </MudText>
+
+            <MudGrid>
+                @foreach (var preset in Enum.GetValues<Domain.Entities.ThemePreset>())
+                {
+                    var isDark = ThemeProvider.IsThemeDark(preset);
+                    var isSelected = _themePreset == preset;
+                    
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Outlined="true" 
+                                 Class="@($"pa-3 cursor-pointer {(isSelected ? "mud-theme-primary" : "")}")"
+                                 Style="@($"border: {(isSelected ? "2px solid var(--mud-palette-primary)" : "1px solid var(--mud-palette-divider)")}")"
+                                 @onclick="@(() => OnThemeChanged(preset))">
+                            <MudCardContent Class="pa-2">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                                    <MudText Typo="Typo.subtitle1">
+                                        <strong>@ThemeProvider.GetThemeName(preset)</strong>
+                                    </MudText>
+                                    @if (isSelected)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Size="Size.Small" />
+                                    }
+                                </MudStack>
+                                <MudText Typo="Typo.body2" Class="mb-2">
+                                    @ThemeProvider.GetThemeDescription(preset)
+                                </MudText>
+                                <MudStack Row="true" Spacing="1" Class="mt-2">
+                                    @{
+                                        var theme = ThemeProvider.GetTheme(preset);
+                                        string primaryColor, secondaryColor, successColor;
+                                        if (isDark)
+                                        {
+                                            primaryColor = theme.PaletteDark.Primary.ToString();
+                                            secondaryColor = theme.PaletteDark.Secondary.ToString();
+                                            successColor = theme.PaletteDark.Success.ToString();
+                                        }
+                                        else
+                                        {
+                                            primaryColor = theme.PaletteLight.Primary.ToString();
+                                            secondaryColor = theme.PaletteLight.Secondary.ToString();
+                                            successColor = theme.PaletteLight.Success.ToString();
+                                        }
+                                    }
+                                    <MudChip T="string" Size="Size.Small" Style="@($"background-color: {primaryColor}; color: white")">Primary</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Style="@($"background-color: {secondaryColor}; color: white")">Secondary</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Style="@($"background-color: {successColor}; color: white")">Success</MudChip>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudDivider Class="my-4" />
 
             <MudText Typo="Typo.subtitle1" Class="mb-2">Request Layout</MudText>
             <MudText Typo="Typo.body2" Class="mb-2">
@@ -73,9 +125,9 @@
 </MudContainer>
 
 @code {
-    private bool _isDarkMode;
     private string _storagePath = string.Empty;
     private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
+    private Domain.Entities.ThemePreset _themePreset = Domain.Entities.ThemePreset.Default;
 
     [CascadingParameter]
     public EventCallback<bool> OnDarkModeToggle { get; set; }
@@ -88,27 +140,29 @@
     private async Task LoadSettings()
     {
         var settings = await SettingsService.GetSettingsAsync();
-        _isDarkMode = settings.IsDarkMode;
         _storagePath = settings.StoragePath;
         _requestLayout = settings.Layout;
+        _themePreset = settings.Theme;
     }
 
-    private async Task OnDarkModeChanged(bool value)
+    private async Task OnThemeChanged(Domain.Entities.ThemePreset preset)
     {
-        _isDarkMode = value;
-        await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+        _themePreset = preset;
+        var isDark = ThemeProvider.IsThemeDark(preset);
+        await OnDarkModeToggle.InvokeAsync(isDark);
         
-        // Auto-save dark mode preference
+        // Auto-save theme preference
         try
         {
             var settings = await SettingsService.GetSettingsAsync();
-            settings.IsDarkMode = _isDarkMode;
+            settings.Theme = _themePreset;
+            settings.IsDarkMode = isDark;
             await SettingsService.SaveSettingsAsync(settings);
-            Snackbar.Add("Dark mode preference saved", Severity.Info);
+            Snackbar.Add($"Theme changed to {ThemeProvider.GetThemeName(preset)}", Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error saving dark mode preference: {ex.Message}", Severity.Warning);
+            Snackbar.Add($"Error saving theme preference: {ex.Message}", Severity.Warning);
         }
     }
 
@@ -166,13 +220,14 @@
         {
             var settings = new Domain.Entities.AppSettings
             {
-                IsDarkMode = _isDarkMode,
+                IsDarkMode = ThemeProvider.IsThemeDark(_themePreset),
                 StoragePath = _storagePath,
-                Layout = _requestLayout
+                Layout = _requestLayout,
+                Theme = _themePreset
             };
 
             await SettingsService.SaveSettingsAsync(settings);
-            await OnDarkModeToggle.InvokeAsync(_isDarkMode);
+            await OnDarkModeToggle.InvokeAsync(settings.IsDarkMode);
             Snackbar.Add("Settings saved successfully!", Severity.Success);
         }
         catch (Exception ex)
