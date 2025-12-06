@@ -1,0 +1,203 @@
+@using HolyConnect.Domain.Entities
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4 mt-3" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">Response Extraction Rules</MudText>
+    <MudText Typo="Typo.body2" Class="mb-3">
+        Define rules to automatically extract values from responses and save them as variables.
+        Use JSONPath (e.g., <code>$.data.user.id</code>) for JSON/GraphQL or XPath (e.g., <code>//user/id</code>) for XML.
+    </MudText>
+
+    @if (Extractions.Any())
+    {
+        <MudTable Items="@Extractions" Hover="true" Striped="true" Dense="true" Class="mb-3">
+            <HeaderContent>
+                <MudTh>Enabled</MudTh>
+                <MudTh>Name</MudTh>
+                <MudTh>Pattern</MudTh>
+                <MudTh>Variable</MudTh>
+                <MudTh>Scope</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudCheckBox @bind-Value="context.IsEnabled" Color="Color.Primary" Dense="true" />
+                </MudTd>
+                <MudTd>@context.Name</MudTd>
+                <MudTd><code>@context.Pattern</code></MudTd>
+                <MudTd>@context.VariableName</MudTd>
+                <MudTd>@(context.SaveToCollection ? "Collection" : "Environment")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Size="Size.Small" 
+                                   Color="Color.Primary"
+                                   OnClick="@(() => EditExtraction(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Size="Size.Small" 
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteExtraction(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-3">No extraction rules defined yet.</MudAlert>
+    }
+
+    <MudButton Variant="Variant.Filled" 
+               Color="Color.Primary" 
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="AddNewExtraction">
+        Add Extraction Rule
+    </MudButton>
+</MudPaper>
+
+<MudDialog @bind-Visible="_showDialog" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingExtraction?.Id == Guid.Empty ? "Add" : "Edit") Extraction Rule</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_editingExtraction!.Name" 
+                      Label="Name" 
+                      Variant="Variant.Outlined"
+                      HelperText="Descriptive name for this extraction"
+                      Required="true"
+                      Class="mb-3" />
+        
+        <MudTextField @bind-Value="_editingExtraction!.Pattern" 
+                      Label="Pattern" 
+                      Variant="Variant.Outlined"
+                      Placeholder="$.data.id or //id"
+                      HelperText="JSONPath for JSON/GraphQL, XPath for XML"
+                      Required="true"
+                      Class="mb-3" />
+        
+        <MudTextField @bind-Value="_editingExtraction!.VariableName" 
+                      Label="Variable Name" 
+                      Variant="Variant.Outlined"
+                      Placeholder="userId"
+                      HelperText="Variable name to save the extracted value"
+                      Class="mb-3" />
+        
+        <MudSelect @bind-Value="_editingExtraction!.SaveToCollection" 
+                   Label="Save To" 
+                   Variant="Variant.Outlined"
+                   Class="mb-3">
+            <MudSelectItem Value="false">Environment Variable</MudSelectItem>
+            <MudSelectItem Value="true">Collection Variable</MudSelectItem>
+        </MudSelect>
+        
+        <MudCheckBox @bind-Value="_editingExtraction!.IsEnabled" 
+                     Label="Enabled" 
+                     Color="Color.Primary" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelEdit">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="SaveExtraction"
+                   Disabled="@(!IsExtractionValid())">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public List<ResponseExtraction> Extractions { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<List<ResponseExtraction>> ExtractionsChanged { get; set; }
+
+    private bool _showDialog = false;
+    private ResponseExtraction? _editingExtraction;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private void AddNewExtraction()
+    {
+        _editingExtraction = new ResponseExtraction
+        {
+            Id = Guid.Empty,
+            Name = string.Empty,
+            Pattern = string.Empty,
+            VariableName = string.Empty,
+            SaveToCollection = false,
+            IsEnabled = true
+        };
+        _showDialog = true;
+    }
+
+    private void EditExtraction(ResponseExtraction extraction)
+    {
+        _editingExtraction = new ResponseExtraction
+        {
+            Id = extraction.Id,
+            Name = extraction.Name,
+            Pattern = extraction.Pattern,
+            VariableName = extraction.VariableName,
+            SaveToCollection = extraction.SaveToCollection,
+            IsEnabled = extraction.IsEnabled
+        };
+        _showDialog = true;
+    }
+
+    private void DeleteExtraction(ResponseExtraction extraction)
+    {
+        Extractions.Remove(extraction);
+        NotifyChange();
+        Snackbar.Add("Extraction rule deleted", Severity.Info);
+    }
+
+    private void CancelEdit()
+    {
+        _showDialog = false;
+        _editingExtraction = null;
+    }
+
+    private void SaveExtraction()
+    {
+        if (_editingExtraction == null || !IsExtractionValid())
+        {
+            return;
+        }
+
+        if (_editingExtraction.Id == Guid.Empty)
+        {
+            // New extraction
+            _editingExtraction.Id = Guid.NewGuid();
+            Extractions.Add(_editingExtraction);
+            Snackbar.Add("Extraction rule added", Severity.Success);
+        }
+        else
+        {
+            // Update existing
+            var existing = Extractions.FirstOrDefault(e => e.Id == _editingExtraction.Id);
+            if (existing != null)
+            {
+                existing.Name = _editingExtraction.Name;
+                existing.Pattern = _editingExtraction.Pattern;
+                existing.VariableName = _editingExtraction.VariableName;
+                existing.SaveToCollection = _editingExtraction.SaveToCollection;
+                existing.IsEnabled = _editingExtraction.IsEnabled;
+                Snackbar.Add("Extraction rule updated", Severity.Success);
+            }
+        }
+
+        _showDialog = false;
+        _editingExtraction = null;
+        NotifyChange();
+    }
+
+    private bool IsExtractionValid()
+    {
+        return _editingExtraction != null 
+            && !string.IsNullOrWhiteSpace(_editingExtraction.Name)
+            && !string.IsNullOrWhiteSpace(_editingExtraction.Pattern);
+    }
+
+    private async Task NotifyChange()
+    {
+        await ExtractionsChanged.InvokeAsync(Extractions);
+    }
+}
