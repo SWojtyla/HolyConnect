@@ -1,4 +1,6 @@
 @inject IFormatterService FormatterService
+@inject IResponseValueExtractor ResponseValueExtractor
+@inject IClipboardService ClipboardService
 @inject ISnackbar Snackbar
 
 @if (Response != null)
@@ -62,6 +64,58 @@
                         </div>
                     </MudTabPanel>
                 }
+                
+                <MudTabPanel Text="Extract">
+                    <div class="pa-4">
+                        <MudText Typo="Typo.subtitle1" Class="mb-3"><strong>Extract Values from Response</strong></MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">
+                            Use JSONPath (e.g., <code>$.data.user.id</code>) for JSON/GraphQL or XPath (e.g., <code>//user/id</code>) for XML.
+                        </MudText>
+                        
+                        <MudStack Spacing="3">
+                            <MudTextField @bind-Value="_extractionPattern" 
+                                          Label="Pattern" 
+                                          Variant="Variant.Outlined"
+                                          Placeholder="$.data.id or //id"
+                                          HelperText="JSONPath for JSON/GraphQL, XPath for XML" />
+                            
+                            <MudStack Row="true" Spacing="2">
+                                <MudButton Variant="Variant.Filled" 
+                                           Color="Color.Primary" 
+                                           OnClick="ExtractValue"
+                                           Disabled="@string.IsNullOrWhiteSpace(_extractionPattern)">
+                                    Extract
+                                </MudButton>
+                                
+                                @if (!string.IsNullOrEmpty(_extractedValue))
+                                {
+                                    <MudButton Variant="Variant.Outlined" 
+                                               Color="Color.Secondary" 
+                                               OnClick="CopyExtractedValue"
+                                               StartIcon="@Icons.Material.Filled.ContentCopy">
+                                        Copy to Clipboard
+                                    </MudButton>
+                                }
+                            </MudStack>
+                            
+                            @if (_extractionError)
+                            {
+                                <MudAlert Severity="Severity.Warning">Failed to extract value. Check your pattern.</MudAlert>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(_extractedValue))
+                            {
+                                <MudPaper Class="pa-3" Elevation="1">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2"><strong>Extracted Value:</strong></MudText>
+                                    <MudTextField Value="@_extractedValue" 
+                                                  Lines="5" 
+                                                  Variant="Variant.Outlined" 
+                                                  ReadOnly="true" />
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    </div>
+                </MudTabPanel>
             </MudTabs>
         </MudCardContent>
     </MudCard>
@@ -73,6 +127,9 @@
 
     private string _responseBodyDisplay = string.Empty;
     private RequestResponse? _previousResponse;
+    private string _extractionPattern = string.Empty;
+    private string? _extractedValue;
+    private bool _extractionError = false;
 
     protected override void OnParametersSet()
     {
@@ -81,6 +138,10 @@
         {
             _responseBodyDisplay = Response.Body;
             _previousResponse = Response;
+            // Reset extraction when response changes
+            _extractionPattern = string.Empty;
+            _extractedValue = null;
+            _extractionError = false;
         }
     }
 
@@ -146,6 +207,59 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error formatting response: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private void ExtractValue()
+    {
+        if (Response == null || string.IsNullOrWhiteSpace(Response.Body) || string.IsNullOrWhiteSpace(_extractionPattern))
+        {
+            return;
+        }
+
+        try
+        {
+            // Determine content type from headers
+            var contentType = Response.Headers.FirstOrDefault(h => 
+                h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "application/json";
+
+            _extractedValue = ResponseValueExtractor.ExtractValue(Response.Body, _extractionPattern, contentType);
+            _extractionError = _extractedValue == null;
+
+            if (_extractedValue != null)
+            {
+                Snackbar.Add("Value extracted successfully!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Could not extract value with the given pattern.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _extractionError = true;
+            _extractedValue = null;
+            Snackbar.Add($"Error extracting value: {ex.Message}", Severity.Error);
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task CopyExtractedValue()
+    {
+        if (string.IsNullOrEmpty(_extractedValue))
+        {
+            return;
+        }
+
+        try
+        {
+            await ClipboardService.SetTextAsync(_extractedValue);
+            Snackbar.Add("Copied to clipboard!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to copy to clipboard: {ex.Message}", Severity.Error);
         }
     }
 }
