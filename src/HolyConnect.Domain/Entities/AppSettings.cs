@@ -5,10 +5,21 @@ public class AppSettings
     public string StoragePath { get; set; } = string.Empty;
     public bool IsDarkMode { get; set; } = false;
     public RequestLayout Layout { get; set; } = RequestLayout.Horizontal;
+    public ThemePreset Theme { get; set; } = ThemePreset.Default;
 }
 
 public enum RequestLayout
 {
     Horizontal,
     Vertical
+}
+
+public enum ThemePreset
+{
+    Default,
+    LightContrast,
+    LightSoft,
+    Dark,
+    DarkContrast,
+    DarkHighSaturation
 }

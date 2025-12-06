@@ -5,7 +5,10 @@
 @using HolyConnect.Application.Interfaces
 @using LibGit2Sharp
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-6">
+    <MudOverlay Visible="_isLoading" DarkBackground="true" Absolute="false">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </MudOverlay>
     <MudText Typo="Typo.h4" Class="mb-4">Git Management</MudText>
 
     @if (!_isRepository)
@@ -30,29 +33,62 @@
         <!-- Repository Status -->
         <MudCard Class="mb-4">
             <MudCardContent>
-                <MudText Typo="Typo.h6" Class="mb-3">Repository Status</MudText>
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6">Repository Status</MudText>
+                    <MudButton Variant="Variant.Outlined" 
+                              Color="Color.Info" 
+                              OnClick="RefreshStatus"
+                              StartIcon="@Icons.Material.Filled.Refresh"
+                              Size="Size.Small"
+                              Disabled="_isLoading">
+                        Refresh
+                    </MudButton>
+                </MudStack>
                 
                 <MudGrid>
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2">Current Branch:</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-2">
-                            <strong>@(_currentBranch ?? "Unknown")</strong>
-                        </MudText>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3" Outlined="true">
+                            <MudStack Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Source" Color="Color.Info" />
+                                <MudText Typo="Typo.caption">Current Branch</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <strong>@(_currentBranch ?? "Unknown")</strong>
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
                     </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudText Typo="Typo.subtitle2">Pending Changes:</MudText>
-                        <MudText Typo="Typo.body1" Class="mb-2">
-                            @if (_status?.HasChanges == true)
-                            {
-                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">
-                                    @(_status.ModifiedFiles + _status.AddedFiles + _status.DeletedFiles + _status.UntrackedFiles) files
-                                </MudChip>
-                            }
-                            else
-                            {
-                                <MudChip T="string" Color="Color.Success" Size="Size.Small">No changes</MudChip>
-                            }
-                        </MudText>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3" Outlined="true">
+                            <MudStack Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Edit" Color="@(_status?.ModifiedFiles > 0 ? Color.Warning : Color.Default)" />
+                                <MudText Typo="Typo.caption">Modified</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <strong>@(_status?.ModifiedFiles ?? 0) files</strong>
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3" Outlined="true">
+                            <MudStack Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Add" Color="@(_status?.AddedFiles > 0 ? Color.Success : Color.Default)" />
+                                <MudText Typo="Typo.caption">Added</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <strong>@(_status?.AddedFiles ?? 0) files</strong>
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3" Outlined="true">
+                            <MudStack Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Delete" Color="@(_status?.DeletedFiles > 0 ? Color.Error : Color.Default)" />
+                                <MudText Typo="Typo.caption">Deleted</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <strong>@(_status?.DeletedFiles ?? 0) files</strong>
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
                     </MudItem>
                 </MudGrid>
 
@@ -75,15 +111,6 @@
                     </MudList>
                 }
 
-                <MudDivider Class="my-3" />
-
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Info" 
-                          OnClick="RefreshStatus"
-                          StartIcon="@Icons.Material.Filled.Refresh"
-                          Class="mr-2">
-                    Refresh
-                </MudButton>
             </MudCardContent>
         </MudCard>
 
@@ -170,29 +197,52 @@
                     Sync your changes with the remote repository.
                 </MudText>
 
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Info" 
-                          OnClick="Fetch"
-                          StartIcon="@Icons.Material.Filled.CloudDownload"
-                          Class="mr-2 mb-2">
-                    Fetch
-                </MudButton>
-                
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Primary" 
-                          OnClick="Pull"
-                          StartIcon="@Icons.Material.Filled.GetApp"
-                          Class="mr-2 mb-2">
-                    Pull
-                </MudButton>
-                
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Secondary" 
-                          OnClick="Push"
-                          StartIcon="@Icons.Material.Filled.Publish"
-                          Class="mb-2">
-                    Push
-                </MudButton>
+                <MudGrid>
+                    <MudItem xs="12" sm="4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Info" 
+                                  OnClick="Fetch"
+                                  StartIcon="@Icons.Material.Filled.CloudDownload"
+                                  FullWidth="true"
+                                  Disabled="_isLoading">
+                            @if (_isFetching)
+                            {
+                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                            }
+                            Fetch Changes
+                        </MudButton>
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Primary" 
+                                  OnClick="Pull"
+                                  StartIcon="@Icons.Material.Filled.GetApp"
+                                  FullWidth="true"
+                                  Disabled="_isLoading">
+                            @if (_isPulling)
+                            {
+                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                            }
+                            Pull Changes
+                        </MudButton>
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Secondary" 
+                                  OnClick="Push"
+                                  StartIcon="@Icons.Material.Filled.Publish"
+                                  FullWidth="true"
+                                  Disabled="_isLoading || _status?.HasChanges == false">
+                            @if (_isPushing)
+                            {
+                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                            }
+                            Push Changes
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
             </MudCardContent>
         </MudCard>
     }
@@ -206,6 +256,10 @@
     private string _newBranchName = string.Empty;
     private string _commitMessage = string.Empty;
     private GitStatus? _status;
+    private bool _isLoading;
+    private bool _isFetching;
+    private bool _isPulling;
+    private bool _isPushing;
 
     protected override async Task OnInitializedAsync()
     {
@@ -255,14 +309,21 @@
 
     private async Task RefreshStatus()
     {
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             await LoadRepositoryInfo();
-            Snackbar.Add("Status refreshed", Severity.Info);
+            Snackbar.Add("Status refreshed", Severity.Success);
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error refreshing status: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -345,13 +406,16 @@
 
     private async Task Fetch()
     {
+        _isFetching = true;
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             var success = await GitService.FetchAsync();
             
             if (success)
             {
-                Snackbar.Add("Fetched changes from remote", Severity.Success);
+                Snackbar.Add("Successfully fetched changes from remote", Severity.Success);
                 await LoadRepositoryInfo();
             }
             else
@@ -367,17 +431,26 @@
         {
             Snackbar.Add($"Error fetching: {ex.Message}", Severity.Error);
         }
+        finally
+        {
+            _isFetching = false;
+            _isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task Pull()
     {
+        _isPulling = true;
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             var success = await GitService.PullAsync();
             
             if (success)
             {
-                Snackbar.Add("Pulled changes from remote", Severity.Success);
+                Snackbar.Add("Successfully pulled changes from remote", Severity.Success);
                 await LoadRepositoryInfo();
             }
             else
@@ -393,17 +466,26 @@
         {
             Snackbar.Add($"Error pulling: {ex.Message}", Severity.Error);
         }
+        finally
+        {
+            _isPulling = false;
+            _isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task Push()
     {
+        _isPushing = true;
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             var success = await GitService.PushAsync();
             
             if (success)
             {
-                Snackbar.Add("Pushed changes to remote", Severity.Success);
+                Snackbar.Add("Successfully pushed changes to remote", Severity.Success);
             }
             else
             {
@@ -417,6 +499,12 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error pushing: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isPushing = false;
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 }
