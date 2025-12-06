@@ -3,7 +3,7 @@ using HolyConnect.Domain.Entities;
 
 namespace HolyConnect.Application.Services;
 
-public class CollectionService
+public class CollectionService : ICollectionService
 {
     private readonly IRepository<Collection> _collectionRepository;
 

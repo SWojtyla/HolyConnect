@@ -1,5 +1,5 @@
 ﻿@page "/"
-@inject EnvironmentService EnvironmentService
+@inject IEnvironmentService EnvironmentService
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -31,20 +31,22 @@
                     <MudText Typo="Typo.h6" Class="mb-2">Recent Environments</MudText>
                     @if (_environments != null && _environments.Any())
                     {
-                        <div>
+                        <MudStack Spacing="2">
                             @foreach (var env in _environments.Take(5))
                             {
-                                <MudPaper Class="pa-2 mb-2" Style="display: flex; align-items: center; justify-content: space-between;">
-                                    <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => NavigateToEnvironment(env.Id))">
-                                        <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" /> @env.Name
-                                    </MudText>
-                                    <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameEnvironment(env))" aria-label="Rename environment" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteEnvironment(env))" aria-label="Delete environment" />
-                                    </div>
+                                <MudPaper Class="pa-2">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Class="cursor-pointer flex-grow-1" @onclick="@(() => NavigateToEnvironment(env.Id))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" /> @env.Name
+                                        </MudText>
+                                        <MudStack Row="true" Spacing="1" @onclick:stopPropagation="true">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameEnvironment(env))" aria-label="Rename environment" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteEnvironment(env))" aria-label="Delete environment" />
+                                        </MudStack>
+                                    </MudStack>
                                 </MudPaper>
                             }
-                        </div>
+                        </MudStack>
                     }
                     else
                     {

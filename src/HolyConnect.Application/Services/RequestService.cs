@@ -3,7 +3,7 @@ using HolyConnect.Domain.Entities;
 
 namespace HolyConnect.Application.Services;
 
-public class RequestService
+public class RequestService : IRequestService
 {
     private readonly IRepository<Request> _requestRepository;
     private readonly IRepository<Domain.Entities.Environment> _environmentRepository;
