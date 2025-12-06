@@ -427,9 +427,7 @@
             {
                 Snackbar.Add($"Switched to branch '{_selectedBranch}'. Collections and environments will be reloaded.", Severity.Success);
                 await LoadRepositoryInfo();
-                // Force navigation refresh to reload all data from the new branch
-                // This ensures collections, environments, and requests are in sync
-                NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+                ReloadPageData();
             }
             else
             {
@@ -568,8 +566,7 @@
             {
                 Snackbar.Add("Successfully pulled changes from remote. Collections and environments will be reloaded.", Severity.Success);
                 await LoadRepositoryInfo();
-                // Force navigation refresh to reload all data from the pulled changes
-                NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+                ReloadPageData();
             }
             else
             {
@@ -624,5 +621,15 @@
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Forces a page reload to ensure all collections, environments, and requests are synchronized with the current branch data
+    /// </summary>
+    private void ReloadPageData()
+    {
+        // Force navigation refresh to reload all data from disk
+        // This ensures collections, environments, and requests are in sync with the current branch
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
     }
 }

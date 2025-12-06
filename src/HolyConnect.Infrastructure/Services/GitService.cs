@@ -451,7 +451,7 @@ public class GitService : IGitService
                 .Select(c => new GitCommitInfo
                 {
                     Sha = c.Sha,
-                    ShortSha = c.Sha.Substring(0, 7),
+                    ShortSha = c.Sha.Length >= 7 ? c.Sha.Substring(0, 7) : c.Sha,
                     Message = c.MessageShort,
                     Author = c.Author.Name,
                     Date = c.Author.When
@@ -492,7 +492,7 @@ public class GitService : IGitService
                 .Select(c => new GitCommitInfo
                 {
                     Sha = c.Sha,
-                    ShortSha = c.Sha.Substring(0, 7),
+                    ShortSha = c.Sha.Length >= 7 ? c.Sha.Substring(0, 7) : c.Sha,
                     Message = c.MessageShort,
                     Author = c.Author.Name,
                     Date = c.Author.When

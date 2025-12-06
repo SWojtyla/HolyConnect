@@ -37,6 +37,25 @@ public class GitServiceTests : IDisposable
         }
     }
 
+    private string CreateRemoteRepository()
+    {
+        var remoteRepoPath = Path.Combine(Path.GetTempPath(), $"HolyConnect_RemoteTest_{Guid.NewGuid()}");
+        Directory.CreateDirectory(remoteRepoPath);
+        Repository.Init(remoteRepoPath, isBare: true);
+        return remoteRepoPath;
+    }
+
+    private void SetupRemoteTracking(Repository localRepo, string remoteRepoPath)
+    {
+        localRepo.Network.Remotes.Add("origin", remoteRepoPath);
+        var branch = localRepo.Head;
+        var pushOptions = new PushOptions();
+        localRepo.Branches.Update(branch,
+            b => b.Remote = "origin",
+            b => b.UpstreamBranch = branch.CanonicalName);
+        localRepo.Network.Push(branch, pushOptions);
+    }
+
     [Fact]
     public async Task IsRepositoryAsync_WithoutGitInit_ShouldReturnFalse()
     {
@@ -335,30 +354,20 @@ public class GitServiceTests : IDisposable
     public async Task GetIncomingCommitsAsync_WithRemoteAhead_ShouldReturnIncomingCommits()
     {
         // Arrange
-        var remoteRepoPath = Path.Combine(Path.GetTempPath(), $"HolyConnect_RemoteTest_{Guid.NewGuid()}");
-        Directory.CreateDirectory(remoteRepoPath);
+        var remoteRepoPath = CreateRemoteRepository();
         
         try
         {
-            // Create remote repository with commits
-            Repository.Init(remoteRepoPath, isBare: true);
-            
             // Create local repository
             await _gitService.InitRepositoryAsync(_testRepoPath);
             CreateInitialCommit();
             
             using var localRepo = new Repository(_testRepoPath);
-            localRepo.Network.Remotes.Add("origin", remoteRepoPath);
-            
-            // Push to remote
-            var branch = localRepo.Head;
-            var pushOptions = new PushOptions();
-            localRepo.Branches.Update(branch,
-                b => b.Remote = "origin",
-                b => b.UpstreamBranch = branch.CanonicalName);
-            localRepo.Network.Push(branch, pushOptions);
+            SetupRemoteTracking(localRepo, remoteRepoPath);
             
             // Create new commit in remote (simulated by creating commit locally, pushing, then resetting)
+            var branch = localRepo.Head;
+            var pushOptions = new PushOptions();
             File.WriteAllText(Path.Combine(_testRepoPath, "remote-file.txt"), "remote content");
             Commands.Stage(localRepo, "remote-file.txt");
             var signature = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
@@ -397,28 +406,16 @@ public class GitServiceTests : IDisposable
     public async Task GetOutgoingCommitsAsync_WithLocalAhead_ShouldReturnOutgoingCommits()
     {
         // Arrange
-        var remoteRepoPath = Path.Combine(Path.GetTempPath(), $"HolyConnect_RemoteTest_{Guid.NewGuid()}");
-        Directory.CreateDirectory(remoteRepoPath);
+        var remoteRepoPath = CreateRemoteRepository();
         
         try
         {
-            // Create remote repository
-            Repository.Init(remoteRepoPath, isBare: true);
-            
             // Create local repository
             await _gitService.InitRepositoryAsync(_testRepoPath);
             CreateInitialCommit();
             
             using var localRepo = new Repository(_testRepoPath);
-            localRepo.Network.Remotes.Add("origin", remoteRepoPath);
-            
-            // Push to remote
-            var branch = localRepo.Head;
-            var pushOptions = new PushOptions();
-            localRepo.Branches.Update(branch,
-                b => b.Remote = "origin",
-                b => b.UpstreamBranch = branch.CanonicalName);
-            localRepo.Network.Push(branch, pushOptions);
+            SetupRemoteTracking(localRepo, remoteRepoPath);
             
             // Create new local commit
             File.WriteAllText(Path.Combine(_testRepoPath, "local-file.txt"), "local content");
