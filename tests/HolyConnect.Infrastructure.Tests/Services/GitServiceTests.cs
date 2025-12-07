@@ -37,6 +37,25 @@ public class GitServiceTests : IDisposable
         }
     }
 
+    private string CreateRemoteRepository()
+    {
+        var remoteRepoPath = Path.Combine(Path.GetTempPath(), $"HolyConnect_RemoteTest_{Guid.NewGuid()}");
+        Directory.CreateDirectory(remoteRepoPath);
+        Repository.Init(remoteRepoPath, isBare: true);
+        return remoteRepoPath;
+    }
+
+    private void SetupRemoteTracking(Repository localRepo, string remoteRepoPath)
+    {
+        localRepo.Network.Remotes.Add("origin", remoteRepoPath);
+        var branch = localRepo.Head;
+        var pushOptions = new PushOptions();
+        localRepo.Branches.Update(branch,
+            b => b.Remote = "origin",
+            b => b.UpstreamBranch = branch.CanonicalName);
+        localRepo.Network.Push(branch, pushOptions);
+    }
+
     [Fact]
     public async Task IsRepositoryAsync_WithoutGitInit_ShouldReturnFalse()
     {
@@ -250,6 +269,179 @@ public class GitServiceTests : IDisposable
 
         // Assert
         Assert.False(success);
+    }
+
+    [Fact]
+    public async Task DeleteBranchAsync_WithValidBranch_ShouldDeleteBranch()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        await _gitService.CreateBranchAsync("branch-to-delete");
+        
+        // Switch back to master/main
+        using var repo = new Repository(_testRepoPath);
+        var masterBranch = repo.Branches.FirstOrDefault(b => b.FriendlyName == "master" || b.FriendlyName == "main");
+        Commands.Checkout(repo, masterBranch);
+
+        // Act
+        var success = await _gitService.DeleteBranchAsync("branch-to-delete");
+
+        // Assert
+        Assert.True(success);
+        var branches = await _gitService.GetBranchesAsync();
+        Assert.DoesNotContain("branch-to-delete", branches);
+    }
+
+    [Fact]
+    public async Task DeleteBranchAsync_WithCurrentBranch_ShouldReturnFalse()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        var currentBranch = await _gitService.GetCurrentBranchAsync();
+
+        // Act
+        var success = await _gitService.DeleteBranchAsync(currentBranch!);
+
+        // Assert
+        Assert.False(success);
+    }
+
+    [Fact]
+    public async Task DeleteBranchAsync_WithNonExistentBranch_ShouldReturnFalse()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var success = await _gitService.DeleteBranchAsync("non-existent-branch");
+
+        // Assert
+        Assert.False(success);
+    }
+
+    [Fact]
+    public async Task GetIncomingCommitsAsync_WithoutRemote_ShouldReturnEmpty()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var incomingCommits = await _gitService.GetIncomingCommitsAsync();
+
+        // Assert
+        Assert.Empty(incomingCommits);
+    }
+
+    [Fact]
+    public async Task GetOutgoingCommitsAsync_WithoutRemote_ShouldReturnEmpty()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var outgoingCommits = await _gitService.GetOutgoingCommitsAsync();
+
+        // Assert
+        Assert.Empty(outgoingCommits);
+    }
+
+    [Fact]
+    public async Task GetIncomingCommitsAsync_WithRemoteAhead_ShouldReturnIncomingCommits()
+    {
+        // Arrange
+        var remoteRepoPath = CreateRemoteRepository();
+        
+        try
+        {
+            // Create local repository
+            await _gitService.InitRepositoryAsync(_testRepoPath);
+            CreateInitialCommit();
+            
+            using var localRepo = new Repository(_testRepoPath);
+            SetupRemoteTracking(localRepo, remoteRepoPath);
+            
+            // Create new commit in remote (simulated by creating commit locally, pushing, then resetting)
+            var branch = localRepo.Head;
+            var pushOptions = new PushOptions();
+            File.WriteAllText(Path.Combine(_testRepoPath, "remote-file.txt"), "remote content");
+            Commands.Stage(localRepo, "remote-file.txt");
+            var signature = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+            localRepo.Commit("Remote commit", signature, signature);
+            localRepo.Network.Push(branch, pushOptions);
+            
+            // Reset local branch to previous commit (simulating remote ahead)
+            var headCommit = localRepo.Head.Tip;
+            var previousCommit = headCommit.Parents.FirstOrDefault();
+            if (previousCommit != null)
+            {
+                localRepo.Reset(ResetMode.Hard, previousCommit);
+            }
+            
+            // Fetch to update remote tracking branch
+            var remote = localRepo.Network.Remotes["origin"];
+            var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+            Commands.Fetch(localRepo, remote.Name, refSpecs, null, "test fetch");
+
+            // Act
+            var incomingCommits = await _gitService.GetIncomingCommitsAsync();
+
+            // Assert
+            Assert.NotEmpty(incomingCommits);
+            Assert.Contains(incomingCommits, c => c.Message.Contains("Remote commit"));
+        }
+        finally
+        {
+            // Clean up remote repository
+            if (Directory.Exists(remoteRepoPath))
+            {
+                RemoveReadOnlyAttributes(remoteRepoPath);
+                Directory.Delete(remoteRepoPath, true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task GetOutgoingCommitsAsync_WithLocalAhead_ShouldReturnOutgoingCommits()
+    {
+        // Arrange
+        var remoteRepoPath = CreateRemoteRepository();
+        
+        try
+        {
+            // Create local repository
+            await _gitService.InitRepositoryAsync(_testRepoPath);
+            CreateInitialCommit();
+            
+            using var localRepo = new Repository(_testRepoPath);
+            SetupRemoteTracking(localRepo, remoteRepoPath);
+            
+            // Create new local commit
+            File.WriteAllText(Path.Combine(_testRepoPath, "local-file.txt"), "local content");
+            Commands.Stage(localRepo, "local-file.txt");
+            var signature = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+            localRepo.Commit("Local commit", signature, signature);
+
+            // Act
+            var outgoingCommits = await _gitService.GetOutgoingCommitsAsync();
+
+            // Assert
+            Assert.NotEmpty(outgoingCommits);
+            Assert.Contains(outgoingCommits, c => c.Message.Contains("Local commit"));
+        }
+        finally
+        {
+            // Clean up remote repository
+            if (Directory.Exists(remoteRepoPath))
+            {
+                RemoveReadOnlyAttributes(remoteRepoPath);
+                Directory.Delete(remoteRepoPath, true);
+            }
+        }
     }
 
     private void CreateInitialCommit()
