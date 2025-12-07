@@ -62,9 +62,11 @@ The innermost layer containing:
   - `Collection`: Hierarchical container for organizing requests
   - `Request`: Abstract base for all request types
   - `RestRequest`: HTTP REST API requests
-  - `GraphQLRequest`: GraphQL queries and mutations
-  - `RequestResponse`: Response data from executed requests
+  - `GraphQLRequest`: GraphQL queries, mutations, and subscriptions
+  - `WebSocketRequest`: WebSocket connection requests
+  - `RequestResponse`: Response data from executed requests, including streaming support
   - `ResponseExtraction`: Rules for extracting values from response bodies
+  - `StreamEvent`: Individual events in streaming responses (WebSocket, SSE)
 
 - **Business Rules**: Domain logic independent of external concerns
 - **No Framework Dependencies**: Pure C# classes
@@ -112,7 +114,10 @@ Implements external concerns:
 
 - **Request Executors**:
   - `RestRequestExecutor`: Executes HTTP REST requests using HttpClient
-  - `GraphQLRequestExecutor`: Executes GraphQL queries
+  - `GraphQLRequestExecutor`: Executes GraphQL queries and mutations
+  - `GraphQLSubscriptionWebSocketExecutor`: Executes GraphQL subscriptions via WebSocket (graphql-transport-ws protocol)
+  - `GraphQLSubscriptionSSEExecutor`: Executes GraphQL subscriptions via Server-Sent Events (SSE)
+  - `WebSocketRequestExecutor`: Executes general WebSocket connections for bidirectional communication
 
 - **Version Control**:
   - `GitService`: Provides git operations using LibGit2Sharp
@@ -238,12 +243,53 @@ tests/
 └── HolyConnect.Maui.Tests/
 ```
 
+## Streaming and Real-Time Communication
+
+### WebSocket Support
+
+The application supports bidirectional WebSocket communication for real-time APIs:
+
+- **Standard WebSocket**: Connect to any WebSocket server (ws:// or wss://)
+- **Message Exchange**: Send messages and receive responses in real-time
+- **Protocol Support**: Custom subprotocols can be specified
+- **Authentication**: Supports Basic and Bearer token authentication
+- **Timeout Handling**: Configurable timeout for receiving messages
+
+### GraphQL Subscriptions
+
+GraphQL subscriptions enable real-time data streaming from GraphQL servers:
+
+#### WebSocket Protocol (graphql-transport-ws)
+- Implements the graphql-transport-ws protocol
+- Automatic connection initialization and acknowledgment
+- Handles subscription lifecycle (subscribe, next, complete, error)
+- URL conversion from HTTP/HTTPS to WS/WSS
+
+#### Server-Sent Events (SSE)
+- HTTP-based streaming using Server-Sent Events
+- Parses SSE format (event types and data fields)
+- Handles multiple events in a single connection
+- Standard HTTP headers and authentication
+
+### Streaming Response Model
+
+All streaming responses use the `StreamEvent` model:
+- **Timestamp**: When the event was received
+- **Data**: The event payload
+- **EventType**: The type of event (message, data, error, complete, etc.)
+
+The `RequestResponse` model includes:
+- **IsStreaming**: Flag indicating if the response is streaming
+- **StreamEvents**: List of all events received during the connection
+- **Body**: Formatted view of all events with timestamps
+
 ## Security Considerations
 
 1. **Environment Variables**: Consider encryption for sensitive data
 2. **Request Storage**: Sanitize and validate all inputs
 3. **HTTP Requests**: Validate URLs and headers
 4. **Authentication**: Store credentials securely (keychain/credential manager)
+5. **WebSocket Connections**: Validate WebSocket URLs and enforce secure connections (wss://) in production
 
 ## Performance Considerations
 
@@ -251,6 +297,12 @@ tests/
 2. **Memory Management**: In-memory storage is transient (consider persistence)
 3. **UI Responsiveness**: Long-running requests don't block UI
 4. **Request Caching**: Consider caching responses for repeated requests
+
+## Recent Enhancements
+
+1. **WebSocket Support**: ✅ Real-time API testing with WebSocket connections
+2. **GraphQL Subscriptions**: ✅ Support for GraphQL subscriptions via WebSocket (graphql-transport-ws) and Server-Sent Events (SSE)
+3. **Streaming Responses**: ✅ Capture and display streaming events from WebSocket and SSE connections
 
 ## Future Enhancements
 
@@ -260,8 +312,8 @@ tests/
 4. **Code Generation**: Generate client code from requests
 5. **Team Collaboration**: Share collections and environments via git remotes
 6. **Import/Export**: Support Postman, Insomnia formats
-7. **WebSocket Support**: Real-time API testing
-8. **Authentication Flows**: OAuth, JWT, API Key management
-9. **Scripting**: Pre-request and post-request scripts
-10. **Dynamic Variables**: Computed values and system variables (e.g., timestamps, random values)
-11. **Git Enhancements**: Merge conflict resolution, diff viewer, commit history
+7. **Authentication Flows**: OAuth, JWT, API Key management
+8. **Scripting**: Pre-request and post-request scripts
+9. **Dynamic Variables**: Computed values and system variables (e.g., timestamps, random values)
+10. **Git Enhancements**: Merge conflict resolution, diff viewer, commit history
+11. **WebSocket Message History**: Interactive send/receive interface for WebSocket connections

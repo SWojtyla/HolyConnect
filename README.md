@@ -6,6 +6,8 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 
 - 🌐 **REST API Support**: Send GET, POST, PUT, DELETE, PATCH, HEAD, and OPTIONS requests
 - 📊 **GraphQL Support**: Test GraphQL queries and mutations with ease
+- 🔔 **GraphQL Subscriptions**: Support for GraphQL subscriptions via WebSocket (graphql-transport-ws protocol) and Server-Sent Events (SSE)
+- 🔌 **WebSocket Support**: Connect to WebSocket servers for real-time bidirectional communication
 - 🗂️ **Environment Management**: Organize your API requests by environments
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests
