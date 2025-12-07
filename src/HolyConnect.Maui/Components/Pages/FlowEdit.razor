@@ -1,0 +1,321 @@
+@page "/flow/{FlowId:guid}/edit"
+@inject IFlowService FlowService
+@inject IEnvironmentService EnvironmentService
+@inject ICollectionService CollectionService
+@inject IRequestService RequestService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_flow != null)
+    {
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h4" Class="mb-4">Edit Flow</MudText>
+
+            <MudForm @ref="_form" @bind-IsValid="@_isValid">
+                <MudTextField @bind-Value="_flow.Name" 
+                             Label="Flow Name" 
+                             Required="true" 
+                             RequiredError="Flow name is required"
+                             Class="mb-3" />
+                
+                <MudTextField @bind-Value="_flow.Description" 
+                             Label="Description" 
+                             Lines="3"
+                             Class="mb-3" />
+
+                @* Environment field is read-only during editing to maintain data integrity.
+                   Changing the environment could break request references and variable scoping. *@
+                <MudSelect @bind-Value="_flow.EnvironmentId" 
+                          Label="Environment" 
+                          Required="true"
+                          RequiredError="Environment is required"
+                          T="Guid"
+                          Disabled="true"
+                          Class="mb-3">
+                    @if (_environments != null)
+                    {
+                        @foreach (var env in _environments)
+                        {
+                            <MudSelectItem Value="@env.Id">@env.Name</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+
+                @if (_collections != null && _collections.Any())
+                {
+                    <MudSelect @bind-Value="_flow.CollectionId" 
+                              Label="Collection (Optional)" 
+                              T="Guid?"
+                              Clearable="true"
+                              Class="mb-3">
+                        @foreach (var col in _collections)
+                        {
+                            <MudSelectItem Value="@((Guid?)col.Id)">@col.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Flow Steps</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                    Add requests to execute in sequence. Variables extracted from each step will be available to subsequent steps.
+                </MudText>
+
+                @if (_flow.Steps.Any())
+                {
+                    <MudList T="string">
+                        @foreach (var step in _flow.Steps.OrderBy(s => s.Order))
+                        {
+                            <MudListItem T="string" Class="mb-2">
+                                <MudPaper Class="pa-3" Outlined="true">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                        <div style="flex: 1;">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudText Typo="Typo.body1"><strong>Step @step.Order:</strong></MudText>
+                                                <MudSelect @bind-Value="step.RequestId" 
+                                                          Label="Request" 
+                                                          Required="true"
+                                                          T="Guid"
+                                                          Dense="true"
+                                                          Margin="Margin.Dense">
+                                                    @if (_availableRequests != null)
+                                                    {
+                                                        @foreach (var req in _availableRequests)
+                                                        {
+                                                            <MudSelectItem Value="@req.Id">@req.Name (@req.Type)</MudSelectItem>
+                                                        }
+                                                    }
+                                                </MudSelect>
+                                            </MudStack>
+                                            <MudStack Row="true" Class="mt-2" Spacing="2">
+                                                <MudSwitch @bind-Value="step.IsEnabled" Label="Enabled" Color="Color.Primary" Dense="true" />
+                                                <MudSwitch @bind-Value="step.ContinueOnError" Label="Continue on Error" Color="Color.Warning" Dense="true" />
+                                                <MudNumericField @bind-Value="step.DelayBeforeExecutionMs" 
+                                                               Label="Delay (ms)" 
+                                                               Min="0"
+                                                               Step="100"
+                                                               HideSpinButtons="false"
+                                                               Style="max-width: 150px;"
+                                                               Dense="true"
+                                                               Margin="Margin.Dense" />
+                                            </MudStack>
+                                        </div>
+                                        <MudStack Row="true" Spacing="1">
+                                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" 
+                                                          Size="Size.Small" 
+                                                          OnClick="@(() => MoveStepUp(step))"
+                                                          Disabled="@(step.Order == 1)" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" 
+                                                          Size="Size.Small" 
+                                                          OnClick="@(() => MoveStepDown(step))"
+                                                          Disabled="@(step.Order == _flow.Steps.Count)" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                          Size="Size.Small" 
+                                                          Color="Color.Error"
+                                                          OnClick="@(() => RemoveStep(step))" />
+                                        </MudStack>
+                                    </MudStack>
+                                </MudPaper>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-3">No steps added yet. Add at least one step to save the flow.</MudAlert>
+                }
+
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.Add"
+                          OnClick="AddStep"
+                          Disabled="@(_availableRequests == null || !_availableRequests.Any())"
+                          Class="mb-4">
+                    Add Step
+                </MudButton>
+
+                <MudDivider Class="my-4" />
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Outlined" OnClick="Cancel">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              OnClick="SaveFlow"
+                              Disabled="@(!_isValid || !_flow.Steps.Any())">
+                        Save Flow
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        </MudPaper>
+    }
+    else if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 300px;">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <MudText Typo="Typo.body1">Loading flow...</MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">Flow not found</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid FlowId { get; set; }
+
+    private MudForm? _form;
+    private bool _isValid;
+    private Flow? _flow;
+    private List<Domain.Entities.Environment>? _environments;
+    private List<Collection>? _collections;
+    private List<Request>? _availableRequests;
+    private bool _isLoading = true;
+    private int _nextOrder = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        try
+        {
+            _flow = await FlowService.GetFlowByIdAsync(FlowId);
+            if (_flow == null)
+            {
+                Snackbar.Add("Flow not found", Severity.Error);
+                NavigationManager.NavigateTo("/flows");
+                return;
+            }
+
+            _environments = (await EnvironmentService.GetAllEnvironmentsAsync()).ToList();
+            await LoadEnvironmentData();
+
+            // Set next order for new steps
+            _nextOrder = _flow.Steps.Any() ? _flow.Steps.Max(s => s.Order) + 1 : 1;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadEnvironmentData()
+    {
+        if (_flow == null) return;
+
+        var allCollections = await CollectionService.GetAllCollectionsAsync();
+        _collections = allCollections.Where(c => c.EnvironmentId == _flow.EnvironmentId).ToList();
+        
+        // Load requests
+        var environmentRequests = await RequestService.GetRequestsByEnvironmentIdAsync(_flow.EnvironmentId);
+        var collectionRequests = new List<Request>();
+        
+        if (_collections != null)
+        {
+            foreach (var collection in _collections)
+            {
+                var requests = await RequestService.GetRequestsByCollectionIdAsync(collection.Id);
+                collectionRequests.AddRange(requests);
+            }
+        }
+        
+        _availableRequests = environmentRequests.Concat(collectionRequests).ToList();
+    }
+
+    private void AddStep()
+    {
+        if (_flow == null) return;
+
+        var firstRequest = _availableRequests?.FirstOrDefault();
+        if (firstRequest == null)
+        {
+            Snackbar.Add("No requests available. Please create a request first.", Severity.Warning);
+            return;
+        }
+
+        _flow.Steps.Add(new FlowStep
+        {
+            Id = Guid.NewGuid(),
+            FlowId = _flow.Id,
+            Order = _nextOrder++,
+            RequestId = firstRequest.Id,
+            IsEnabled = true,
+            ContinueOnError = false
+        });
+    }
+
+    private void RemoveStep(FlowStep step)
+    {
+        if (_flow == null) return;
+
+        _flow.Steps.Remove(step);
+        // Reorder remaining steps
+        var orderedSteps = _flow.Steps.OrderBy(s => s.Order).ToList();
+        for (int i = 0; i < orderedSteps.Count; i++)
+        {
+            orderedSteps[i].Order = i + 1;
+        }
+        _nextOrder = orderedSteps.Any() ? orderedSteps.Max(s => s.Order) + 1 : 1;
+    }
+
+    private void MoveStepUp(FlowStep step)
+    {
+        if (_flow == null || step.Order <= 1) return;
+        
+        var previousStep = _flow.Steps.FirstOrDefault(s => s.Order == step.Order - 1);
+        if (previousStep != null)
+        {
+            previousStep.Order = step.Order;
+            step.Order--;
+        }
+    }
+
+    private void MoveStepDown(FlowStep step)
+    {
+        if (_flow == null || step.Order >= _flow.Steps.Count) return;
+        
+        var nextStep = _flow.Steps.FirstOrDefault(s => s.Order == step.Order + 1);
+        if (nextStep != null)
+        {
+            nextStep.Order = step.Order;
+            step.Order++;
+        }
+    }
+
+    private async Task SaveFlow()
+    {
+        if (_form == null || _flow == null)
+        {
+            return;
+        }
+
+        // Trigger validation on the form and rely on the bound _isValid flag
+        await _form.Validate();
+
+        if (!_isValid || !_flow.Steps.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            await FlowService.UpdateFlowAsync(_flow);
+            Snackbar.Add("Flow updated successfully!", Severity.Success);
+            NavigationManager.NavigateTo("/flows");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating flow: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/flows");
+    }
+}
