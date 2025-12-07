@@ -865,22 +865,39 @@ else
 
         try
         {
-            // Save current request first
+            // Sync current state
             SyncHeaders();
             SyncQueryParams();
             SyncProtocols();
-            await RequestService.UpdateRequestAsync(Request);
+
+            // Store the original request ID and references
+            var originalId = Request.Id;
+            var originalCollectionId = Request.CollectionId;
+            var originalEnvironmentId = Request.EnvironmentId;
+
+            // Delete the original request
+            await RequestService.DeleteRequestAsync(originalId);
 
             // Convert to new type
             var convertedRequest = Application.Common.RequestConverter.ConvertTo(Request, targetType);
             
-            // Save the converted request
+            // Use the original ID to replace the request
+            convertedRequest.Id = originalId;
+            convertedRequest.CollectionId = originalCollectionId;
+            convertedRequest.EnvironmentId = originalEnvironmentId;
+            
+            // Remove the "(TypeName)" suffix from the name that ConvertTo adds
+            convertedRequest.Name = Request.Name;
+            
+            // Create the converted request (effectively replacing the original)
             var createdRequest = await RequestService.CreateRequestAsync(convertedRequest);
             
             Snackbar.Add($"Request converted to {targetType} successfully", Severity.Success);
             
-            // The parent component should handle navigation
-            // For now, just notify that save occurred so the UI can refresh
+            // Update the local Request reference to the converted request
+            Request = createdRequest;
+            
+            // Notify parent component to refresh
             await OnSave.InvokeAsync();
         }
         catch (Exception ex)

@@ -1,18 +1,31 @@
 <MudDialog>
     <DialogContent>
-        <MudList T="string" Clickable="true">
+        <MudStack Spacing="2">
             @foreach (var option in Options)
             {
-                <MudListItem OnClick="@(() => SelectOption(option))">
-                    @option
-                </MudListItem>
+                <MudPaper Outlined="true" Class="pa-3 cursor-pointer hover-primary" @onclick="@(() => SelectOption(option))">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <MudIcon Icon="@GetIconForOption(option)" Color="@GetColorForOption(option)" Size="Size.Large" />
+                        <div>
+                            <MudText Typo="Typo.h6">@option</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@GetDescriptionForOption(option)</MudText>
+                        </div>
+                    </MudStack>
+                </MudPaper>
             }
-        </MudList>
+        </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Cancel" StartIcon="@Icons.Material.Filled.Close">Cancel</MudButton>
     </DialogActions>
 </MudDialog>
+
+<style>
+    .hover-primary:hover {
+        border-color: var(--mud-palette-primary) !important;
+        background-color: var(--mud-palette-primary-lighten) !important;
+    }
+</style>
 
 @code {
     [CascadingParameter] 
@@ -24,4 +37,37 @@
     private void Cancel() => MudDialog?.Cancel();
     
     private void SelectOption(string option) => MudDialog?.Close(DialogResult.Ok(option));
+
+    private string GetIconForOption(string option)
+    {
+        return option switch
+        {
+            "New Flow" => Icons.Material.Filled.AccountTree,
+            "New Collection" => Icons.Material.Filled.Folder,
+            "New Request" => Icons.Material.Filled.Add,
+            _ => Icons.Material.Filled.Add
+        };
+    }
+
+    private Color GetColorForOption(string option)
+    {
+        return option switch
+        {
+            "New Flow" => Color.Success,
+            "New Collection" => Color.Primary,
+            "New Request" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private string GetDescriptionForOption(string option)
+    {
+        return option switch
+        {
+            "New Flow" => "Chain multiple requests into a workflow",
+            "New Collection" => "Organize requests into a collection",
+            "New Request" => "Create a new API request",
+            _ => string.Empty
+        };
+    }
 }
