@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using HolyConnect.Infrastructure.Common;
 using System.Net.WebSockets;
 using System.Text;
 using HolyConnect.Application.Interfaces;
@@ -45,7 +46,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             webSocket.Options.AddSubProtocol("graphql-ws");
 
             // Apply authentication
-            ApplyAuthentication(webSocket, graphQLRequest);
+            HttpAuthenticationHelper.ApplyAuthentication(webSocket.Options, graphQLRequest);
 
             // Apply custom headers
             var failedHeaders = new List<string>();
@@ -354,32 +355,5 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
 
         // Default to wss for secure connections
         return $"wss://{url}";
-    }
-
-    private void ApplyAuthentication(ClientWebSocket webSocket, Request request)
-    {
-        switch (request.AuthType)
-        {
-            case AuthenticationType.Basic:
-                if (!string.IsNullOrEmpty(request.BasicAuthUsername))
-                {
-                    var credentials = $"{request.BasicAuthUsername}:{request.BasicAuthPassword ?? string.Empty}";
-                    var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
-                    webSocket.Options.SetRequestHeader("Authorization", $"Basic {encodedCredentials}");
-                }
-                break;
-
-            case AuthenticationType.BearerToken:
-                if (!string.IsNullOrEmpty(request.BearerToken))
-                {
-                    webSocket.Options.SetRequestHeader("Authorization", $"Bearer {request.BearerToken}");
-                }
-                break;
-
-            case AuthenticationType.None:
-            default:
-                // No authentication
-                break;
-        }
     }
 }

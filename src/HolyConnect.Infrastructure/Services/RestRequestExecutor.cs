@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
+using HolyConnect.Infrastructure.Common;
 
 namespace HolyConnect.Infrastructure.Services;
 
@@ -130,54 +131,20 @@ public class RestRequestExecutor : IRequestExecutor
 
         var httpRequest = new HttpRequestMessage(httpMethod, url);
 
-        // Apply authentication
-        ApplyAuthentication(httpRequest, request);
+        // Apply authentication using helper
+        HttpAuthenticationHelper.ApplyAuthentication(httpRequest, request);
 
-        // Only include enabled headers (skip Authorization if auth is configured)
-        var skipAuthorizationHeader = request.AuthType != AuthenticationType.None;
-        foreach (var header in request.Headers.Where(h => !request.DisabledHeaders.Contains(h.Key)))
-        {
-            // Skip Authorization header if authentication is configured to avoid conflicts
-            if (skipAuthorizationHeader && header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-            httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
+        // Apply enabled headers using helper
+        HttpAuthenticationHelper.ApplyHeaders(httpRequest, request);
 
         if (!string.IsNullOrEmpty(request.Body))
         {
-            var contentType = string.IsNullOrEmpty(request.ContentType) ? "text/plain" : request.ContentType;
+            var contentType = string.IsNullOrEmpty(request.ContentType) 
+                ? HttpConstants.MediaTypes.TextPlain 
+                : request.ContentType;
             httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
         }
 
         return httpRequest;
-    }
-
-    private void ApplyAuthentication(HttpRequestMessage httpRequest, Request request)
-    {
-        switch (request.AuthType)
-        {
-            case AuthenticationType.Basic:
-                if (!string.IsNullOrEmpty(request.BasicAuthUsername))
-                {
-                    var credentials = $"{request.BasicAuthUsername}:{request.BasicAuthPassword ?? string.Empty}";
-                    var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
-                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Basic {encodedCredentials}");
-                }
-                break;
-
-            case AuthenticationType.BearerToken:
-                if (!string.IsNullOrEmpty(request.BearerToken))
-                {
-                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {request.BearerToken}");
-                }
-                break;
-
-            case AuthenticationType.None:
-            default:
-                // No authentication
-                break;
-        }
     }
 }

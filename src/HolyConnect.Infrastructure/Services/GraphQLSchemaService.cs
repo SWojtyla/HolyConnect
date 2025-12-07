@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
+using HolyConnect.Infrastructure.Common;
 using Newtonsoft.Json;
 
 namespace HolyConnect.Infrastructure.Services;
@@ -139,23 +140,12 @@ public class GraphQLSchemaService : IGraphQLSchemaService
             var json = JsonConvert.SerializeObject(payload);
             var httpRequest = new HttpRequestMessage(System.Net.Http.HttpMethod.Post, url)
             {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
+                Content = new StringContent(json, Encoding.UTF8, HttpConstants.MediaTypes.ApplicationJson)
             };
 
-            // Apply authentication from the request
-            ApplyAuthentication(httpRequest, request);
-
-            // Apply headers from the request (excluding disabled ones)
-            var skipAuthorizationHeader = request.AuthType != AuthenticationType.None;
-            foreach (var header in request.Headers.Where(h => !request.DisabledHeaders.Contains(h.Key)))
-            {
-                // Skip Authorization header if authentication is configured to avoid conflicts
-                if (skipAuthorizationHeader && header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
+            // Apply authentication and headers using helpers
+            HttpAuthenticationHelper.ApplyAuthentication(httpRequest, request);
+            HttpAuthenticationHelper.ApplyHeaders(httpRequest, request);
 
             var httpResponse = await _httpClient.SendAsync(httpRequest);
 
@@ -192,30 +182,4 @@ public class GraphQLSchemaService : IGraphQLSchemaService
         _schemaCache.Clear();
     }
 
-    private void ApplyAuthentication(HttpRequestMessage httpRequest, Request request)
-    {
-        switch (request.AuthType)
-        {
-            case AuthenticationType.Basic:
-                if (!string.IsNullOrEmpty(request.BasicAuthUsername))
-                {
-                    var credentials = $"{request.BasicAuthUsername}:{request.BasicAuthPassword ?? string.Empty}";
-                    var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
-                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Basic {encodedCredentials}");
-                }
-                break;
-
-            case AuthenticationType.BearerToken:
-                if (!string.IsNullOrEmpty(request.BearerToken))
-                {
-                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {request.BearerToken}");
-                }
-                break;
-
-            case AuthenticationType.None:
-            default:
-                // No authentication
-                break;
-        }
-    }
 }

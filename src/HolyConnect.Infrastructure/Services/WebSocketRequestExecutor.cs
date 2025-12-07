@@ -3,6 +3,7 @@ using System.Net.WebSockets;
 using System.Text;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
+using HolyConnect.Infrastructure.Common;
 
 namespace HolyConnect.Infrastructure.Services;
 
@@ -43,8 +44,8 @@ public class WebSocketRequestExecutor : IRequestExecutor
                 webSocket.Options.AddSubProtocol(protocol);
             }
 
-            // Apply authentication
-            ApplyAuthentication(webSocket, webSocketRequest);
+            // Apply authentication using helper
+            HttpAuthenticationHelper.ApplyAuthentication(webSocket.Options, webSocketRequest);
 
             // Apply custom headers
             var failedHeaders = new List<string>();
@@ -218,30 +219,4 @@ public class WebSocketRequestExecutor : IRequestExecutor
         return response;
     }
 
-    private void ApplyAuthentication(ClientWebSocket webSocket, Request request)
-    {
-        switch (request.AuthType)
-        {
-            case AuthenticationType.Basic:
-                if (!string.IsNullOrEmpty(request.BasicAuthUsername))
-                {
-                    var credentials = $"{request.BasicAuthUsername}:{request.BasicAuthPassword ?? string.Empty}";
-                    var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
-                    webSocket.Options.SetRequestHeader("Authorization", $"Basic {encodedCredentials}");
-                }
-                break;
-
-            case AuthenticationType.BearerToken:
-                if (!string.IsNullOrEmpty(request.BearerToken))
-                {
-                    webSocket.Options.SetRequestHeader("Authorization", $"Bearer {request.BearerToken}");
-                }
-                break;
-
-            case AuthenticationType.None:
-            default:
-                // No authentication
-                break;
-        }
-    }
 }
