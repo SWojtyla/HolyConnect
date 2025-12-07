@@ -185,7 +185,7 @@
 
     private async Task HandleQueryParameters()
     {
-        // Check if there's a requestId query parameter to auto-select a request
+        // Check if there's a requestId or collectionId query parameter to auto-select
         var uri = new Uri(NavigationManager.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
         if (query.TryGetValue("requestId", out var requestIdString) && Guid.TryParse(requestIdString, out var requestId))
@@ -194,6 +194,18 @@
             if (request != null)
             {
                 SelectRequest(request);
+                return;
+            }
+        }
+        if (query.TryGetValue("collectionId", out var collectionIdString) && Guid.TryParse(collectionIdString, out var collectionId))
+        {
+            if (_collections != null)
+            {
+                var collection = FindCollectionById(_collections, collectionId);
+                if (collection != null)
+                {
+                    SelectCollection(collection);
+                }
             }
         }
     }
@@ -206,6 +218,7 @@
             if (EnvironmentId != Guid.Empty && e.Location.Contains($"/environment/{EnvironmentId}"))
             {
                 await LoadData();
+                await HandleQueryParameters();
                 StateHasChanged();
             }
         }
@@ -279,6 +292,7 @@
     {
         _selectedCollection = collection;
         _selectedRequest = null;
+        _selectedRequestCollection = null;
         StateHasChanged();
     }
 
@@ -521,13 +535,19 @@
         {
             if (_selectedRequestCollection != null)
             {
-                breadcrumbs.Add(new BreadcrumbItem(_selectedRequestCollection.Name, href: null, icon: Icons.Material.Filled.Folder));
+                // Link to select the collection via query parameter
+                var collectionHref = $"/environment/{EnvironmentId}?collectionId={_selectedRequestCollection.Id}";
+                breadcrumbs.Add(new BreadcrumbItem(_selectedRequestCollection.Name, href: collectionHref, icon: Icons.Material.Filled.Folder));
             }
-            breadcrumbs.Add(new BreadcrumbItem(_selectedRequest.Name, href: null, icon: GetRequestIcon(_selectedRequest.Type)));
+            // Link to select the request via query parameter
+            var requestHref = $"/environment/{EnvironmentId}?requestId={_selectedRequest.Id}";
+            breadcrumbs.Add(new BreadcrumbItem(_selectedRequest.Name, href: requestHref, icon: GetRequestIcon(_selectedRequest.Type)));
         }
         else if (_selectedCollection != null)
         {
-            breadcrumbs.Add(new BreadcrumbItem(_selectedCollection.Name, href: null, icon: Icons.Material.Filled.Folder));
+            // Link to select the collection via query parameter
+            var collectionHref = $"/environment/{EnvironmentId}?collectionId={_selectedCollection.Id}";
+            breadcrumbs.Add(new BreadcrumbItem(_selectedCollection.Name, href: collectionHref, icon: Icons.Material.Filled.Folder));
         }
 
         return breadcrumbs;
