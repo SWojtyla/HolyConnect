@@ -129,79 +129,92 @@
     {
         if (Request == null || string.IsNullOrWhiteSpace(Request.Url))
         {
-            _error = "No GraphQL endpoint URL provided";
-            _isLoading = false;
+            SetLoadingState(false, "No GraphQL endpoint URL provided");
             return;
         }
         
         try
         {
-            _isLoading = true;
-            _error = null;
+            SetLoadingState(true, null);
             
             var schemaJson = await SchemaService.FetchSchemaAsync(Request.Url, Request);
             
             if (string.IsNullOrEmpty(schemaJson))
             {
-                _error = "Failed to fetch schema from the endpoint";
+                SetLoadingState(false, "Failed to fetch schema from the endpoint");
                 return;
             }
             
-            // Parse the schema JSON
-            using var document = System.Text.Json.JsonDocument.Parse(schemaJson);
-            var root = document.RootElement;
-            
-            if (!root.TryGetProperty("data", out var data) || 
-                !data.TryGetProperty("__schema", out var schemaElement))
+            // Parse the schema JSON with error handling
+            System.Text.Json.JsonDocument document;
+            try
             {
-                _error = "Invalid schema response format";
+                document = System.Text.Json.JsonDocument.Parse(schemaJson);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                SetLoadingState(false, $"Invalid JSON response: {ex.Message}");
                 return;
             }
             
-            _schema = new GraphQLSchemaInfo();
-            
-            // Parse query type
-            if (schemaElement.TryGetProperty("queryType", out var queryTypeElement))
+            using (document)
             {
-                var queryTypeName = queryTypeElement.GetProperty("name").GetString();
-                _schema.QueryType = FindAndParseType(schemaElement, queryTypeName);
-            }
-            
-            // Parse mutation type
-            if (schemaElement.TryGetProperty("mutationType", out var mutationTypeElement))
-            {
-                var mutationTypeName = mutationTypeElement.GetProperty("name").GetString();
-                _schema.MutationType = FindAndParseType(schemaElement, mutationTypeName);
-            }
-            
-            // Parse subscription type
-            if (schemaElement.TryGetProperty("subscriptionType", out var subscriptionTypeElement))
-            {
-                var subscriptionTypeName = subscriptionTypeElement.GetProperty("name").GetString();
-                _schema.SubscriptionType = FindAndParseType(schemaElement, subscriptionTypeName);
-            }
-            
-            // Parse all types
-            if (schemaElement.TryGetProperty("types", out var typesElement))
-            {
-                foreach (var typeElement in typesElement.EnumerateArray())
+                var root = document.RootElement;
+                
+                if (!root.TryGetProperty("data", out var data) || 
+                    !data.TryGetProperty("__schema", out var schemaElement))
                 {
-                    var typeInfo = ParseTypeInfo(typeElement);
-                    if (typeInfo != null)
+                    SetLoadingState(false, "Invalid schema response format");
+                    return;
+                }
+                
+                _schema = new GraphQLSchemaInfo();
+                
+                // Parse query type
+                if (schemaElement.TryGetProperty("queryType", out var queryTypeElement))
+                {
+                    var queryTypeName = queryTypeElement.GetProperty("name").GetString();
+                    _schema.QueryType = FindAndParseType(schemaElement, queryTypeName);
+                }
+                
+                // Parse mutation type
+                if (schemaElement.TryGetProperty("mutationType", out var mutationTypeElement))
+                {
+                    var mutationTypeName = mutationTypeElement.GetProperty("name").GetString();
+                    _schema.MutationType = FindAndParseType(schemaElement, mutationTypeName);
+                }
+                
+                // Parse subscription type
+                if (schemaElement.TryGetProperty("subscriptionType", out var subscriptionTypeElement))
+                {
+                    var subscriptionTypeName = subscriptionTypeElement.GetProperty("name").GetString();
+                    _schema.SubscriptionType = FindAndParseType(schemaElement, subscriptionTypeName);
+                }
+                
+                // Parse all types
+                if (schemaElement.TryGetProperty("types", out var typesElement))
+                {
+                    foreach (var typeElement in typesElement.EnumerateArray())
                     {
-                        _schema.Types.Add(typeInfo);
+                        var typeInfo = ParseTypeInfo(typeElement);
+                        if (typeInfo != null)
+                        {
+                            _schema.Types.Add(typeInfo);
+                        }
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            _error = $"Error loading schema: {ex.Message}";
+            SetLoadingState(false, $"Error loading schema: {ex.Message}");
         }
-        finally
-        {
-            _isLoading = false;
-        }
+    }
+    
+    private void SetLoadingState(bool isLoading, string? error)
+    {
+        _isLoading = isLoading;
+        _error = error;
     }
     
     private GraphQLTypeInfo? FindAndParseType(System.Text.Json.JsonElement schemaElement, string? typeName)
