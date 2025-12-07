@@ -302,4 +302,105 @@ public class RequestJsonConverterTests
         var exception = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Request>(json, _options));
         Assert.Contains("Unsupported Type value kind", exception.Message);
     }
+
+    [Fact]
+    public void Write_RestRequestWithSecretHeaders_ShouldReplaceSecretValues()
+    {
+        // Arrange
+        var request = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Request",
+            Url = "https://api.example.com/test"
+        };
+        request.Headers["Authorization"] = "Bearer secret-token";
+        request.Headers["X-API-Key"] = "public-key";
+        request.SecretHeaders.Add("Authorization");
+
+        // Act
+        var json = JsonSerializer.Serialize<Request>(request, _options);
+
+        // Assert
+        Assert.Contains("***SECRET***", json);
+        Assert.DoesNotContain("secret-token", json);
+        Assert.Contains("public-key", json); // Non-secret header should remain
+        
+        // Verify original request object is not modified
+        Assert.Equal("Bearer secret-token", request.Headers["Authorization"]);
+        Assert.Equal("public-key", request.Headers["X-API-Key"]);
+    }
+
+    [Fact]
+    public void Write_GraphQLRequestWithSecretHeaders_ShouldReplaceSecretValues()
+    {
+        // Arrange
+        var request = new GraphQLRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test GraphQL",
+            Url = "https://api.example.com/graphql",
+            Query = "query { user { name } }"
+        };
+        request.Headers["X-Secret-Token"] = "my-secret-value";
+        request.Headers["X-Public-Header"] = "public-value";
+        request.SecretHeaders.Add("X-Secret-Token");
+
+        // Act
+        var json = JsonSerializer.Serialize<Request>(request, _options);
+
+        // Assert
+        Assert.Contains("***SECRET***", json);
+        Assert.DoesNotContain("my-secret-value", json);
+        Assert.Contains("public-value", json);
+        
+        // Verify original request object is not modified
+        Assert.Equal("my-secret-value", request.Headers["X-Secret-Token"]);
+    }
+
+    [Fact]
+    public void Write_WebSocketRequestWithSecretHeaders_ShouldReplaceSecretValues()
+    {
+        // Arrange
+        var request = new WebSocketRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test WebSocket",
+            Url = "wss://api.example.com/ws"
+        };
+        request.Headers["Authorization"] = "Bearer ws-secret";
+        request.SecretHeaders.Add("Authorization");
+
+        // Act
+        var json = JsonSerializer.Serialize<Request>(request, _options);
+
+        // Assert
+        Assert.Contains("***SECRET***", json);
+        Assert.DoesNotContain("ws-secret", json);
+        Assert.Equal("Bearer ws-secret", request.Headers["Authorization"]);
+    }
+
+    [Fact]
+    public void RoundTrip_RequestWithSecretHeaders_ShouldPreserveSecretHeadersList()
+    {
+        // Arrange
+        var originalRequest = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Request",
+            Url = "https://api.example.com/test"
+        };
+        originalRequest.Headers["Authorization"] = "Bearer token";
+        originalRequest.SecretHeaders.Add("Authorization");
+
+        // Act - Serialize with secret placeholder
+        var json = JsonSerializer.Serialize<Request>(originalRequest, _options);
+        var deserializedRequest = JsonSerializer.Deserialize<Request>(json, _options);
+
+        // Assert
+        Assert.NotNull(deserializedRequest);
+        var restRequest = Assert.IsType<RestRequest>(deserializedRequest);
+        Assert.Contains("Authorization", restRequest.SecretHeaders);
+        // The value should be the placeholder since we serialized it
+        Assert.Equal("***SECRET***", restRequest.Headers["Authorization"]);
+    }
 }
