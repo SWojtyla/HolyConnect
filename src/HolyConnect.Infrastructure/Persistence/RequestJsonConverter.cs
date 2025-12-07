@@ -40,6 +40,7 @@ public class RequestJsonConverter : JsonConverter<Request>
         {
             RequestType.Rest => JsonSerializer.Deserialize<RestRequest>(json, options),
             RequestType.GraphQL => JsonSerializer.Deserialize<GraphQLRequest>(json, options),
+            RequestType.WebSocket => JsonSerializer.Deserialize<WebSocketRequest>(json, options),
             _ => throw new JsonException($"Unsupported Request type: {type}")
         };
     }
@@ -53,6 +54,9 @@ public class RequestJsonConverter : JsonConverter<Request>
                 break;
             case GraphQLRequest gql:
                 JsonSerializer.Serialize(writer, gql, options);
+                break;
+            case WebSocketRequest ws:
+                JsonSerializer.Serialize(writer, ws, options);
                 break;
             default:
                 throw new JsonException($"Unsupported Request subclass: {value.GetType().Name}");

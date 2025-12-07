@@ -111,6 +111,9 @@ public static class MauiProgram
 		// Add request executors
 		builder.Services.AddScoped<IRequestExecutor, RestRequestExecutor>();
 		builder.Services.AddScoped<IRequestExecutor, GraphQLRequestExecutor>();
+		builder.Services.AddScoped<IRequestExecutor, WebSocketRequestExecutor>();
+		builder.Services.AddScoped<IRequestExecutor, GraphQLSubscriptionWebSocketExecutor>();
+		builder.Services.AddScoped<IRequestExecutor, GraphQLSubscriptionSSEExecutor>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();
