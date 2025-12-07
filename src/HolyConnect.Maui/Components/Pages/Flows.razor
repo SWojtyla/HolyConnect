@@ -1,0 +1,228 @@
+@page "/flows"
+@inject IFlowService FlowService
+@inject IEnvironmentService EnvironmentService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+        <div>
+            <MudText Typo="Typo.h4" Class="mb-2">Flows</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                Manage and execute sequences of requests
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Add"
+                  OnClick="CreateFlow">
+            Create Flow
+        </MudButton>
+    </MudStack>
+
+    @if (_flows != null && _flows.Any())
+    {
+        <MudGrid Spacing="3">
+            @foreach (var flow in _flows)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="2" Class="d-flex flex-column" Style="height: 100%;">
+                        <MudCardContent Class="flex-grow-1">
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="flex-grow-1">
+                                        <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Success" Size="Size.Large" />
+                                        <MudTooltip Text="@flow.Name">
+                                            <MudText Typo="Typo.h6" Class="text-truncate">@flow.Name</MudText>
+                                        </MudTooltip>
+                                    </MudStack>
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                                        <MudMenuItem OnClick="@(() => EditFlow(flow))" Icon="@Icons.Material.Filled.Edit">Edit</MudMenuItem>
+                                        <MudMenuItem OnClick="@(() => DeleteFlow(flow))" Icon="@Icons.Material.Filled.Delete">Delete</MudMenuItem>
+                                    </MudMenu>
+                                </MudStack>
+                                
+                                @if (!string.IsNullOrEmpty(flow.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="text-truncate-2-lines">
+                                        @flow.Description
+                                    </MudText>
+                                }
+                                
+                                <MudDivider />
+                                
+                                <MudStack Row="true" Spacing="2" Class="flex-wrap">
+                                    <MudChip T="string" Icon="@Icons.Material.Filled.Dns" Size="Size.Small" Color="Color.Primary">
+                                        @GetEnvironmentName(flow.EnvironmentId)
+                                    </MudChip>
+                                    @if (flow.CollectionId.HasValue)
+                                    {
+                                        <MudChip T="string" Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Info">
+                                            Collection
+                                        </MudChip>
+                                    }
+                                    <MudChip T="string" Icon="@Icons.Material.Filled.ListAlt" Size="Size.Small">
+                                        @flow.Steps.Count step@(flow.Steps.Count != 1 ? "s" : "")
+                                    </MudChip>
+                                </MudStack>
+                                
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Updated @flow.UpdatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                                </MudText>
+                            </MudStack>
+                        </MudCardContent>
+                        <MudCardActions Class="d-flex justify-space-between pa-4">
+                            <MudButton Variant="Variant.Outlined" 
+                                      Color="Color.Primary" 
+                                      OnClick="@(() => ViewFlow(flow))"
+                                      StartIcon="@Icons.Material.Filled.Visibility">
+                                View
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled" 
+                                      Color="Color.Success" 
+                                      OnClick="@(() => ExecuteFlow(flow))"
+                                      StartIcon="@Icons.Material.Filled.PlayArrow">
+                                Execute
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 300px;">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <MudText Typo="Typo.body1">Loading flows...</MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudPaper Class="pa-8 d-flex flex-column align-center justify-center" Elevation="0" Outlined="true" Style="min-height: 300px;">
+            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Large" Color="Color.Primary" Class="mb-4" Style="font-size: 5rem;" />
+            <MudText Typo="Typo.h5" Class="mb-2">No Flows Yet</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mb-4">
+                Create your first flow to automate sequences of API requests
+            </MudText>
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      StartIcon="@Icons.Material.Filled.Add"
+                      OnClick="CreateFlow">
+                Create Your First Flow
+            </MudButton>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private IEnumerable<Flow>? _flows;
+    private IEnumerable<Domain.Entities.Environment>? _environments;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+        await LoadData();
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        try
+        {
+            if (e.Location.Contains("/flows"))
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reloading flows on location change: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        try
+        {
+            _flows = await FlowService.GetAllFlowsAsync();
+            _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetEnvironmentName(Guid environmentId)
+    {
+        return _environments?.FirstOrDefault(e => e.Id == environmentId)?.Name ?? "Unknown";
+    }
+
+    private void CreateFlow()
+    {
+        NavigationManager.NavigateTo("/flow/create");
+    }
+
+    private void ViewFlow(Flow flow)
+    {
+        NavigationManager.NavigateTo($"/environment/{flow.EnvironmentId}?flowId={flow.Id}");
+    }
+
+    private void EditFlow(Flow flow)
+    {
+        NavigationManager.NavigateTo($"/flow/{flow.Id}/edit");
+    }
+
+    private void ExecuteFlow(Flow flow)
+    {
+        NavigationManager.NavigateTo($"/flow/{flow.Id}/execute");
+    }
+
+    private async Task DeleteFlow(Flow flow)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Are you sure you want to delete the flow '{flow.Name}'? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Flow", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                await FlowService.DeleteFlowAsync(flow.Id);
+                Snackbar.Add("Flow deleted successfully", Severity.Success);
+                await LoadData();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting flow: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}
+
+<style>
+    .text-truncate-2-lines {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

@@ -272,7 +272,7 @@
 
     private async Task HandleQueryParameters()
     {
-        // Check if there's a requestId or collectionId query parameter to auto-select
+        // Check if there's a requestId, collectionId, or flowId query parameter to auto-select
         var uri = new Uri(NavigationManager.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
         if (query.TryGetValue("requestId", out var requestIdString) && Guid.TryParse(requestIdString, out var requestId))
@@ -292,7 +292,17 @@
                 if (collection != null)
                 {
                     SelectCollection(collection);
+                    return;
                 }
+            }
+        }
+        if (query.TryGetValue("flowId", out var flowIdString) && Guid.TryParse(flowIdString, out var flowId))
+        {
+            var flow = await FlowService.GetFlowByIdAsync(flowId);
+            if (flow != null)
+            {
+                SelectFlow(flow);
+                return;
             }
         }
     }
