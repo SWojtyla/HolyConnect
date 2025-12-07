@@ -162,8 +162,8 @@ public class RestRequestExecutor : IRequestExecutor
         {
             BodyType.Json => HttpConstants.MediaTypes.ApplicationJson,
             BodyType.Xml => HttpConstants.MediaTypes.ApplicationXml,
-            BodyType.Html => "text/html",
-            BodyType.JavaScript => "application/javascript",
+            BodyType.Html => HttpConstants.MediaTypes.TextHtml,
+            BodyType.JavaScript => HttpConstants.MediaTypes.ApplicationJavaScript,
             BodyType.Text => HttpConstants.MediaTypes.TextPlain,
             _ => HttpConstants.MediaTypes.TextPlain
         };
