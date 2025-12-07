@@ -51,6 +51,9 @@ public class GraphQLRequestExecutor : IRequestExecutor
                 Content = new StringContent(json, Encoding.UTF8, HttpConstants.MediaTypes.ApplicationJson)
             };
 
+            // Add User-Agent header by default (can be overridden by custom headers)
+            httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+
             // Apply authentication and headers using helpers
             HttpAuthenticationHelper.ApplyAuthentication(httpRequest, graphQLRequest);
             HttpAuthenticationHelper.ApplyHeaders(httpRequest, graphQLRequest);

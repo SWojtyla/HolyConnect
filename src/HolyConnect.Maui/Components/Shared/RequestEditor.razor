@@ -280,6 +280,97 @@ else
                 </MudTabPanel>
             </MudTabs>
         }
+        else if (Request is WebSocketRequest webSocketRequest)
+        {
+            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
+                <MudTabPanel Text="Message">
+                    <div class="pa-4">
+                        <MudTextField @bind-Value="webSocketRequest.Message" 
+                                      Label="Message to Send" 
+                                      Lines="10" 
+                                      Variant="Variant.Outlined"
+                                      HelperText="Message to send after connection is established" />
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Headers">
+                    <div class="pa-4">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
+                        <MudStack Row="true" Spacing="2" Class="mb-4">
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                                + Auth
+                            </MudButton>
+                        </MudStack>
+                        
+                        @foreach (var header in _headers)
+                        {
+                            <MudGrid Class="mb-2">
+                                <MudItem xs="1" Class="d-flex align-center">
+                                    <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
+                                </MudItem>
+                                <MudItem xs="5">
+                                    <VariableTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                </MudItem>
+                                <MudItem xs="2" Class="d-flex align-center">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
+                            Add Header
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Protocols">
+                    <div class="pa-4">
+                        <MudText Typo="Typo.body2" Class="mb-2">Sub-protocols (optional)</MudText>
+                        @foreach (var protocol in _protocols)
+                        {
+                            <MudGrid Class="mb-2">
+                                <MudItem xs="10">
+                                    <MudTextField @bind-Value="protocol.Value" Label="Protocol" Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="2" Class="d-flex align-center">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveProtocol(protocol))" />
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddProtocol" StartIcon="@Icons.Material.Filled.Add">
+                            Add Protocol
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+                
+                <MudTabPanel Text="Auth">
+                    <div class="pa-4">
+                        <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
+                            @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
+                            {
+                                <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        
+                        @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
+                        {
+                            <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
+                            <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+                        }
+                        else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
+                        {
+                            <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
+                        }
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        }
     </MudCardContent>
     <MudCardActions>
         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
@@ -333,6 +424,7 @@ else
 
     private List<HeaderModel> _headers = new();
     private List<ParamModel> _queryParams = new();
+    private List<ProtocolModel> _protocols = new();
     private RequestResponse? _response;
     private Domain.Entities.RequestLayout _layout = Domain.Entities.RequestLayout.Horizontal;
     private bool _isExecuting;
@@ -350,6 +442,11 @@ else
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
+    }
+
+    private class ProtocolModel
+    {
+        public string Value { get; set; } = string.Empty;
     }
 
     protected override async Task OnInitializedAsync()
@@ -378,6 +475,11 @@ else
                     Enabled = !restRequest.DisabledQueryParameters.Contains(p.Key)
                 }).ToList();
             }
+            
+            if (Request is WebSocketRequest wsRequest)
+            {
+                _protocols = wsRequest.Protocols.Select(p => new ProtocolModel { Value = p }).ToList();
+            }
         }
     }
 
@@ -399,6 +501,16 @@ else
     private void RemoveQueryParam(ParamModel param)
     {
         _queryParams.Remove(param);
+    }
+
+    private void AddProtocol()
+    {
+        _protocols.Add(new ProtocolModel());
+    }
+
+    private void RemoveProtocol(ProtocolModel protocol)
+    {
+        _protocols.Remove(protocol);
     }
 
     private void AddCommonHeader(string key, string value)
@@ -480,6 +592,7 @@ else
         {
             SyncHeaders();
             SyncQueryParams();
+            SyncProtocols();
             _response = await RequestService.ExecuteRequestAsync(Request);
             Snackbar.Add("Request executed successfully", Severity.Success);
         }
@@ -500,6 +613,7 @@ else
 
         SyncHeaders();
         SyncQueryParams();
+        SyncProtocols();
         await OnSave.InvokeAsync();
     }
 
@@ -541,6 +655,19 @@ else
                 {
                     restRequest.DisabledQueryParameters.Add(param.Key);
                 }
+            }
+        }
+    }
+
+    private void SyncProtocols()
+    {
+        if (Request is WebSocketRequest wsRequest)
+        {
+            wsRequest.Protocols.Clear();
+            
+            foreach (var protocol in _protocols.Where(p => !string.IsNullOrWhiteSpace(p.Value)))
+            {
+                wsRequest.Protocols.Add(protocol.Value);
             }
         }
     }

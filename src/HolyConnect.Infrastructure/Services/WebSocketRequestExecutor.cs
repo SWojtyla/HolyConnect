@@ -44,6 +44,9 @@ public class WebSocketRequestExecutor : IRequestExecutor
                 webSocket.Options.AddSubProtocol(protocol);
             }
 
+            // Add User-Agent header
+            webSocket.Options.SetRequestHeader(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+
             // Apply authentication using helper
             HttpAuthenticationHelper.ApplyAuthentication(webSocket.Options, webSocketRequest);
 

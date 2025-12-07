@@ -37,6 +37,14 @@ public static class HttpConstants
     }
 
     /// <summary>
+    /// Default values for HTTP headers
+    /// </summary>
+    public static class Defaults
+    {
+        public const string UserAgent = "HolyConnect/1.0";
+    }
+
+    /// <summary>
     /// WebSocket-related constants
     /// </summary>
     public static class WebSocket

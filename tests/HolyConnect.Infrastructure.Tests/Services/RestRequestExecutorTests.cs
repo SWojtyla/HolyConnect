@@ -538,4 +538,209 @@ public class RestRequestExecutorTests
         Assert.Single(authHeaders);
         Assert.Equal("Bearer correct-token", authHeaders[0]);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldAddUserAgentHeader_ByDefault()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("User-Agent"));
+        var userAgent = capturedRequest.Headers.GetValues("User-Agent").First();
+        Assert.Equal("HolyConnect/1.0", userAgent);
+        
+        // Verify it's in the sent request
+        Assert.NotNull(response.SentRequest);
+        Assert.True(response.SentRequest.Headers.ContainsKey("User-Agent"));
+        Assert.Equal("HolyConnect/1.0", response.SentRequest.Headers["User-Agent"]);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldAllowUserAgentOverride()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            Headers = { { "User-Agent", "CustomAgent/2.0" } }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.True(capturedRequest.Headers.Contains("User-Agent"));
+        var userAgent = capturedRequest.Headers.GetValues("User-Agent").First();
+        Assert.Equal("CustomAgent/2.0", userAgent);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldSetContentTypeBasedOnBodyType_Json()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Post,
+            Body = "{\"test\": \"data\"}",
+            BodyType = BodyType.Json
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest.Content);
+        Assert.Equal("application/json", capturedRequest.Content.Headers.ContentType?.MediaType);
+        
+        // Verify it's in the sent request
+        Assert.NotNull(response.SentRequest);
+        Assert.True(response.SentRequest.Headers.ContainsKey("Content-Type"));
+        Assert.Contains("application/json", response.SentRequest.Headers["Content-Type"]);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldSetContentTypeBasedOnBodyType_Xml()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Post,
+            Body = "<root><test>data</test></root>",
+            BodyType = BodyType.Xml
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest.Content);
+        Assert.Equal("application/xml", capturedRequest.Content.Headers.ContentType?.MediaType);
+        
+        // Verify it's in the sent request
+        Assert.NotNull(response.SentRequest);
+        Assert.True(response.SentRequest.Headers.ContainsKey("Content-Type"));
+        Assert.Contains("application/xml", response.SentRequest.Headers["Content-Type"]);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldAllowContentTypeOverride()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Post,
+            Body = "{\"test\": \"data\"}",
+            BodyType = BodyType.Json,
+            ContentType = "application/custom+json"
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest.Content);
+        Assert.Equal("application/custom+json", capturedRequest.Content.Headers.ContentType?.MediaType);
+    }
 }

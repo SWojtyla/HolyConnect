@@ -131,6 +131,9 @@ public class RestRequestExecutor : IRequestExecutor
 
         var httpRequest = new HttpRequestMessage(httpMethod, url);
 
+        // Add User-Agent header by default (can be overridden by custom headers)
+        httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+
         // Apply authentication using helper
         HttpAuthenticationHelper.ApplyAuthentication(httpRequest, request);
 
@@ -139,12 +142,30 @@ public class RestRequestExecutor : IRequestExecutor
 
         if (!string.IsNullOrEmpty(request.Body))
         {
-            var contentType = string.IsNullOrEmpty(request.ContentType) 
-                ? HttpConstants.MediaTypes.TextPlain 
-                : request.ContentType;
+            var contentType = GetContentType(request);
             httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
         }
 
         return httpRequest;
+    }
+
+    private string GetContentType(RestRequest request)
+    {
+        // If user explicitly set ContentType, use it
+        if (!string.IsNullOrEmpty(request.ContentType))
+        {
+            return request.ContentType;
+        }
+
+        // Otherwise, infer from BodyType
+        return request.BodyType switch
+        {
+            BodyType.Json => HttpConstants.MediaTypes.ApplicationJson,
+            BodyType.Xml => HttpConstants.MediaTypes.ApplicationXml,
+            BodyType.Html => "text/html",
+            BodyType.JavaScript => "application/javascript",
+            BodyType.Text => HttpConstants.MediaTypes.TextPlain,
+            _ => HttpConstants.MediaTypes.TextPlain
+        };
     }
 }
