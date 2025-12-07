@@ -203,6 +203,7 @@ public static class RequestConverter
         target.Description = source.Description;
         target.Headers = new Dictionary<string, string>(source.Headers);
         target.DisabledHeaders = new HashSet<string>(source.DisabledHeaders);
+        target.SecretHeaders = new HashSet<string>(source.SecretHeaders);
         target.CollectionId = source.CollectionId;
         target.Collection = source.Collection;
         target.EnvironmentId = source.EnvironmentId;

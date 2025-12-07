@@ -6,6 +6,8 @@ namespace HolyConnect.Infrastructure.Persistence;
 
 public class RequestJsonConverter : JsonConverter<Request>
 {
+    private const string SecretPlaceholder = "***SECRET***";
+
     public override Request? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         using var doc = JsonDocument.ParseValue(ref reader);
@@ -47,19 +49,37 @@ public class RequestJsonConverter : JsonConverter<Request>
 
     public override void Write(Utf8JsonWriter writer, Request value, JsonSerializerOptions options)
     {
-        switch (value)
+        // Temporarily replace secret header values with placeholder
+        var originalHeaders = new Dictionary<string, string>(value.Headers);
+        foreach (var secretHeader in value.SecretHeaders)
         {
-            case RestRequest rest:
-                JsonSerializer.Serialize(writer, rest, options);
-                break;
-            case GraphQLRequest gql:
-                JsonSerializer.Serialize(writer, gql, options);
-                break;
-            case WebSocketRequest ws:
-                JsonSerializer.Serialize(writer, ws, options);
-                break;
-            default:
-                throw new JsonException($"Unsupported Request subclass: {value.GetType().Name}");
+            if (value.Headers.ContainsKey(secretHeader))
+            {
+                value.Headers[secretHeader] = SecretPlaceholder;
+            }
+        }
+
+        try
+        {
+            switch (value)
+            {
+                case RestRequest rest:
+                    JsonSerializer.Serialize(writer, rest, options);
+                    break;
+                case GraphQLRequest gql:
+                    JsonSerializer.Serialize(writer, gql, options);
+                    break;
+                case WebSocketRequest ws:
+                    JsonSerializer.Serialize(writer, ws, options);
+                    break;
+                default:
+                    throw new JsonException($"Unsupported Request subclass: {value.GetType().Name}");
+            }
+        }
+        finally
+        {
+            // Restore original header values
+            value.Headers = originalHeaders;
         }
     }
 }
