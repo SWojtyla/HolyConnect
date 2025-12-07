@@ -1,9 +1,8 @@
 using System.Diagnostics;
-using HolyConnect.Infrastructure.Common;
 using System.Text;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
-using Newtonsoft.Json;
+using HolyConnect.Infrastructure.Common;
 
 namespace HolyConnect.Infrastructure.Services;
 
@@ -40,35 +39,14 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
 
         try
         {
-            var payload = new
-            {
-                query = graphQLRequest.Query,
-                variables = string.IsNullOrEmpty(graphQLRequest.Variables)
-                    ? null
-                    : JsonConvert.DeserializeObject(graphQLRequest.Variables),
-                operationName = graphQLRequest.OperationName
-            };
-
-            var json = JsonConvert.SerializeObject(payload);
+            var json = GraphQLHelper.SerializePayload(graphQLRequest);
             var httpRequest = new HttpRequestMessage(System.Net.Http.HttpMethod.Post, graphQLRequest.Url);
             
             // Set content with or without Content-Type based on DisabledHeaders
-            if (graphQLRequest.DisabledHeaders.Contains(HttpConstants.Headers.ContentType))
-            {
-                httpRequest.Content = new StringContent(json, Encoding.UTF8);
-                httpRequest.Content.Headers.ContentType = null;
-            }
-            else
-            {
-                httpRequest.Content = new StringContent(json, Encoding.UTF8, HttpConstants.MediaTypes.ApplicationJson);
-            }
+            HttpRequestHelper.SetContent(httpRequest, json, HttpConstants.MediaTypes.ApplicationJson, graphQLRequest);
 
-            // Add User-Agent header by default (can be overridden by custom headers)
-            // Only add if not explicitly disabled
-            if (!graphQLRequest.DisabledHeaders.Contains(HttpConstants.Headers.UserAgent))
-            {
-                httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
-            }
+            // Add User-Agent header by default
+            HttpRequestHelper.AddUserAgentHeader(httpRequest, graphQLRequest);
 
             // Accept SSE content type
             httpRequest.Headers.TryAddWithoutValidation("Accept", "text/event-stream");
@@ -78,29 +56,11 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
             HttpAuthenticationHelper.ApplyHeaders(httpRequest, graphQLRequest);
 
             // Capture the sent request details
-            var sentRequest = new SentRequest
-            {
-                Url = graphQLRequest.Url,
-                Method = "GRAPHQL_SUBSCRIPTION_SSE",
-                Headers = new Dictionary<string, string>(),
-                Body = json,
-                QueryParameters = new Dictionary<string, string>()
-            };
-
-            foreach (var header in httpRequest.Headers)
-            {
-                sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
-            }
-
-            if (httpRequest.Content?.Headers != null)
-            {
-                foreach (var header in httpRequest.Content.Headers)
-                {
-                    sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
-                }
-            }
-
-            response.SentRequest = sentRequest;
+            response.SentRequest = HttpRequestHelper.CreateSentRequest(
+                httpRequest, 
+                graphQLRequest.Url, 
+                "GRAPHQL_SUBSCRIPTION_SSE", 
+                json);
 
             // Send the request with ResponseHeadersRead to start reading stream immediately
             var httpResponse = await _httpClient.SendAsync(
@@ -112,18 +72,8 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
             response.StatusCode = (int)httpResponse.StatusCode;
             response.StatusMessage = httpResponse.ReasonPhrase ?? string.Empty;
 
-            foreach (var header in httpResponse.Headers)
-            {
-                response.Headers[header.Key] = string.Join(", ", header.Value);
-            }
-
-            if (httpResponse.Content.Headers != null)
-            {
-                foreach (var header in httpResponse.Content.Headers)
-                {
-                    response.Headers[header.Key] = string.Join(", ", header.Value);
-                }
-            }
+            ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Headers);
+            ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Content.Headers);
 
             // Read the SSE stream
             if (httpResponse.IsSuccessStatusCode)
@@ -204,21 +154,12 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
             }
 
             // Build response body from all events
-            var bodyBuilder = new StringBuilder();
-            foreach (var evt in response.StreamEvents)
-            {
-                bodyBuilder.AppendLine($"[{evt.Timestamp:HH:mm:ss.fff}] {evt.EventType}: {evt.Data}");
-            }
-            response.Body = bodyBuilder.ToString();
-            response.Size = response.Body.Length;
+            ResponseHelper.FinalizeStreamingResponse(response);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = 0;
-            response.StatusMessage = $"Error: {ex.Message}";
-            response.Body = ex.ToString();
+            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
         }
 
         return response;

@@ -55,30 +55,10 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             HttpAuthenticationHelper.ApplyAuthentication(webSocket.Options, graphQLRequest);
 
             // Apply custom headers
-            var failedHeaders = new List<string>();
-            foreach (var header in graphQLRequest.Headers.Where(h => !graphQLRequest.DisabledHeaders.Contains(h.Key)))
-            {
-                try
-                {
-                    webSocket.Options.SetRequestHeader(header.Key, header.Value);
-                }
-                catch (ArgumentException ex)
-                {
-                    // Some headers cannot be set directly (e.g., restricted headers like Host, Content-Length)
-                    failedHeaders.Add($"{header.Key}: {ex.Message}");
-                }
-            }
+            var failedHeaders = WebSocketHelper.ApplyHeaders(webSocket.Options, graphQLRequest);
 
             // Prepare payload
-            var payload = new
-            {
-                query = graphQLRequest.Query,
-                variables = string.IsNullOrEmpty(graphQLRequest.Variables)
-                    ? null
-                    : JsonConvert.DeserializeObject(graphQLRequest.Variables),
-                operationName = graphQLRequest.OperationName
-            };
-
+            var payload = GraphQLHelper.CreatePayload(graphQLRequest);
             var payloadJson = JsonConvert.SerializeObject(payload);
 
             // Capture sent request
@@ -106,7 +86,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             }
 
             // Convert HTTP/HTTPS URL to WS/WSS
-            var wsUrl = ConvertToWebSocketUrl(graphQLRequest.Url);
+            var wsUrl = WebSocketHelper.ConvertToWebSocketUrl(graphQLRequest.Url);
             var uri = new Uri(wsUrl);
             await webSocket.ConnectAsync(uri, CancellationToken.None);
 
@@ -116,7 +96,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             response.StatusMessage = "WebSocket connection established";
 
             // Send connection_init message (graphql-transport-ws protocol)
-            await SendMessage(webSocket, new { type = "connection_init" });
+            await WebSocketHelper.SendJsonMessageAsync(webSocket, new { type = "connection_init" });
             response.StreamEvents.Add(new StreamEvent
             {
                 Timestamp = DateTime.UtcNow,
@@ -140,7 +120,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                 payload = payload
             };
 
-            await SendMessage(webSocket, subscribeMessage);
+            await WebSocketHelper.SendJsonMessageAsync(webSocket, subscribeMessage);
             response.StreamEvents.Add(new StreamEvent
             {
                 Timestamp = DateTime.UtcNow,
@@ -243,21 +223,12 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             }
 
             // Build response body from all events
-            var bodyBuilder = new StringBuilder();
-            foreach (var evt in response.StreamEvents)
-            {
-                bodyBuilder.AppendLine($"[{evt.Timestamp:HH:mm:ss.fff}] {evt.EventType}: {evt.Data}");
-            }
-            response.Body = bodyBuilder.ToString();
-            response.Size = response.Body.Length;
+            ResponseHelper.FinalizeStreamingResponse(response);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = 0;
-            response.StatusMessage = $"Error: {ex.Message}";
-            response.Body = ex.ToString();
+            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
         }
         finally
         {
@@ -268,23 +239,20 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                     try
                     {
                         // Send complete message before closing
-                        await SendMessage(webSocket, new { id = "1", type = "complete" });
-                        await webSocket.CloseAsync(
-                            WebSocketCloseStatus.NormalClosure,
-                            "Client closing",
-                            CancellationToken.None);
+                        await WebSocketHelper.SendJsonMessageAsync(webSocket, new { id = "1", type = "complete" });
                     }
-                    catch (Exception cleanupEx)
+                    catch (Exception ex)
                     {
-                        // Log cleanup error to response if possible
+                        // Ignore errors when sending complete message, but log to response for diagnostics
                         response.StreamEvents.Add(new StreamEvent
                         {
                             Timestamp = DateTime.UtcNow,
-                            Data = $"Warning: Failed to close WebSocket cleanly: {cleanupEx.Message}",
+                            Data = $"Warning: Failed to send complete message: {ex.Message}",
                             EventType = "warning"
                         });
                     }
                 }
+                await WebSocketHelper.SafeCloseAsync(webSocket, response);
                 webSocket.Dispose();
             }
         }
@@ -322,44 +290,5 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
         }
     }
 
-    private async Task SendMessage(ClientWebSocket webSocket, object message)
-    {
-        var json = JsonConvert.SerializeObject(message);
-        var bytes = Encoding.UTF8.GetBytes(json);
-        await webSocket.SendAsync(
-            new ArraySegment<byte>(bytes),
-            WebSocketMessageType.Text,
-            endOfMessage: true,
-            CancellationToken.None);
-    }
 
-    private string ConvertToWebSocketUrl(string url)
-    {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            // If not a valid absolute URI, assume it needs wss:// prefix
-            return $"wss://{url}";
-        }
-
-        // Already a WebSocket URL
-        if (uri.Scheme == "ws" || uri.Scheme == "wss")
-        {
-            return url;
-        }
-
-        // Convert HTTP to WebSocket
-        if (uri.Scheme == "http")
-        {
-            return $"ws://{uri.Host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}{uri.PathAndQuery}";
-        }
-
-        // Convert HTTPS to secure WebSocket
-        if (uri.Scheme == "https")
-        {
-            return $"wss://{uri.Host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}{uri.PathAndQuery}";
-        }
-
-        // Default to wss for secure connections
-        return $"wss://{url}";
-    }
 }
