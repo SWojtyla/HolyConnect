@@ -49,12 +49,13 @@ public class RequestJsonConverter : JsonConverter<Request>
 
     public override void Write(Utf8JsonWriter writer, Request value, JsonSerializerOptions options)
     {
-        // Temporarily replace secret header values with placeholder
-        var originalHeaders = new Dictionary<string, string>(value.Headers);
+        // Store original secret header values
+        var originalSecretValues = new Dictionary<string, string>();
         foreach (var secretHeader in value.SecretHeaders)
         {
-            if (value.Headers.ContainsKey(secretHeader))
+            if (value.Headers.TryGetValue(secretHeader, out var originalValue))
             {
+                originalSecretValues[secretHeader] = originalValue;
                 value.Headers[secretHeader] = SecretPlaceholder;
             }
         }
@@ -78,8 +79,11 @@ public class RequestJsonConverter : JsonConverter<Request>
         }
         finally
         {
-            // Restore original header values
-            value.Headers = originalHeaders;
+            // Restore only the modified secret header values
+            foreach (var kvp in originalSecretValues)
+            {
+                value.Headers[kvp.Key] = kvp.Value;
+            }
         }
     }
 }
