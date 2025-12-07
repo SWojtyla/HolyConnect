@@ -24,6 +24,8 @@
                              Lines="3"
                              Class="mb-3" />
 
+                @* Environment field is read-only during editing to maintain data integrity.
+                   Changing the environment could break request references and variable scoping. *@
                 <MudSelect @bind-Value="_flow.EnvironmentId" 
                           Label="Environment" 
                           Required="true"
