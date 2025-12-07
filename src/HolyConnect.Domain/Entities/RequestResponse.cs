@@ -10,6 +10,15 @@ public class RequestResponse
     public long Size { get; set; }
     public DateTime Timestamp { get; set; }
     public SentRequest? SentRequest { get; set; }
+    public bool IsStreaming { get; set; }
+    public List<StreamEvent> StreamEvents { get; set; } = new();
+}
+
+public class StreamEvent
+{
+    public DateTime Timestamp { get; set; }
+    public string Data { get; set; } = string.Empty;
+    public string? EventType { get; set; }
 }
 
 public class SentRequest
