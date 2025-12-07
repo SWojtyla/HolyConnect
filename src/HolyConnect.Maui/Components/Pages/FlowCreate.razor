@@ -8,54 +8,81 @@
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudPaper Class="pa-4">
-        <MudText Typo="Typo.h4" Class="mb-4">Create New Flow</MudText>
+    <MudPaper Elevation="0" Class="pa-6">
+        <MudStack Spacing="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Large" Color="Color.Primary" />
+                <div>
+                    <MudText Typo="Typo.h4" Color="Color.Primary">Create New Flow</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Chain multiple requests into an automated workflow</MudText>
+                </div>
+            </MudStack>
 
-        <MudForm @ref="_form" @bind-IsValid="@_isValid">
-            <MudTextField @bind-Value="_flowName" 
-                         Label="Flow Name" 
-                         Required="true" 
-                         RequiredError="Flow name is required"
-                         Class="mb-3" />
-            
-            <MudTextField @bind-Value="_flowDescription" 
-                         Label="Description" 
-                         Lines="3"
-                         Class="mb-3" />
+            <MudDivider />
 
-            <MudSelect @bind-Value="_selectedEnvironmentId" 
-                      Label="Environment" 
-                      Required="true"
-                      RequiredError="Environment is required"
-                      T="Guid?"
-                      Class="mb-3">
-                @if (_environments != null)
-                {
-                    @foreach (var env in _environments)
-                    {
-                        <MudSelectItem Value="@((Guid?)env.Id)">@env.Name</MudSelectItem>
-                    }
-                }
-            </MudSelect>
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudForm @ref="_form" @bind-IsValid="@_isValid">
+                        <MudStack Spacing="3">
+                            <MudTextField @bind-Value="_flowName" 
+                                         Label="Flow Name" 
+                                         Required="true" 
+                                         RequiredError="Flow name is required"
+                                         Variant="Variant.Outlined"
+                                         Adornment="Adornment.Start"
+                                         AdornmentIcon="@Icons.Material.Filled.Label"
+                                         Placeholder="User Registration Flow" />
+                            
+                            <MudTextField @bind-Value="_flowDescription" 
+                                         Label="Description" 
+                                         Lines="3"
+                                         Variant="Variant.Outlined"
+                                         Adornment="Adornment.Start"
+                                         AdornmentIcon="@Icons.Material.Filled.Description"
+                                         Placeholder="Describe what this flow does" />
 
-            @if (_selectedEnvironmentId.HasValue && _collections != null)
-            {
-                <MudSelect @bind-Value="_selectedCollectionId" 
-                          Label="Collection (Optional)" 
-                          T="Guid?"
-                          Clearable="true"
-                          Class="mb-3">
-                    @foreach (var col in _collections)
-                    {
-                        <MudSelectItem Value="@((Guid?)col.Id)">@col.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            }
+                            <MudSelect @bind-Value="_selectedEnvironmentId" 
+                                      Label="Environment" 
+                                      Required="true"
+                                      RequiredError="Environment is required"
+                                      T="Guid?"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.CloudQueue">
+                                @if (_environments != null)
+                                {
+                                    @foreach (var env in _environments)
+                                    {
+                                        <MudSelectItem Value="@((Guid?)env.Id)">@env.Name</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
 
-            <MudText Typo="Typo.h6" Class="mt-4 mb-2">Flow Steps</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
-                Add requests to execute in sequence. Variables extracted from each step will be available to subsequent steps.
-            </MudText>
+                            @if (_selectedEnvironmentId.HasValue && _collections != null)
+                            {
+                                <MudSelect @bind-Value="_selectedCollectionId" 
+                                          Label="Collection (Optional)" 
+                                          T="Guid?"
+                                          Clearable="true"
+                                          Variant="Variant.Outlined"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Folder">
+                                    @foreach (var col in _collections)
+                                    {
+                                        <MudSelectItem Value="@((Guid?)col.Id)">@col.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+
+                            <MudDivider Class="my-2" />
+
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.List" Color="Color.Info" />
+                                <MudText Typo="Typo.h6" Color="Color.Info">Flow Steps</MudText>
+                            </MudStack>
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                                Add requests to execute in sequence. Variables extracted from each step will be available to subsequent steps.
+                            </MudAlert>
 
             @if (_steps.Any())
             {
@@ -118,30 +145,41 @@
             }
             else
             {
-                <MudAlert Severity="Severity.Info" Class="mb-3">No steps added yet. Add at least one step to create the flow.</MudAlert>
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    No steps added yet. Add at least one step to create the flow.
+                </MudAlert>
             }
 
             <MudButton Variant="Variant.Outlined" 
-                      Color="Color.Primary" 
+                      Color="Color.Info" 
                       StartIcon="@Icons.Material.Filled.Add"
                       OnClick="AddStep"
-                      Disabled="@(!_selectedEnvironmentId.HasValue || _availableRequests == null || !_availableRequests.Any())"
-                      Class="mb-4">
+                      Size="Size.Medium"
+                      Disabled="@(!_selectedEnvironmentId.HasValue || _availableRequests == null || !_availableRequests.Any())">
                 Add Step
             </MudButton>
-
-            <MudDivider Class="my-4" />
-
-            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
-                <MudButton Variant="Variant.Outlined" OnClick="Cancel">Cancel</MudButton>
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Primary" 
-                          OnClick="CreateFlow"
-                          Disabled="@(!_isValid || !_steps.Any())">
-                    Create Flow
-                </MudButton>
-            </MudStack>
-        </MudForm>
+                        </MudStack>
+                    </MudForm>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudStack Row="true" Spacing="2" Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Primary" 
+                                  OnClick="CreateFlow"
+                                  StartIcon="@Icons.Material.Filled.Check"
+                                  Disabled="@(!_isValid || !_steps.Any())">
+                            Create Flow
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Default" 
+                                  OnClick="Cancel"
+                                  StartIcon="@Icons.Material.Filled.Close">
+                            Cancel
+                        </MudButton>
+                    </MudStack>
+                </MudCardActions>
+            </MudCard>
+        </MudStack>
     </MudPaper>
 </MudContainer>
 

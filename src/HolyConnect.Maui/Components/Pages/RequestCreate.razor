@@ -7,38 +7,106 @@
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Create Request</MudText>
+    <MudPaper Elevation="0" Class="pa-6">
+        <MudStack Spacing="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Large" Color="Color.Primary" />
+                <div>
+                    <MudText Typo="Typo.h4" Color="Color.Primary">Create New Request</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Define a new API request for testing</MudText>
+                </div>
+            </MudStack>
 
-    <MudCard>
-        <MudCardContent>
-            <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
-            <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
-            <MudTextField @bind-Value="_url" Label="URL" Required="true" Variant="Variant.Outlined" Class="mt-4" />
-            
-            <MudSelect @bind-Value="_requestType" Label="Request Type" Variant="Variant.Outlined" Class="mt-4">
-                <MudSelectItem Value="@RequestType.Rest">REST</MudSelectItem>
-                <MudSelectItem Value="@RequestType.GraphQL">GraphQL</MudSelectItem>
-            </MudSelect>
+            <MudDivider />
 
-            @if (_requestType == RequestType.Rest)
-            {
-                <MudSelect @bind-Value="_httpMethod" Label="Method" Variant="Variant.Outlined" Class="mt-4">
-                    @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
-                    {
-                        <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
-                    }
-                </MudSelect>
-            }
-        </MudCardContent>
-        <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveRequest" Disabled="@(string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_url))">
-                Create
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">
-                Cancel
-            </MudButton>
-        </MudCardActions>
-    </MudCard>
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_name" 
+                                     Label="Request Name" 
+                                     Required="true" 
+                                     Variant="Variant.Outlined"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Label" />
+                        
+                        <MudTextField @bind-Value="_description" 
+                                     Label="Description" 
+                                     Lines="3" 
+                                     Variant="Variant.Outlined"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Description" />
+                        
+                        <MudTextField @bind-Value="_url" 
+                                     Label="URL" 
+                                     Required="true" 
+                                     Variant="Variant.Outlined"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Link"
+                                     Placeholder="https://api.example.com/endpoint" />
+                        
+                        <MudSelect @bind-Value="_requestType" 
+                                  Label="Request Type" 
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Category"
+                                  AnchorOrigin="Origin.BottomCenter">
+                            <MudSelectItem Value="@RequestType.Rest">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Api" Size="Size.Small" Color="Color.Info" />
+                                    <MudText>REST</MudText>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@RequestType.GraphQL">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.GraphicEq" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudText>GraphQL</MudText>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@RequestType.WebSocket">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Cable" Size="Size.Small" Color="Color.Warning" />
+                                    <MudText>WebSocket</MudText>
+                                </MudStack>
+                            </MudSelectItem>
+                        </MudSelect>
+
+                        @if (_requestType == RequestType.Rest)
+                        {
+                            <MudSelect @bind-Value="_httpMethod" 
+                                      Label="HTTP Method" 
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Http">
+                                @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
+                                {
+                                    <MudSelectItem Value="@method">
+                                        <MudChip T="string" Size="Size.Small" Color="@GetMethodColor(method)">@method.ToString().ToUpper()</MudChip>
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                    </MudStack>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudStack Row="true" Spacing="2" Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Primary" 
+                                  OnClick="SaveRequest" 
+                                  StartIcon="@Icons.Material.Filled.Check"
+                                  Disabled="@(string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_url))">
+                            Create Request
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Default" 
+                                  OnClick="Cancel"
+                                  StartIcon="@Icons.Material.Filled.Close">
+                            Cancel
+                        </MudButton>
+                    </MudStack>
+                </MudCardActions>
+            </MudCard>
+        </MudStack>
+    </MudPaper>
 </MudContainer>
 
 @code {
@@ -99,6 +167,14 @@
                 CollectionId = CollectionId,
                 EnvironmentId = targetEnvironmentId
             },
+            RequestType.WebSocket => new WebSocketRequest
+            {
+                Name = _name,
+                Description = _description,
+                Url = _url,
+                CollectionId = CollectionId,
+                EnvironmentId = targetEnvironmentId
+            },
             _ => throw new NotSupportedException($"Request type {_requestType} not supported")
         };
 
@@ -129,5 +205,20 @@
         }
         
         NavigationManager.NavigateTo("/");
+    }
+
+    private Color GetMethodColor(Domain.Entities.HttpMethod method)
+    {
+        return method switch
+        {
+            Domain.Entities.HttpMethod.Get => Color.Success,
+            Domain.Entities.HttpMethod.Post => Color.Info,
+            Domain.Entities.HttpMethod.Put => Color.Warning,
+            Domain.Entities.HttpMethod.Delete => Color.Error,
+            Domain.Entities.HttpMethod.Patch => Color.Secondary,
+            Domain.Entities.HttpMethod.Head => Color.Default,
+            Domain.Entities.HttpMethod.Options => Color.Tertiary,
+            _ => Color.Default
+        };
     }
 }

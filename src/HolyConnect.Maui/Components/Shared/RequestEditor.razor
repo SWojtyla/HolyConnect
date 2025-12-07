@@ -458,6 +458,24 @@ else
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveRequestInternal" Disabled="_isExecuting">
                 Save
             </MudButton>
+            <MudMenu Icon="@Icons.Material.Filled.SwapHoriz" 
+                     Variant="Variant.Outlined" 
+                     Label="Convert To" 
+                     Size="Size.Medium"
+                     Disabled="_isExecuting">
+                @if (Request?.Type != RequestType.Rest)
+                {
+                    <MudMenuItem OnClick="@(() => ConvertRequestTo(RequestType.Rest))">REST</MudMenuItem>
+                }
+                @if (Request?.Type != RequestType.GraphQL)
+                {
+                    <MudMenuItem OnClick="@(() => ConvertRequestTo(RequestType.GraphQL))">GraphQL</MudMenuItem>
+                }
+                @if (Request?.Type != RequestType.WebSocket)
+                {
+                    <MudMenuItem OnClick="@(() => ConvertRequestTo(RequestType.WebSocket))">WebSocket</MudMenuItem>
+                }
+            </MudMenu>
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())" Disabled="_isExecuting">
                 Cancel
             </MudButton>
@@ -839,5 +857,35 @@ else
             Domain.Entities.AuthenticationType.BearerToken => "Bearer Token",
             _ => authType.ToString()
         };
+    }
+
+    private async Task ConvertRequestTo(RequestType targetType)
+    {
+        if (Request == null) return;
+
+        try
+        {
+            // Save current request first
+            SyncHeaders();
+            SyncQueryParams();
+            SyncProtocols();
+            await RequestService.UpdateRequestAsync(Request);
+
+            // Convert to new type
+            var convertedRequest = Application.Common.RequestConverter.ConvertTo(Request, targetType);
+            
+            // Save the converted request
+            var createdRequest = await RequestService.CreateRequestAsync(convertedRequest);
+            
+            Snackbar.Add($"Request converted to {targetType} successfully", Severity.Success);
+            
+            // The parent component should handle navigation
+            // For now, just notify that save occurred so the UI can refresh
+            await OnSave.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error converting request: {ex.Message}", Severity.Error);
+        }
     }
 }
