@@ -92,6 +92,13 @@ public static class HttpAuthenticationHelper
             {
                 continue;
             }
+            
+            // Remove existing header if it exists to allow override
+            if (httpRequest.Headers.Contains(header.Key))
+            {
+                httpRequest.Headers.Remove(header.Key);
+            }
+            
             httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
     }

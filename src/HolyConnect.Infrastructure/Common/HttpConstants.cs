@@ -24,6 +24,8 @@ public static class HttpConstants
         public const string ApplicationJson = "application/json";
         public const string ApplicationXml = "application/xml";
         public const string TextPlain = "text/plain";
+        public const string TextHtml = "text/html";
+        public const string ApplicationJavaScript = "application/javascript";
         public const string ApplicationOctetStream = "application/octet-stream";
     }
 
@@ -34,6 +36,14 @@ public static class HttpConstants
     {
         public const string BasicScheme = "Basic";
         public const string BearerScheme = "Bearer";
+    }
+
+    /// <summary>
+    /// Default values for HTTP headers
+    /// </summary>
+    public static class Defaults
+    {
+        public const string UserAgent = "HolyConnect/1.0";
     }
 
     /// <summary>

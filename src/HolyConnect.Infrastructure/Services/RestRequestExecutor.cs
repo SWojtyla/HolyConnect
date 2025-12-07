@@ -131,6 +131,13 @@ public class RestRequestExecutor : IRequestExecutor
 
         var httpRequest = new HttpRequestMessage(httpMethod, url);
 
+        // Add User-Agent header by default (can be overridden by custom headers)
+        // Only add if not explicitly disabled
+        if (!request.DisabledHeaders.Contains(HttpConstants.Headers.UserAgent))
+        {
+            httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+        }
+
         // Apply authentication using helper
         HttpAuthenticationHelper.ApplyAuthentication(httpRequest, request);
 
@@ -139,12 +146,40 @@ public class RestRequestExecutor : IRequestExecutor
 
         if (!string.IsNullOrEmpty(request.Body))
         {
-            var contentType = string.IsNullOrEmpty(request.ContentType) 
-                ? HttpConstants.MediaTypes.TextPlain 
-                : request.ContentType;
-            httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
+            // Check if Content-Type is disabled
+            if (request.DisabledHeaders.Contains(HttpConstants.Headers.ContentType))
+            {
+                // Create content without Content-Type header
+                httpRequest.Content = new StringContent(request.Body, Encoding.UTF8);
+                httpRequest.Content.Headers.ContentType = null;
+            }
+            else
+            {
+                var contentType = GetContentType(request);
+                httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
+            }
         }
 
         return httpRequest;
+    }
+
+    private string GetContentType(RestRequest request)
+    {
+        // If user explicitly set ContentType, use it
+        if (!string.IsNullOrEmpty(request.ContentType))
+        {
+            return request.ContentType;
+        }
+
+        // Otherwise, infer from BodyType
+        return request.BodyType switch
+        {
+            BodyType.Json => HttpConstants.MediaTypes.ApplicationJson,
+            BodyType.Xml => HttpConstants.MediaTypes.ApplicationXml,
+            BodyType.Html => HttpConstants.MediaTypes.TextHtml,
+            BodyType.JavaScript => HttpConstants.MediaTypes.ApplicationJavaScript,
+            BodyType.Text => HttpConstants.MediaTypes.TextPlain,
+            _ => HttpConstants.MediaTypes.TextPlain
+        };
     }
 }

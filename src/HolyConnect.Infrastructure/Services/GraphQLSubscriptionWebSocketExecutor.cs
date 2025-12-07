@@ -45,6 +45,12 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             webSocket.Options.AddSubProtocol("graphql-transport-ws");
             webSocket.Options.AddSubProtocol("graphql-ws");
 
+            // Add User-Agent header (only if not explicitly disabled)
+            if (!graphQLRequest.DisabledHeaders.Contains(HttpConstants.Headers.UserAgent))
+            {
+                webSocket.Options.SetRequestHeader(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+            }
+
             // Apply authentication
             HttpAuthenticationHelper.ApplyAuthentication(webSocket.Options, graphQLRequest);
 

@@ -46,10 +46,25 @@ public class GraphQLRequestExecutor : IRequestExecutor
             };
 
             var json = JsonConvert.SerializeObject(payload);
-            var httpRequest = new HttpRequestMessage(System.Net.Http.HttpMethod.Post, graphQLRequest.Url)
+            var httpRequest = new HttpRequestMessage(System.Net.Http.HttpMethod.Post, graphQLRequest.Url);
+            
+            // Set content with or without Content-Type based on DisabledHeaders
+            if (graphQLRequest.DisabledHeaders.Contains(HttpConstants.Headers.ContentType))
             {
-                Content = new StringContent(json, Encoding.UTF8, HttpConstants.MediaTypes.ApplicationJson)
-            };
+                httpRequest.Content = new StringContent(json, Encoding.UTF8);
+                httpRequest.Content.Headers.ContentType = null;
+            }
+            else
+            {
+                httpRequest.Content = new StringContent(json, Encoding.UTF8, HttpConstants.MediaTypes.ApplicationJson);
+            }
+
+            // Add User-Agent header by default (can be overridden by custom headers)
+            // Only add if not explicitly disabled
+            if (!graphQLRequest.DisabledHeaders.Contains(HttpConstants.Headers.UserAgent))
+            {
+                httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+            }
 
             // Apply authentication and headers using helpers
             HttpAuthenticationHelper.ApplyAuthentication(httpRequest, graphQLRequest);

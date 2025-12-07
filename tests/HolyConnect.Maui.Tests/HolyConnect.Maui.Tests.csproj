@@ -20,4 +20,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\HolyConnect.Domain\HolyConnect.Domain.csproj" />
+    <ProjectReference Include="..\..\src\HolyConnect.Application\HolyConnect.Application.csproj" />
+  </ItemGroup>
+
 </Project>
