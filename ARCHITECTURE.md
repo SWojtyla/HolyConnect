@@ -64,6 +64,9 @@ The innermost layer containing:
   - `RestRequest`: HTTP REST API requests
   - `GraphQLRequest`: GraphQL queries, mutations, and subscriptions
   - `WebSocketRequest`: WebSocket connection requests
+  - `Flow`: Sequence of requests executed in order with variable passing
+  - `FlowStep`: Individual step in a flow execution
+  - `FlowExecutionResult`: Result of executing a flow
   - `RequestResponse`: Response data from executed requests, including streaming support
   - `ResponseExtraction`: Rules for extracting values from response bodies
   - `StreamEvent`: Individual events in streaming responses (WebSocket, SSE)
@@ -85,6 +88,7 @@ Contains business logic and orchestration:
   - `EnvironmentService`: Manages environment CRUD operations
   - `CollectionService`: Handles collection management
   - `RequestService`: Coordinates request storage and execution
+  - `FlowService`: Manages flows and executes sequential request chains
   - `VariableResolver`: Resolves variables in requests using environment and collection values
   - `ResponseValueExtractor`: Extracts values from JSON/XML responses using JSONPath/XPath patterns
   - `IGitService`: Interface for git version control operations
@@ -298,11 +302,61 @@ The `RequestResponse` model includes:
 3. **UI Responsiveness**: Long-running requests don't block UI
 4. **Request Caching**: Consider caching responses for repeated requests
 
+## Flows Feature
+
+### Overview
+Flows enable sequential execution of multiple requests where variables extracted from one step are automatically available to subsequent steps. This is essential for testing complex API workflows like authentication chains or multi-step operations.
+
+### Architecture
+1. **Domain Entities**:
+   - `Flow`: Contains flow metadata and list of steps
+   - `FlowStep`: Represents a single step with configuration (order, continue on error, delay)
+   - `FlowExecutionResult`: Captures execution status, timing, and results for each step
+   - `FlowStepResult`: Individual step result with status, timing, and response data
+
+2. **Service Layer**:
+   - `FlowService`: Orchestrates flow execution
+   - Manages temporary variable state during execution
+   - Coordinates with `RequestService` for individual step execution
+   - Handles error propagation and continuation logic
+
+3. **Variable Passing**:
+   - Flow execution maintains a temporary variables dictionary
+   - Variables from environment and collection are merged at start
+   - Each step's response extractions update the variable dictionary
+   - Variables are available to subsequent steps via standard `{{ variableName }}` syntax
+   - Original environment/collection variables remain unchanged unless explicitly saved
+
+4. **Execution Flow**:
+   ```
+   1. Load flow configuration and requests
+   2. Initialize variable dictionary from environment/collection
+   3. For each enabled step (in order):
+      a. Apply optional delay
+      b. Merge flow variables into request context
+      c. Execute request via RequestService
+      d. Capture response and update variables from extractions
+      e. Check error status and continue/stop based on configuration
+   4. Return comprehensive execution result
+   ```
+
+5. **UI Integration**:
+   - `FlowCreate.razor`: Create and configure flows with drag-drop step ordering
+   - `FlowExecute.razor`: Execute flows and view detailed results
+   - Integrated into `EnvironmentView` sidebar alongside collections and requests
+
+### Use Cases
+- **Authentication flows**: Login → extract token → make authenticated requests
+- **Data dependencies**: Create parent → extract ID → create children
+- **Multi-step workflows**: Complex business processes requiring sequential operations
+- **End-to-end testing**: Complete user journeys with variable passing
+
 ## Recent Enhancements
 
 1. **WebSocket Support**: ✅ Real-time API testing with WebSocket connections
 2. **GraphQL Subscriptions**: ✅ Support for GraphQL subscriptions via WebSocket (graphql-transport-ws) and Server-Sent Events (SSE)
 3. **Streaming Responses**: ✅ Capture and display streaming events from WebSocket and SSE connections
+4. **Flows**: ✅ Sequential request execution with variable passing between steps
 
 ## Future Enhancements
 
@@ -312,7 +366,7 @@ The `RequestResponse` model includes:
 4. **Code Generation**: Generate client code from requests
 5. **Team Collaboration**: Share collections and environments via git remotes
 6. **Import/Export**: Support Postman, Insomnia formats
-7. **Authentication Flows**: OAuth, JWT, API Key management
+7. **Authentication Flows**: OAuth, JWT, API Key management (enhanced with flows)
 8. **Scripting**: Pre-request and post-request scripts
 9. **Dynamic Variables**: Computed values and system variables (e.g., timestamps, random values)
 10. **Git Enhancements**: Merge conflict resolution, diff viewer, commit history

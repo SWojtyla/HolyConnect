@@ -14,6 +14,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
 - 🔄 **Git Integration**: Version control your collections with git support (initialize, commit, branch, push, pull)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
+- 🔀 **Flows**: Chain multiple requests together in sequence, passing variables between steps for complex workflows
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
 - 🏗️ **Extensible Architecture**: Built with clean architecture principles for easy extension
 
@@ -22,13 +23,13 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 The project follows clean architecture principles with the following layers:
 
 ### Domain Layer (`HolyConnect.Domain`)
-- Core entities: Environment, Collection, Request (REST, GraphQL)
+- Core entities: Environment, Collection, Request (REST, GraphQL, WebSocket), Flow
 - Business logic and domain rules
 
 ### Application Layer (`HolyConnect.Application`)
 - Use cases and business workflows
-- Service interfaces (IRepository, IRequestExecutor)
-- Application services (EnvironmentService, CollectionService, RequestService)
+- Service interfaces (IRepository, IRequestExecutor, IFlowService)
+- Application services (EnvironmentService, CollectionService, RequestService, FlowService)
 
 ### Infrastructure Layer (`HolyConnect.Infrastructure`)
 - Data persistence (InMemoryRepository)
@@ -143,6 +144,46 @@ HolyConnect/
 **Example patterns:**
 - JSON: `$.data.user.id`, `$.items[0].name`, `$.response.token`
 - XML: `//user/id`, `//items/item[1]/name`, `//response/token`
+
+### Creating and Using Flows
+
+Flows allow you to execute multiple requests in sequence, where variables extracted from one step are automatically available to subsequent steps.
+
+1. **Creating a Flow**:
+   - Navigate to an environment
+   - Click the "+" button and select "New Flow"
+   - Give your flow a name and optional description
+   - Add steps by selecting requests to execute in order
+   - Configure each step:
+     - **Enabled**: Toggle whether the step should execute
+     - **Continue on Error**: If enabled, the flow continues even if this step fails
+     - **Delay**: Optional delay in milliseconds before executing this step
+   - Reorder steps using the up/down arrows
+   - Click "Create Flow"
+
+2. **Executing a Flow**:
+   - Select a flow from the sidebar
+   - Click "Execute Flow" to run all steps in sequence
+   - View real-time execution status and results
+   - Each step shows:
+     - Execution status (Success, Failed, Skipped)
+     - Response time and status code
+     - Full response details
+
+3. **Using Variables in Flows**:
+   - Configure response extractions on individual requests
+   - When a request is executed as part of a flow, extracted values are automatically saved
+   - Subsequent steps in the flow can use these variables with `{{ variableName }}` syntax
+   - Example workflow:
+     1. **Login Request**: Extract authentication token from response → save as `authToken`
+     2. **Get User Request**: Use `{{ authToken }}` in Authorization header
+     3. **Update User Request**: Use `{{ authToken }}` and user data from previous step
+
+**Use Cases for Flows:**
+- Authentication flows (login → get token → make authenticated requests)
+- Multi-step data creation (create user → create profile → link accounts)
+- Testing data dependencies (create order → add items → process payment)
+- End-to-end workflow testing with variable passing
 
 ## Extending the Application
 
