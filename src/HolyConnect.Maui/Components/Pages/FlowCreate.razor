@@ -213,11 +213,18 @@
 
     private void AddStep()
     {
+        var firstRequest = _availableRequests?.FirstOrDefault();
+        if (firstRequest == null)
+        {
+            Snackbar.Add("No requests available. Please create a request first.", Severity.Warning);
+            return;
+        }
+
         _steps.Add(new FlowStep
         {
             Id = Guid.NewGuid(),
             Order = _nextOrder++,
-            RequestId = _availableRequests?.FirstOrDefault()?.Id ?? Guid.Empty,
+            RequestId = firstRequest.Id,
             IsEnabled = true,
             ContinueOnError = false
         });

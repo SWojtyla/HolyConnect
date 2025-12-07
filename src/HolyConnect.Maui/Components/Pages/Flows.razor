@@ -135,12 +135,16 @@
             if (e.Location.Contains("/flows"))
             {
                 await LoadData();
-                StateHasChanged();
+                await InvokeAsync(StateHasChanged);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error reloading flows on location change: {ex.Message}");
+            // Log error and show notification to user
+            await InvokeAsync(() =>
+            {
+                Snackbar.Add($"Error reloading flows: {ex.Message}", Severity.Error);
+            });
         }
     }
 
