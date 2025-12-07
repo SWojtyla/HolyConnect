@@ -12,7 +12,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests
 - 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
-- 🔄 **Git Integration**: Version control your collections with git support (initialize, commit, branch, push, pull)
+- 🔄 **Git Integration**: Full version control with git support (initialize, commit, branch, push, pull, remotes, commit history, selective staging)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
 - 🔀 **Flows**: Chain multiple requests together in sequence, passing variables between steps for complex workflows
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
@@ -122,11 +122,16 @@ HolyConnect/
 
 1. Navigate to the Git page from the menu
 2. Initialize a git repository for your storage path
-3. Create branches for different versions of your collections
-4. Commit your changes with descriptive messages
-5. Switch between branches to work on different versions
-6. Fetch, pull, and push to sync with remote repositories
-7. View the current branch in the app bar header
+3. **Configure your git identity** (user.name and user.email) for commits
+4. **Add remote repositories** (e.g., GitHub, GitLab) to sync your collections
+5. Create branches for different versions of your collections
+6. **View file changes** with color-coded status indicators
+7. **Stage/unstage specific files** or commit all changes at once
+8. Commit your changes with descriptive messages
+9. **View commit history** to see past changes
+10. Switch between branches to work on different versions
+11. Fetch, pull, and push to sync with remote repositories
+12. View the current branch in the app bar header
 
 ### Extracting Response Values
 

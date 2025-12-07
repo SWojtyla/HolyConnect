@@ -45,6 +45,15 @@ public class GitServiceTests : IDisposable
         return remoteRepoPath;
     }
 
+    private void CleanupRemoteRepository(string remoteRepoPath)
+    {
+        if (Directory.Exists(remoteRepoPath))
+        {
+            RemoveReadOnlyAttributes(remoteRepoPath);
+            Directory.Delete(remoteRepoPath, true);
+        }
+    }
+
     private void SetupRemoteTracking(Repository localRepo, string remoteRepoPath)
     {
         localRepo.Network.Remotes.Add("origin", remoteRepoPath);
@@ -531,11 +540,7 @@ public class GitServiceTests : IDisposable
         Assert.Equal(remoteRepoPath, remotes.First().Url);
 
         // Cleanup
-        if (Directory.Exists(remoteRepoPath))
-        {
-            RemoveReadOnlyAttributes(remoteRepoPath);
-            Directory.Delete(remoteRepoPath, true);
-        }
+        CleanupRemoteRepository(remoteRepoPath);
     }
 
     [Fact]
@@ -553,11 +558,7 @@ public class GitServiceTests : IDisposable
         Assert.False(success);
 
         // Cleanup
-        if (Directory.Exists(remoteRepoPath))
-        {
-            RemoveReadOnlyAttributes(remoteRepoPath);
-            Directory.Delete(remoteRepoPath, true);
-        }
+        CleanupRemoteRepository(remoteRepoPath);
     }
 
     [Fact]
@@ -577,11 +578,7 @@ public class GitServiceTests : IDisposable
         Assert.Empty(remotes);
 
         // Cleanup
-        if (Directory.Exists(remoteRepoPath))
-        {
-            RemoveReadOnlyAttributes(remoteRepoPath);
-            Directory.Delete(remoteRepoPath, true);
-        }
+        CleanupRemoteRepository(remoteRepoPath);
     }
 
     [Fact]

@@ -540,6 +540,8 @@
     private bool _isPulling;
     private bool _isPushing;
 
+    private const int COMMIT_HISTORY_MAX_COUNT = 50;
+
     protected override async Task OnInitializedAsync()
     {
         await CheckRepository();
@@ -562,7 +564,7 @@
         _status = await GitService.GetStatusAsync();
         _incomingCommits = await GitService.GetIncomingCommitsAsync();
         _outgoingCommits = await GitService.GetOutgoingCommitsAsync();
-        _commitHistory = await GitService.GetCommitHistoryAsync(50);
+        _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
         _remotes = await GitService.GetRemotesAsync();
         _fileChanges = await GitService.GetFileChangesAsync();
         
@@ -911,7 +913,7 @@
     {
         try
         {
-            _commitHistory = await GitService.GetCommitHistoryAsync(50);
+            _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
             Snackbar.Add("Commit history refreshed", Severity.Success);
             StateHasChanged();
         }
