@@ -1,0 +1,172 @@
+@inject IJSRuntime JSRuntime
+@inject SettingsService SettingsService
+@implements IAsyncDisposable
+
+<MudPaper Elevation="2" Class="pa-0" Style="@(string.IsNullOrEmpty(Height) ? "height: 400px;" : $"height: {Height};")">
+    <div style="display: flex; flex-direction: column; height: 100%;">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="px-3 py-2" Style="border-bottom: 1px solid var(--mud-palette-divider);">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">@Title</MudText>
+            </MudStack>
+        }
+        <div id="@_editorId" style="flex: 1; overflow: hidden;"></div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter]
+    public string? Height { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string Language { get; set; } = "json";
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public string? Theme { get; set; }
+
+    private string _editorId = $"monaco-editor-{Guid.NewGuid()}";
+    private DotNetObjectReference<CodeEditor>? _dotNetHelper;
+    private bool _isInitialized;
+    private string _currentTheme = "vs-dark";
+    private string _currentLanguage = "json";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _dotNetHelper = DotNetObjectReference.Create(this);
+                
+                // Determine theme based on app settings
+                await DetermineThemeAsync();
+                
+                // Determine language
+                _currentLanguage = GetMonacoLanguage(Language);
+                
+                // Initialize Monaco Editor
+                var success = await JSRuntime.InvokeAsync<bool>(
+                    "monacoEditorInterop.initializeEditor",
+                    _editorId,
+                    Value ?? string.Empty,
+                    _currentLanguage,
+                    _currentTheme,
+                    ReadOnly
+                );
+
+                if (success)
+                {
+                    _isInitialized = true;
+
+                    // Register value change callback
+                    await JSRuntime.InvokeVoidAsync(
+                        "monacoEditorInterop.onValueChanged",
+                        _editorId,
+                        _dotNetHelper
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing Monaco Editor: {ex.Message}");
+            }
+        }
+    }
+    
+    private async Task DetermineThemeAsync()
+    {
+        if (!string.IsNullOrEmpty(Theme))
+        {
+            _currentTheme = Theme;
+            return;
+        }
+        
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            _currentTheme = settings.IsDarkMode ? "vs-dark" : "vs";
+        }
+        catch
+        {
+            _currentTheme = "vs-dark"; // Default fallback
+        }
+    }
+
+    private string GetMonacoLanguage(string bodyType)
+    {
+        return bodyType?.ToLowerInvariant() switch
+        {
+            "json" => "json",
+            "xml" => "xml",
+            "html" => "html",
+            "javascript" => "javascript",
+            "text" => "plaintext",
+            _ => "plaintext"
+        };
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isInitialized)
+        {
+            // Update value if changed externally
+            var currentValue = await JSRuntime.InvokeAsync<string?>("monacoEditorInterop.getValue", _editorId);
+            if (currentValue != Value)
+            {
+                await JSRuntime.InvokeVoidAsync("monacoEditorInterop.setValue", _editorId, Value ?? string.Empty);
+            }
+
+            // Update language if changed
+            var newLanguage = GetMonacoLanguage(Language);
+            if (newLanguage != _currentLanguage)
+            {
+                _currentLanguage = newLanguage;
+                await JSRuntime.InvokeVoidAsync("monacoEditorInterop.setLanguage", _editorId, _currentLanguage);
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnValueChanged(string value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    public async Task FormatDocumentAsync()
+    {
+        if (_isInitialized)
+        {
+            await JSRuntime.InvokeVoidAsync("monacoEditorInterop.formatDocument", _editorId);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_isInitialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("monacoEditorInterop.disposeEditor", _editorId);
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
+
+        _dotNetHelper?.Dispose();
+    }
+}
