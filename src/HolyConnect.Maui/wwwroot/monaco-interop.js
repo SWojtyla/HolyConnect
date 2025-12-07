@@ -76,6 +76,17 @@ window.monacoEditorInterop = {
         }
     },
 
+    // Set editor language
+    setLanguage: function (editorId, language) {
+        const editor = this.editors[editorId];
+        if (editor) {
+            const model = editor.getModel();
+            if (model) {
+                monaco.editor.setModelLanguage(model, language);
+            }
+        }
+    },
+
     // Update editor options
     updateOptions: function (editorId, options) {
         const editor = this.editors[editorId];

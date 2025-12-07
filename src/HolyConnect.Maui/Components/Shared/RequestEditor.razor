@@ -70,11 +70,14 @@ else
                                        Color="Color.Primary" 
                                        Size="Size.Small" 
                                        StartIcon="@Icons.Material.Filled.AutoFixHigh"
-                                       OnClick="@(() => PrettifyBody(restRequest))">
-                                Prettify
+                                       OnClick="@(() => FormatRestBody(restRequest))">
+                                Format
                             </MudButton>
                         </MudStack>
-                        <VariableTextField @bind-Value="restRequest.Body" Label="Request Body" Lines="15" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
+                        <CodeEditor @ref="_restBodyEditor" 
+                                    @bind-Value="restRequest.Body" 
+                                    Language="@restRequest.BodyType.ToString()" 
+                                    Height="450px" />
                     </div>
                 </MudTabPanel>
                 
@@ -333,6 +336,7 @@ else
     private RequestResponse? _response;
     private Domain.Entities.RequestLayout _layout = Domain.Entities.RequestLayout.Horizontal;
     private bool _isExecuting;
+    private CodeEditor? _restBodyEditor;
 
     private class HeaderModel
     {
@@ -411,22 +415,17 @@ else
         StateHasChanged();
     }
 
-    private void PrettifyBody(RestRequest restRequest)
+    private async Task FormatRestBody(RestRequest restRequest)
     {
-        if (string.IsNullOrWhiteSpace(restRequest.Body))
+        if (string.IsNullOrWhiteSpace(restRequest.Body) || _restBodyEditor == null)
         {
             return;
         }
 
         try
         {
-            restRequest.Body = restRequest.BodyType switch
-            {
-                Domain.Entities.BodyType.Json => FormatterService.FormatJson(restRequest.Body),
-                Domain.Entities.BodyType.Xml => FormatterService.FormatXml(restRequest.Body),
-                _ => restRequest.Body
-            };
-            StateHasChanged();
+            await _restBodyEditor.FormatDocumentAsync();
+            Snackbar.Add("Body formatted successfully", Severity.Success);
         }
         catch (Exception ex)
         {
