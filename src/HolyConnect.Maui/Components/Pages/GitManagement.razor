@@ -255,7 +255,19 @@
                 
                 @if (_fileChanges.Any())
                 {
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Files to Commit:</MudText>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.subtitle2">Files to Commit:</MudText>
+                        @if (_fileChanges.Any(f => !f.IsStaged))
+                        {
+                            <MudButton Size="Size.Small" 
+                                      Variant="Variant.Outlined" 
+                                      Color="Color.Primary"
+                                      OnClick="StageAllFiles"
+                                      StartIcon="@Icons.Material.Filled.DoneAll">
+                                Stage All
+                            </MudButton>
+                        }
+                    </MudStack>
                     <MudPaper Class="pa-3 mb-3" Outlined="true" Style="max-height: 300px; overflow-y: auto;">
                         <MudList T="string" Dense="true">
                             @foreach (var file in _fileChanges)
@@ -312,46 +324,50 @@
         </MudCard>
 
         <!-- Commit History -->
-        <MudCard Class="mb-4">
-            <MudCardContent>
-                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-                    <MudText Typo="Typo.h6">Commit History</MudText>
-                    <MudButton Variant="Variant.Outlined" 
-                              Color="Color.Info" 
-                              OnClick="RefreshCommitHistory"
-                              StartIcon="@Icons.Material.Filled.Refresh"
-                              Size="Size.Small"
-                              Disabled="_isLoading">
-                        Refresh
-                    </MudButton>
-                </MudStack>
-
-                @if (_commitHistory.Any())
-                {
-                    <MudPaper Class="pa-3" Outlined="true" Style="max-height: 500px; overflow-y: auto;">
-                        <MudList T="string" Dense="true">
-                            @foreach (var commit in _commitHistory)
-                            {
-                                <MudListItem T="string">
-                                    <MudText Typo="Typo.body2">
-                                        <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@commit.ShortSha</MudChip>
-                                        <strong>@commit.Message</strong>
-                                        <br />
-                                        <span style="font-size: 0.8em; color: gray;">
-                                            @commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm:ss")
-                                        </span>
-                                    </MudText>
-                                </MudListItem>
-                            }
-                        </MudList>
-                    </MudPaper>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Info">No commit history available.</MudAlert>
-                }
-            </MudCardContent>
-        </MudCard>
+        <MudExpansionPanels Class="mb-4">
+            <MudExpansionPanel @bind-IsExpanded="_commitHistoryExpanded">
+                <TitleContent>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
+                        <MudText Typo="Typo.h6">Commit History</MudText>
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Info" 
+                                  OnClick="RefreshCommitHistory"
+                                  StartIcon="@Icons.Material.Filled.Refresh"
+                                  Size="Size.Small"
+                                  Disabled="_isLoading"
+                                  OnClick:StopPropagation="true">
+                            Refresh
+                        </MudButton>
+                    </MudStack>
+                </TitleContent>
+                <ChildContent>
+                    @if (_commitHistory.Any())
+                    {
+                        <MudPaper Class="pa-3" Outlined="true" Style="max-height: 500px; overflow-y: auto;">
+                            <MudList T="string" Dense="true">
+                                @foreach (var commit in _commitHistory)
+                                {
+                                    <MudListItem T="string">
+                                        <MudText Typo="Typo.body2">
+                                            <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@commit.ShortSha</MudChip>
+                                            <strong>@commit.Message</strong>
+                                            <br />
+                                            <span style="font-size: 0.8em; color: gray;">
+                                                @commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm:ss")
+                                            </span>
+                                        </MudText>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">No commit history available.</MudAlert>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
 
         <!-- Remote Operations -->
         <MudCard Class="mb-4">
@@ -430,6 +446,7 @@
     private bool _isFetching;
     private bool _isPulling;
     private bool _isPushing;
+    private bool _commitHistoryExpanded = false;
 
     private const int COMMIT_HISTORY_MAX_COUNT = 50;
 
@@ -770,6 +787,40 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error unstaging file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task StageAllFiles()
+    {
+        try
+        {
+            var unstagedFiles = _fileChanges.Where(f => !f.IsStaged).ToList();
+            if (!unstagedFiles.Any())
+                return;
+
+            int successCount = 0;
+            foreach (var file in unstagedFiles)
+            {
+                var success = await GitService.StageFileAsync(file.FilePath);
+                if (success)
+                    successCount++;
+            }
+
+            _fileChanges = await GitService.GetFileChangesAsync();
+            StateHasChanged();
+            
+            if (successCount == unstagedFiles.Count)
+            {
+                Snackbar.Add($"Staged all {successCount} files", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Staged {successCount} of {unstagedFiles.Count} files", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error staging files: {ex.Message}", Severity.Error);
         }
     }
 
