@@ -2,7 +2,6 @@
 @inject IGitService GitService
 @inject SettingsService SettingsService
 @inject ISnackbar Snackbar
-@inject NavigationManager NavigationManager
 @using HolyConnect.Application.Interfaces
 @using LibGit2Sharp
 
@@ -316,7 +315,7 @@
                                   OnClick="Push"
                                   StartIcon="@Icons.Material.Filled.Publish"
                                   FullWidth="true"
-                                  Disabled="(_isLoading || (_status?.HasChanges == false))">
+                                  Disabled="_isLoading">
                             @if (_isPushing)
                             {
                                 <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -425,9 +424,8 @@
             
             if (success)
             {
-                Snackbar.Add($"Switched to branch '{_selectedBranch}'. Collections and environments will be reloaded.", Severity.Success);
+                Snackbar.Add($"Switched to branch '{_selectedBranch}'. Navigate to other pages to see updated collections and environments.", Severity.Success);
                 await LoadRepositoryInfo();
-                ReloadPageData();
             }
             else
             {
@@ -564,9 +562,8 @@
             
             if (success)
             {
-                Snackbar.Add("Successfully pulled changes from remote. Collections and environments will be reloaded.", Severity.Success);
+                Snackbar.Add("Successfully pulled changes from remote. Navigate to other pages to see updated collections and environments.", Severity.Success);
                 await LoadRepositoryInfo();
-                ReloadPageData();
             }
             else
             {
@@ -621,15 +618,5 @@
             _isLoading = false;
             StateHasChanged();
         }
-    }
-
-    /// <summary>
-    /// Forces a page reload to ensure all collections, environments, and requests are synchronized with the current branch data
-    /// </summary>
-    private void ReloadPageData()
-    {
-        // Force navigation refresh to reload all data from disk
-        // This ensures collections, environments, and requests are in sync with the current branch
-        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
     }
 }
