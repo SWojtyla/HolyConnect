@@ -210,7 +210,8 @@ window.monacoEditorInterop = {
         }
 
         const args = field.args.map((arg, index) => {
-            return `${arg.name}: \${${index + 1}:${arg.name}}`;
+            const argType = this.getFieldType(arg.type);
+            return `${arg.name}: \${${index + 1}:${argType}}`;
         }).join(', ');
 
         return `${field.name}(${args})`;
