@@ -38,29 +38,12 @@ public class RestRequestExecutor : IRequestExecutor
             var httpRequest = CreateHttpRequestMessage(restRequest);
             
             // Capture the sent request details (only enabled parameters)
-            var sentRequest = new SentRequest
-            {
-                Url = httpRequest.RequestUri?.ToString() ?? restRequest.Url,
-                Method = restRequest.Method.ToString(),
-                Headers = new Dictionary<string, string>(),
-                Body = restRequest.Body,
-                QueryParameters = GetEnabledQueryParameters(restRequest)
-            };
-
-            foreach (var header in httpRequest.Headers)
-            {
-                sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
-            }
-
-            if (httpRequest.Content?.Headers != null)
-            {
-                foreach (var header in httpRequest.Content.Headers)
-                {
-                    sentRequest.Headers[header.Key] = string.Join(", ", header.Value);
-                }
-            }
-
-            response.SentRequest = sentRequest;
+            response.SentRequest = HttpRequestHelper.CreateSentRequest(
+                httpRequest,
+                restRequest.Url,
+                restRequest.Method.ToString(),
+                restRequest.Body,
+                GetEnabledQueryParameters(restRequest));
 
             var httpResponse = await _httpClient.SendAsync(httpRequest);
 
@@ -69,29 +52,19 @@ public class RestRequestExecutor : IRequestExecutor
             response.StatusCode = (int)httpResponse.StatusCode;
             response.StatusMessage = httpResponse.ReasonPhrase ?? string.Empty;
 
-            foreach (var header in httpResponse.Headers)
-            {
-                response.Headers[header.Key] = string.Join(", ", header.Value);
-            }
+            ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Headers);
 
             if (httpResponse.Content != null)
             {
                 response.Body = await httpResponse.Content.ReadAsStringAsync();
                 response.Size = response.Body.Length;
-
-                foreach (var header in httpResponse.Content.Headers)
-                {
-                    response.Headers[header.Key] = string.Join(", ", header.Value);
-                }
+                ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Content.Headers);
             }
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = 0;
-            response.StatusMessage = $"Error: {ex.Message}";
-            response.Body = ex.ToString();
+            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
         }
 
         return response;
@@ -132,11 +105,7 @@ public class RestRequestExecutor : IRequestExecutor
         var httpRequest = new HttpRequestMessage(httpMethod, url);
 
         // Add User-Agent header by default (can be overridden by custom headers)
-        // Only add if not explicitly disabled
-        if (!request.DisabledHeaders.Contains(HttpConstants.Headers.UserAgent))
-        {
-            httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
-        }
+        HttpRequestHelper.AddUserAgentHeader(httpRequest, request);
 
         // Apply authentication using helper
         HttpAuthenticationHelper.ApplyAuthentication(httpRequest, request);
@@ -144,20 +113,11 @@ public class RestRequestExecutor : IRequestExecutor
         // Apply enabled headers using helper
         HttpAuthenticationHelper.ApplyHeaders(httpRequest, request);
 
+        // Set content if body is provided
         if (!string.IsNullOrEmpty(request.Body))
         {
-            // Check if Content-Type is disabled
-            if (request.DisabledHeaders.Contains(HttpConstants.Headers.ContentType))
-            {
-                // Create content without Content-Type header
-                httpRequest.Content = new StringContent(request.Body, Encoding.UTF8);
-                httpRequest.Content.Headers.ContentType = null;
-            }
-            else
-            {
-                var contentType = GetContentType(request);
-                httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
-            }
+            var contentType = GetContentType(request);
+            HttpRequestHelper.SetContent(httpRequest, request.Body, contentType, request);
         }
 
         return httpRequest;

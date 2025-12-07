@@ -54,19 +54,7 @@ public class WebSocketRequestExecutor : IRequestExecutor
             HttpAuthenticationHelper.ApplyAuthentication(webSocket.Options, webSocketRequest);
 
             // Apply custom headers
-            var failedHeaders = new List<string>();
-            foreach (var header in webSocketRequest.Headers.Where(h => !webSocketRequest.DisabledHeaders.Contains(h.Key)))
-            {
-                try
-                {
-                    webSocket.Options.SetRequestHeader(header.Key, header.Value);
-                }
-                catch (ArgumentException ex)
-                {
-                    // Some headers cannot be set directly (e.g., restricted headers like Host, Content-Length)
-                    failedHeaders.Add($"{header.Key}: {ex.Message}");
-                }
-            }
+            var failedHeaders = WebSocketHelper.ApplyHeaders(webSocket.Options, webSocketRequest);
 
             // Capture sent request
             var sentRequest = new SentRequest
@@ -178,46 +166,18 @@ public class WebSocketRequestExecutor : IRequestExecutor
             }
 
             // Build response body from all events
-            var bodyBuilder = new StringBuilder();
-            foreach (var evt in response.StreamEvents)
-            {
-                bodyBuilder.AppendLine($"[{evt.Timestamp:HH:mm:ss.fff}] {evt.EventType}: {evt.Data}");
-            }
-            response.Body = bodyBuilder.ToString();
-            response.Size = response.Body.Length;
+            ResponseHelper.FinalizeStreamingResponse(response);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = 0;
-            response.StatusMessage = $"Error: {ex.Message}";
-            response.Body = ex.ToString();
+            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
         }
         finally
         {
             if (webSocket != null)
             {
-                if (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseReceived)
-                {
-                    try
-                    {
-                        await webSocket.CloseAsync(
-                            WebSocketCloseStatus.NormalClosure,
-                            "Client closing",
-                            CancellationToken.None);
-                    }
-                    catch (Exception cleanupEx)
-                    {
-                        // Log cleanup error to response if possible
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = $"Warning: Failed to close WebSocket cleanly: {cleanupEx.Message}",
-                            EventType = "warning"
-                        });
-                    }
-                }
+                await WebSocketHelper.SafeCloseAsync(webSocket, response);
                 webSocket.Dispose();
             }
         }
