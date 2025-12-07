@@ -38,6 +38,13 @@
                               StartIcon="@Icons.Material.Filled.Http">
                         Create Request
                     </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                              Color="Color.Primary"
+                              OnClick="CreateFlow"
+                              FullWidth="true"
+                              StartIcon="@Icons.Material.Filled.AccountTree">
+                        Create Flow
+                    </MudButton>
                 </MudCardActions>
             </MudCard>
         </MudItem>
@@ -255,6 +262,11 @@
     private void CreateRequest()
     {
         NavigationManager.NavigateTo("/request/create");
+    }
+
+    private void CreateFlow()
+    {
+        NavigationManager.NavigateTo("/flow/create");
     }
 
     private void NavigateToEnvironment(Guid id)

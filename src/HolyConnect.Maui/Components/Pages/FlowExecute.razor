@@ -1,0 +1,247 @@
+@page "/flow/{FlowId:guid}/execute"
+@inject IFlowService FlowService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudPaper Class="pa-4">
+        @if (_flow != null)
+        {
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+                <div>
+                    <MudText Typo="Typo.h4">@_flow.Name</MudText>
+                    @if (!string.IsNullOrEmpty(_flow.Description))
+                    {
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">@_flow.Description</MudText>
+                    }
+                </div>
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.PlayArrow"
+                          OnClick="ExecuteFlow"
+                          Disabled="@_isExecuting">
+                    @(_isExecuting ? "Executing..." : "Execute Flow")
+                </MudButton>
+            </MudStack>
+
+            @if (_executionResult != null)
+            {
+                <MudPaper Class="pa-4 mb-4" Outlined="true">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6">Execution Result</MudText>
+                        <MudChip T="string" Color="@GetStatusColor(_executionResult.Status)" 
+                                Variant="Variant.Filled" 
+                                Size="Size.Medium">
+                            @_executionResult.Status
+                        </MudChip>
+                    </MudStack>
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Started At</MudText>
+                            <MudText Typo="Typo.body1">@_executionResult.StartedAt.ToLocalTime().ToString("HH:mm:ss")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Completed At</MudText>
+                            <MudText Typo="Typo.body1">@(_executionResult.CompletedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "In Progress")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Duration</MudText>
+                            <MudText Typo="Typo.body1">@_executionResult.TotalDurationMs ms</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Steps Completed</MudText>
+                            <MudText Typo="Typo.body1">@_executionResult.StepResults.Count(s => s.Status == FlowStepStatus.Success) / @_executionResult.StepResults.Count</MudText>
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (!string.IsNullOrEmpty(_executionResult.ErrorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mt-3">
+                            @_executionResult.ErrorMessage
+                        </MudAlert>
+                    }
+                </MudPaper>
+
+                <MudText Typo="Typo.h6" Class="mb-3">Step Results</MudText>
+                
+                @foreach (var stepResult in _executionResult.StepResults)
+                {
+                    <MudPaper Class="pa-4 mb-3" Outlined="true">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudText Typo="Typo.h6">Step @stepResult.StepOrder</MudText>
+                                <MudText Typo="Typo.body1">@stepResult.RequestName</MudText>
+                            </MudStack>
+                            <MudChip T="string" Color="@GetStepStatusColor(stepResult.Status)" 
+                                    Variant="Variant.Filled" 
+                                    Size="Size.Small">
+                                @stepResult.Status
+                            </MudChip>
+                        </MudStack>
+
+                        <MudGrid Class="mb-2">
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Duration</MudText>
+                                <MudText Typo="Typo.body1">@stepResult.DurationMs ms</MudText>
+                            </MudItem>
+                            @if (stepResult.Response != null)
+                            {
+                                <MudItem xs="12" sm="4">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Status Code</MudText>
+                                    <MudText Typo="Typo.body1">@stepResult.Response.StatusCode</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="4">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Response Time</MudText>
+                                    <MudText Typo="Typo.body1">@stepResult.Response.ResponseTime ms</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+
+                        @if (!string.IsNullOrEmpty(stepResult.ErrorMessage))
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">
+                                @stepResult.ErrorMessage
+                            </MudAlert>
+                        }
+
+                        @if (stepResult.Response != null)
+                        {
+                            <MudExpansionPanels>
+                                <MudExpansionPanel Text="Response Details">
+                                    <MudTabs>
+                                        <MudTabPanel Text="Body">
+                                            <MudPaper Class="pa-2 mt-2" Outlined="true" Style="max-height: 400px; overflow-y: auto;">
+                                                <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">@stepResult.Response.Body</pre>
+                                            </MudPaper>
+                                        </MudTabPanel>
+                                        <MudTabPanel Text="Headers">
+                                            <MudSimpleTable Dense="true" Class="mt-2">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Header</th>
+                                                        <th>Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var header in stepResult.Response.Headers)
+                                                    {
+                                                        <tr>
+                                                            <td><strong>@header.Key</strong></td>
+                                                            <td>@header.Value</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </MudSimpleTable>
+                                        </MudTabPanel>
+                                    </MudTabs>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        }
+                    </MudPaper>
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info">
+                    Click "Execute Flow" to run this flow and see the results.
+                </MudAlert>
+            }
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid FlowId { get; set; }
+
+    private Flow? _flow;
+    private FlowExecutionResult? _executionResult;
+    private bool _isExecuting;
+    private CancellationTokenSource? _cancellationTokenSource;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFlow();
+    }
+
+    private async Task LoadFlow()
+    {
+        _flow = await FlowService.GetFlowByIdAsync(FlowId);
+        if (_flow == null)
+        {
+            Snackbar.Add("Flow not found", Severity.Error);
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private async Task ExecuteFlow()
+    {
+        if (_flow == null || _isExecuting) return;
+
+        try
+        {
+            _isExecuting = true;
+            _executionResult = null;
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            Snackbar.Add("Executing flow...", Severity.Info);
+
+            _executionResult = await FlowService.ExecuteFlowAsync(FlowId, _cancellationTokenSource.Token);
+
+            if (_executionResult.Status == FlowExecutionStatus.Completed)
+            {
+                Snackbar.Add("Flow executed successfully!", Severity.Success);
+            }
+            else if (_executionResult.Status == FlowExecutionStatus.Failed)
+            {
+                Snackbar.Add("Flow execution failed", Severity.Error);
+            }
+            else if (_executionResult.Status == FlowExecutionStatus.Cancelled)
+            {
+                Snackbar.Add("Flow execution cancelled", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error executing flow: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isExecuting = false;
+        }
+    }
+
+    private Color GetStatusColor(FlowExecutionStatus status)
+    {
+        return status switch
+        {
+            FlowExecutionStatus.Running => Color.Info,
+            FlowExecutionStatus.Completed => Color.Success,
+            FlowExecutionStatus.Failed => Color.Error,
+            FlowExecutionStatus.Cancelled => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStepStatusColor(FlowStepStatus status)
+    {
+        return status switch
+        {
+            FlowStepStatus.Pending => Color.Default,
+            FlowStepStatus.Running => Color.Info,
+            FlowStepStatus.Success => Color.Success,
+            FlowStepStatus.FailedContinued => Color.Warning,
+            FlowStepStatus.Failed => Color.Error,
+            FlowStepStatus.Skipped => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+    }
+}
