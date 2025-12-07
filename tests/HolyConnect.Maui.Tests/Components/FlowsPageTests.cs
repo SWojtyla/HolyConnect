@@ -27,7 +27,6 @@ public class FlowsPageTests
                     new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = Guid.NewGuid() }
                 },
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
             },
             new Flow
             {
@@ -41,7 +40,6 @@ public class FlowsPageTests
                     new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = Guid.NewGuid() }
                 },
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
             }
         };
 
@@ -104,7 +102,6 @@ public class FlowsPageTests
             EnvironmentId = Guid.NewGuid(),
             Steps = new List<FlowStep>(),
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
         };
 
         mockFlowService
@@ -136,7 +133,6 @@ public class FlowsPageTests
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = Guid.NewGuid() }
             },
             CreatedAt = DateTime.UtcNow.AddDays(-1),
-            UpdatedAt = DateTime.UtcNow
         };
 
         mockFlowService

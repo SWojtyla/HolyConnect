@@ -67,8 +67,7 @@ public class RequestJsonConverterTests
             ""Method"": 0,
             ""Headers"": {},
             ""CollectionId"": ""00000000-0000-0000-0000-000000000000"",
-            ""CreatedAt"": ""2024-01-01T00:00:00Z"",
-            ""UpdatedAt"": ""2024-01-01T00:00:00Z""
+            ""CreatedAt"": ""2024-01-01T00:00:00Z""
         }";
 
         // Act
@@ -94,7 +93,6 @@ public class RequestJsonConverterTests
             ""Headers"": {},
             ""CollectionId"": ""00000000-0000-0000-0000-000000000000"",
             ""CreatedAt"": ""2024-01-01T00:00:00Z"",
-            ""UpdatedAt"": ""2024-01-01T00:00:00Z""
         }";
 
         // Act
@@ -121,7 +119,6 @@ public class RequestJsonConverterTests
             ""Headers"": {},
             ""CollectionId"": ""00000000-0000-0000-0000-000000000000"",
             ""CreatedAt"": ""2024-01-01T00:00:00Z"",
-            ""UpdatedAt"": ""2024-01-01T00:00:00Z""
         }";
 
         // Act
@@ -146,7 +143,6 @@ public class RequestJsonConverterTests
             ""Headers"": {},
             ""CollectionId"": ""00000000-0000-0000-0000-000000000000"",
             ""CreatedAt"": ""2024-01-01T00:00:00Z"",
-            ""UpdatedAt"": ""2024-01-01T00:00:00Z""
         }";
 
         // Act
@@ -217,7 +213,6 @@ public class RequestJsonConverterTests
             ""Headers"": {},
             ""CollectionId"": ""00000000-0000-0000-0000-000000000000"",
             ""CreatedAt"": ""2024-01-01T00:00:00Z"",
-            ""UpdatedAt"": ""2024-01-01T00:00:00Z""
         }";
 
         // Act & Assert
@@ -238,8 +233,7 @@ public class RequestJsonConverterTests
             Method = Domain.Entities.HttpMethod.Post,
             Body = "{\"test\": true}",
             CollectionId = Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow
         };
         originalRequest.Headers["Authorization"] = "Bearer token";
 
@@ -273,8 +267,7 @@ public class RequestJsonConverterTests
             Variables = "{\"id\": \"123\"}",
             OperationName = "GetUser",
             CollectionId = Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow
         };
         originalRequest.Headers["X-API-Key"] = "secret";
 

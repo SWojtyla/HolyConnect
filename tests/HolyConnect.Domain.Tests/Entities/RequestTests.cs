@@ -165,20 +165,6 @@ public class RequestTests
     }
 
     [Fact]
-    public void Request_UpdatedAt_ShouldBeSettable()
-    {
-        // Arrange
-        var request = new RestRequest();
-        var updatedAt = DateTime.UtcNow;
-
-        // Act
-        request.UpdatedAt = updatedAt;
-
-        // Assert
-        Assert.Equal(updatedAt, request.UpdatedAt);
-    }
-
-    [Fact]
     public void RequestType_Enum_ShouldHaveExpectedValues()
     {
         // Assert

@@ -35,7 +35,6 @@ public class FlowService : IFlowService
     {
         flow.Id = Guid.NewGuid();
         flow.CreatedAt = DateTime.UtcNow;
-        flow.UpdatedAt = DateTime.UtcNow;
         
         // Assign IDs to steps
         foreach (var step in flow.Steps)
@@ -71,7 +70,6 @@ public class FlowService : IFlowService
 
     public async Task<Flow> UpdateFlowAsync(Flow flow)
     {
-        flow.UpdatedAt = DateTime.UtcNow;
         return await _flowRepository.UpdateAsync(flow);
     }
 

@@ -38,7 +38,6 @@ public class EnvironmentServiceTests
         Assert.Equal(name, capturedEnvironment.Name);
         Assert.Equal(description, capturedEnvironment.Description);
         Assert.True(capturedEnvironment.CreatedAt > DateTime.MinValue);
-        Assert.True(capturedEnvironment.UpdatedAt > DateTime.MinValue);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<DomainEnvironment>()), Times.Once);
     }
 
@@ -100,15 +99,13 @@ public class EnvironmentServiceTests
     }
 
     [Fact]
-    public async Task UpdateEnvironmentAsync_ShouldUpdateTimestamp()
+    public async Task UpdateEnvironmentAsync_ShouldCallRepository()
     {
         // Arrange
-        var oldTimestamp = DateTime.UtcNow.AddDays(-1);
         var environment = new DomainEnvironment
         {
             Id = Guid.NewGuid(),
-            Name = "Test",
-            UpdatedAt = oldTimestamp
+            Name = "Test"
         };
 
         _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()))
@@ -118,7 +115,7 @@ public class EnvironmentServiceTests
         var result = await _service.UpdateEnvironmentAsync(environment);
 
         // Assert
-        Assert.True(result.UpdatedAt >= oldTimestamp);
+        Assert.NotNull(result);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()), Times.Once);
     }
 
