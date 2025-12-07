@@ -47,15 +47,17 @@ public class WebSocketRequestExecutor : IRequestExecutor
             ApplyAuthentication(webSocket, webSocketRequest);
 
             // Apply custom headers
+            var failedHeaders = new List<string>();
             foreach (var header in webSocketRequest.Headers.Where(h => !webSocketRequest.DisabledHeaders.Contains(h.Key)))
             {
                 try
                 {
                     webSocket.Options.SetRequestHeader(header.Key, header.Value);
                 }
-                catch (ArgumentException)
+                catch (ArgumentException ex)
                 {
-                    // Some headers cannot be set directly, skip them
+                    // Some headers cannot be set directly (e.g., restricted headers like Host, Content-Length)
+                    failedHeaders.Add($"{header.Key}: {ex.Message}");
                 }
             }
 
@@ -71,6 +73,17 @@ public class WebSocketRequestExecutor : IRequestExecutor
             };
 
             response.SentRequest = sentRequest;
+
+            // Add warning about failed headers if any
+            if (failedHeaders.Count > 0)
+            {
+                response.StreamEvents.Add(new StreamEvent
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Data = $"Warning: Failed to set {failedHeaders.Count} header(s): {string.Join(", ", failedHeaders)}",
+                    EventType = "warning"
+                });
+            }
 
             // Connect
             var uri = new Uri(webSocketRequest.Url);
@@ -187,9 +200,15 @@ public class WebSocketRequestExecutor : IRequestExecutor
                             "Client closing",
                             CancellationToken.None);
                     }
-                    catch
+                    catch (Exception cleanupEx)
                     {
-                        // Ignore errors during cleanup
+                        // Log cleanup error to response if possible
+                        response.StreamEvents.Add(new StreamEvent
+                        {
+                            Timestamp = DateTime.UtcNow,
+                            Data = $"Warning: Failed to close WebSocket cleanly: {cleanupEx.Message}",
+                            EventType = "warning"
+                        });
                     }
                 }
                 webSocket.Dispose();

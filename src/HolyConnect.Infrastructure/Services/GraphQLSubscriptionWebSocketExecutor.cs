@@ -48,15 +48,17 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             ApplyAuthentication(webSocket, graphQLRequest);
 
             // Apply custom headers
+            var failedHeaders = new List<string>();
             foreach (var header in graphQLRequest.Headers.Where(h => !graphQLRequest.DisabledHeaders.Contains(h.Key)))
             {
                 try
                 {
                     webSocket.Options.SetRequestHeader(header.Key, header.Value);
                 }
-                catch (ArgumentException)
+                catch (ArgumentException ex)
                 {
-                    // Some headers cannot be set directly, skip them
+                    // Some headers cannot be set directly (e.g., restricted headers like Host, Content-Length)
+                    failedHeaders.Add($"{header.Key}: {ex.Message}");
                 }
             }
 
@@ -84,6 +86,17 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             };
 
             response.SentRequest = sentRequest;
+
+            // Add warning about failed headers if any
+            if (failedHeaders.Count > 0)
+            {
+                response.StreamEvents.Add(new StreamEvent
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Data = $"Warning: Failed to set {failedHeaders.Count} header(s): {string.Join(", ", failedHeaders)}",
+                    EventType = "warning"
+                });
+            }
 
             // Convert HTTP/HTTPS URL to WS/WSS
             var wsUrl = ConvertToWebSocketUrl(graphQLRequest.Url);
@@ -254,9 +267,15 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                             "Client closing",
                             CancellationToken.None);
                     }
-                    catch
+                    catch (Exception cleanupEx)
                     {
-                        // Ignore errors during cleanup
+                        // Log cleanup error to response if possible
+                        response.StreamEvents.Add(new StreamEvent
+                        {
+                            Timestamp = DateTime.UtcNow,
+                            Data = $"Warning: Failed to close WebSocket cleanly: {cleanupEx.Message}",
+                            EventType = "warning"
+                        });
                     }
                 }
                 webSocket.Dispose();
@@ -309,22 +328,32 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
 
     private string ConvertToWebSocketUrl(string url)
     {
-        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
-            return "ws://" + url.Substring(7);
+            // If not a valid absolute URI, assume it needs wss:// prefix
+            return $"wss://{url}";
         }
-        if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            return "wss://" + url.Substring(8);
-        }
-        if (url.StartsWith("ws://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
+
+        // Already a WebSocket URL
+        if (uri.Scheme == "ws" || uri.Scheme == "wss")
         {
             return url;
         }
 
+        // Convert HTTP to WebSocket
+        if (uri.Scheme == "http")
+        {
+            return $"ws://{uri.Host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}{uri.PathAndQuery}";
+        }
+
+        // Convert HTTPS to secure WebSocket
+        if (uri.Scheme == "https")
+        {
+            return $"wss://{uri.Host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}{uri.PathAndQuery}";
+        }
+
         // Default to wss for secure connections
-        return "wss://" + url;
+        return $"wss://{url}";
     }
 
     private void ApplyAuthentication(ClientWebSocket webSocket, Request request)
