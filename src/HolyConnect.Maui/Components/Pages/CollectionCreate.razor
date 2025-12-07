@@ -5,42 +5,113 @@
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">@(ParentCollectionId.HasValue ? "Create Sub-Collection" : "Create Collection")</MudText>
+    <MudPaper Elevation="0" Class="pa-6">
+        <MudStack Spacing="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@(ParentCollectionId.HasValue ? Icons.Material.Filled.SubdirectoryArrowRight : Icons.Material.Filled.Folder)" 
+                        Size="Size.Large" 
+                        Color="Color.Primary" />
+                <div>
+                    <MudText Typo="Typo.h4" Color="Color.Primary">@(ParentCollectionId.HasValue ? "Create Sub-Collection" : "Create Collection")</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Organize your requests into @(ParentCollectionId.HasValue ? "a nested" : "a new") collection</MudText>
+                </div>
+            </MudStack>
 
-    <MudCard>
-        <MudCardContent>
-            <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
-            <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
-            
-            <MudText Typo="Typo.h6" Class="mt-6 mb-2">Collection Variables</MudText>
-            <MudText Typo="Typo.body2" Class="mb-4">Collection variables override environment variables for requests in this collection.</MudText>
-            @foreach (var variable in _variables)
-            {
-                <MudGrid Class="mb-2">
-                    <MudItem xs="5">
-                        <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
-                    </MudItem>
-                    <MudItem xs="5">
-                        <MudTextField @bind-Value="variable.Value" Label="Value" Variant="Variant.Outlined" />
-                    </MudItem>
-                    <MudItem xs="2">
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
-                    </MudItem>
-                </MudGrid>
-            }
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddVariable" StartIcon="@Icons.Material.Filled.Add">
-                Add Variable
-            </MudButton>
-        </MudCardContent>
-        <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCollection" Disabled="@(string.IsNullOrWhiteSpace(_name))">
-                Create
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">
-                Cancel
-            </MudButton>
-        </MudCardActions>
-    </MudCard>
+            <MudDivider />
+
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_name" 
+                                     Label="Collection Name" 
+                                     Required="true" 
+                                     Variant="Variant.Outlined"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Label"
+                                     Placeholder="Auth, Users, Products, etc." />
+                        
+                        <MudTextField @bind-Value="_description" 
+                                     Label="Description" 
+                                     Lines="3" 
+                                     Variant="Variant.Outlined"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Description"
+                                     Placeholder="Describe the collection's purpose" />
+                        
+                        <MudDivider Class="my-2" />
+                        
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Success" />
+                            <MudText Typo="Typo.h6" Color="Color.Success">Collection Variables</MudText>
+                        </MudStack>
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                            Collection variables override environment variables for all requests in this collection
+                        </MudAlert>
+                        
+                        @if (_variables.Any())
+                        {
+                            @foreach (var variable in _variables)
+                            {
+                                <MudPaper Outlined="true" Class="pa-3">
+                                    <MudGrid Spacing="2">
+                                        <MudItem xs="5">
+                                            <MudTextField @bind-Value="variable.Key" 
+                                                        Label="Key" 
+                                                        Variant="Variant.Outlined"
+                                                        Placeholder="BASE_URL" />
+                                        </MudItem>
+                                        <MudItem xs="5">
+                                            <MudTextField @bind-Value="variable.Value" 
+                                                        Label="Value" 
+                                                        Variant="Variant.Outlined"
+                                                        Placeholder="/api/v1" />
+                                        </MudItem>
+                                        <MudItem xs="2" Class="d-flex align-center justify-center">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                         Color="Color.Error" 
+                                                         OnClick="@(() => RemoveVariable(variable))"
+                                                         Size="Size.Medium" />
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudPaper>
+                            }
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                                No variables yet. Add variables to override environment settings
+                            </MudAlert>
+                        }
+                        
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Success" 
+                                  OnClick="AddVariable" 
+                                  StartIcon="@Icons.Material.Filled.Add"
+                                  Size="Size.Medium">
+                            Add Variable
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudStack Row="true" Spacing="2" Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Primary" 
+                                  OnClick="SaveCollection" 
+                                  StartIcon="@Icons.Material.Filled.Check"
+                                  Disabled="@(string.IsNullOrWhiteSpace(_name))">
+                            Create @(ParentCollectionId.HasValue ? "Sub-Collection" : "Collection")
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Default" 
+                                  OnClick="Cancel"
+                                  StartIcon="@Icons.Material.Filled.Close">
+                            Cancel
+                        </MudButton>
+                    </MudStack>
+                </MudCardActions>
+            </MudCard>
+        </MudStack>
+    </MudPaper>
 </MudContainer>
 
 @code {
