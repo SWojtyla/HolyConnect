@@ -241,9 +241,15 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                         // Send complete message before closing
                         await WebSocketHelper.SendJsonMessageAsync(webSocket, new { id = "1", type = "complete" });
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Ignore errors when sending complete message
+                        // Ignore errors when sending complete message, but log to response for diagnostics
+                        response.StreamEvents.Add(new StreamEvent
+                        {
+                            Timestamp = DateTime.UtcNow,
+                            Data = $"Warning: Failed to send complete message: {ex.Message}",
+                            EventType = "warning"
+                        });
                     }
                 }
                 await WebSocketHelper.SafeCloseAsync(webSocket, response);
