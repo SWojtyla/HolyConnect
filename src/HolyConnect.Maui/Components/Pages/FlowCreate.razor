@@ -261,7 +261,15 @@
 
     private async Task CreateFlow()
     {
-        if (_form == null || !await _form.Validate() || !_selectedEnvironmentId.HasValue || !_steps.Any())
+        if (_form == null)
+        {
+            return;
+        }
+
+        // Trigger validation on the form and rely on the bound _isValid flag
+        await _form.Validate();
+
+        if (!_isValid || !_selectedEnvironmentId.HasValue || !_steps.Any())
         {
             return;
         }
