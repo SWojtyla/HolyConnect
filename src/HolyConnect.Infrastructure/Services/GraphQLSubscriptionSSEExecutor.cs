@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using HolyConnect.Infrastructure.Common;
 using System.Text;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
@@ -51,26 +52,15 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
             var json = JsonConvert.SerializeObject(payload);
             var httpRequest = new HttpRequestMessage(System.Net.Http.HttpMethod.Post, graphQLRequest.Url)
             {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
+                Content = new StringContent(json, Encoding.UTF8, HttpConstants.MediaTypes.ApplicationJson)
             };
 
             // Accept SSE content type
             httpRequest.Headers.TryAddWithoutValidation("Accept", "text/event-stream");
 
-            // Apply authentication
-            ApplyAuthentication(httpRequest, graphQLRequest);
-
-            // Only include enabled headers (skip Authorization if auth is configured)
-            var skipAuthorizationHeader = graphQLRequest.AuthType != AuthenticationType.None;
-            foreach (var header in graphQLRequest.Headers.Where(h => !graphQLRequest.DisabledHeaders.Contains(h.Key)))
-            {
-                // Skip Authorization header if authentication is configured to avoid conflicts
-                if (skipAuthorizationHeader && header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
+            // Apply authentication and headers using helpers
+            HttpAuthenticationHelper.ApplyAuthentication(httpRequest, graphQLRequest);
+            HttpAuthenticationHelper.ApplyHeaders(httpRequest, graphQLRequest);
 
             // Capture the sent request details
             var sentRequest = new SentRequest
@@ -217,32 +207,5 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
         }
 
         return response;
-    }
-
-    private void ApplyAuthentication(HttpRequestMessage httpRequest, Request request)
-    {
-        switch (request.AuthType)
-        {
-            case AuthenticationType.Basic:
-                if (!string.IsNullOrEmpty(request.BasicAuthUsername))
-                {
-                    var credentials = $"{request.BasicAuthUsername}:{request.BasicAuthPassword ?? string.Empty}";
-                    var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
-                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Basic {encodedCredentials}");
-                }
-                break;
-
-            case AuthenticationType.BearerToken:
-                if (!string.IsNullOrEmpty(request.BearerToken))
-                {
-                    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {request.BearerToken}");
-                }
-                break;
-
-            case AuthenticationType.None:
-            default:
-                // No authentication
-                break;
-        }
     }
 }

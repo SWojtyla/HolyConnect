@@ -59,14 +59,18 @@ else
             <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
                 <MudTabPanel Text="Body">
                     <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
                             <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Class="flex-shrink-1" Style="max-width: 200px;">
                                 @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
                                 {
                                     <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
                                 }
                             </MudSelect>
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrettifyBody(restRequest))">
+                            <MudButton Variant="Variant.Outlined" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Small" 
+                                       StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                       OnClick="@(() => PrettifyBody(restRequest))">
                                 Prettify
                             </MudButton>
                         </MudStack>
@@ -177,20 +181,28 @@ else
             <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
                 <MudTabPanel Text="Query">
                     <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrettifyGraphQLQuery(graphQLRequest))">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Press <strong>Ctrl+Space</strong> for autocomplete suggestions</MudText>
+                            <MudButton Variant="Variant.Outlined" 
+                                      Color="Color.Primary" 
+                                      Size="Size.Small" 
+                                      StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                      OnClick="@(() => PrettifyGraphQLQuery(graphQLRequest))">
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <MudText Typo="Typo.body2" Class="mb-2">Press <strong>Ctrl+Space</strong> for autocomplete suggestions</MudText>
-                        <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="400px" />
+                        <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="450px" />
                     </div>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Variables">
                     <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrettifyGraphQLVariables(graphQLRequest))">
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" AlignItems="AlignItems.Center">
+                            <MudButton Variant="Variant.Outlined" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Small" 
+                                       StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                       OnClick="@(() => PrettifyGraphQLVariables(graphQLRequest))">
                                 Prettify
                             </MudButton>
                         </MudStack>

@@ -17,7 +17,7 @@ window.monacoEditorInterop = {
                 this.editors[editorId].dispose();
             }
 
-            // Create editor
+            // Create editor with improved options
             const editor = monaco.editor.create(container, {
                 value: initialValue || '',
                 language: language || 'graphql',
@@ -34,7 +34,20 @@ window.monacoEditorInterop = {
                 suggestOnTriggerCharacters: false,
                 acceptSuggestionOnEnter: 'on',
                 tabCompletion: 'on',
-                wordBasedSuggestions: false
+                wordBasedSuggestions: false,
+                padding: { top: 8, bottom: 8 },
+                lineDecorationsWidth: 10,
+                lineNumbersMinChars: 3,
+                glyphMargin: false,
+                folding: true,
+                renderWhitespace: 'selection',
+                cursorBlinking: 'smooth',
+                smoothScrolling: true,
+                scrollbar: {
+                    useShadows: false,
+                    verticalScrollbarSize: 10,
+                    horizontalScrollbarSize: 10
+                }
             });
 
             this.editors[editorId] = editor;

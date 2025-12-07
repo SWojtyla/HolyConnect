@@ -1,10 +1,24 @@
 @inject IJSRuntime JSRuntime
 @inject IGraphQLSchemaService SchemaService
+@inject IDialogService DialogService
+@inject SettingsService SettingsService
 @implements IAsyncDisposable
 
-<div style="border: 1px solid #ccc; border-radius: 4px; overflow: hidden; @(string.IsNullOrEmpty(Height) ? "height: 400px;" : $"height: {Height};")">
-    <div id="@_editorId" style="width: 100%; height: 100%;"></div>
-</div>
+<MudPaper Elevation="2" Class="pa-0" Style="@(string.IsNullOrEmpty(Height) ? "height: 400px;" : $"height: {Height};")">
+    <div style="display: flex; flex-direction: column; height: 100%;">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="px-3 py-2" Style="border-bottom: 1px solid var(--mud-palette-divider);">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">GraphQL Query Editor</MudText>
+            <MudTooltip Text="View GraphQL Schema">
+                <MudIconButton Icon="@Icons.Material.Filled.Schema" 
+                              Size="Size.Small" 
+                              Color="Color.Primary" 
+                              OnClick="OpenSchemaViewer"
+                              Disabled="@(Request == null || string.IsNullOrWhiteSpace(Request.Url))" />
+            </MudTooltip>
+        </MudStack>
+        <div id="@_editorId" style="flex: 1; overflow: hidden;"></div>
+    </div>
+</MudPaper>
 
 @code {
     [Parameter]
@@ -23,12 +37,13 @@
     public bool ReadOnly { get; set; }
 
     [Parameter]
-    public string Theme { get; set; } = "vs-dark";
+    public string? Theme { get; set; }
 
     private string _editorId = $"monaco-editor-{Guid.NewGuid()}";
     private DotNetObjectReference<GraphQLCodeEditor>? _dotNetHelper;
     private bool _isInitialized;
     private string? _lastUrl;
+    private string _currentTheme = "vs-dark";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -38,13 +53,16 @@
             {
                 _dotNetHelper = DotNetObjectReference.Create(this);
                 
+                // Determine theme based on app settings
+                await DetermineThemeAsync();
+                
                 // Initialize Monaco Editor
                 var success = await JSRuntime.InvokeAsync<bool>(
                     "monacoEditorInterop.initializeEditor",
                     _editorId,
                     Value ?? string.Empty,
                     "graphql",
-                    Theme,
+                    _currentTheme,
                     ReadOnly
                 );
 
@@ -70,6 +88,25 @@
             {
                 Console.WriteLine($"Error initializing Monaco Editor: {ex.Message}");
             }
+        }
+    }
+    
+    private async Task DetermineThemeAsync()
+    {
+        if (!string.IsNullOrEmpty(Theme))
+        {
+            _currentTheme = Theme;
+            return;
+        }
+        
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            _currentTheme = settings.IsDarkMode ? "vs-dark" : "vs";
+        }
+        catch
+        {
+            _currentTheme = "vs-dark"; // Default fallback
         }
     }
 
@@ -140,6 +177,28 @@
         {
             await JSRuntime.InvokeVoidAsync("monacoEditorInterop.formatDocument", _editorId);
         }
+    }
+
+    private async Task OpenSchemaViewer()
+    {
+        if (Request == null || string.IsNullOrWhiteSpace(Request.Url))
+        {
+            return;
+        }
+        
+        var parameters = new DialogParameters<GraphQLSchemaViewer>
+        {
+            { x => x.Request, Request }
+        };
+        
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Large, 
+            FullWidth = true,
+            CloseButton = true
+        };
+        
+        await DialogService.ShowAsync<GraphQLSchemaViewer>("GraphQL Schema", parameters, options);
     }
 
     public async ValueTask DisposeAsync()
