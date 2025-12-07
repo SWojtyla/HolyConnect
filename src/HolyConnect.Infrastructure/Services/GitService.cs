@@ -507,4 +507,213 @@ public class GitService : IGitService
             return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
         }
     }
+
+    public Task<IEnumerable<GitCommitInfo>> GetCommitHistoryAsync(int maxCount = 50)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+
+            using var repo = new Repository(repoPath);
+            var commits = repo.Commits
+                .Take(maxCount)
+                .Select(c => new GitCommitInfo
+                {
+                    Sha = c.Sha,
+                    ShortSha = c.Sha.Length >= SHORT_SHA_LENGTH ? c.Sha.Substring(0, SHORT_SHA_LENGTH) : c.Sha,
+                    Message = c.MessageShort,
+                    Author = c.Author.Name,
+                    Date = c.Author.When
+                })
+                .ToList();
+
+            return Task.FromResult<IEnumerable<GitCommitInfo>>(commits);
+        }
+        catch
+        {
+            return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
+        }
+    }
+
+    public Task<IEnumerable<GitRemoteInfo>> GetRemotesAsync()
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(Enumerable.Empty<GitRemoteInfo>());
+
+            using var repo = new Repository(repoPath);
+            var remotes = repo.Network.Remotes
+                .Select(r => new GitRemoteInfo
+                {
+                    Name = r.Name,
+                    Url = r.Url
+                })
+                .ToList();
+
+            return Task.FromResult<IEnumerable<GitRemoteInfo>>(remotes);
+        }
+        catch
+        {
+            return Task.FromResult(Enumerable.Empty<GitRemoteInfo>());
+        }
+    }
+
+    public Task<bool> AddRemoteAsync(string name, string url)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            
+            // Check if remote already exists
+            if (repo.Network.Remotes[name] != null)
+                return Task.FromResult(false);
+
+            repo.Network.Remotes.Add(name, url);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> RemoveRemoteAsync(string name)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            
+            var remote = repo.Network.Remotes[name];
+            if (remote == null)
+                return Task.FromResult(false);
+
+            repo.Network.Remotes.Remove(name);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<GitUserConfig> GetUserConfigAsync()
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(new GitUserConfig());
+
+            using var repo = new Repository(repoPath);
+            var name = repo.Config.Get<string>("user.name")?.Value ?? string.Empty;
+            var email = repo.Config.Get<string>("user.email")?.Value ?? string.Empty;
+
+            return Task.FromResult(new GitUserConfig { Name = name, Email = email });
+        }
+        catch
+        {
+            return Task.FromResult(new GitUserConfig());
+        }
+    }
+
+    public Task<bool> SetUserConfigAsync(string name, string email)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            repo.Config.Set("user.name", name);
+            repo.Config.Set("user.email", email);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<IEnumerable<GitFileChange>> GetFileChangesAsync()
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(Enumerable.Empty<GitFileChange>());
+
+            using var repo = new Repository(repoPath);
+            var status = repo.RetrieveStatus();
+            
+            var fileChanges = new List<GitFileChange>();
+
+            foreach (var item in status)
+            {
+                fileChanges.Add(new GitFileChange
+                {
+                    FilePath = item.FilePath,
+                    Status = GetChangeType(item.State),
+                    IsStaged = item.State.HasFlag(FileStatus.NewInIndex) || 
+                               item.State.HasFlag(FileStatus.ModifiedInIndex) || 
+                               item.State.HasFlag(FileStatus.DeletedFromIndex) ||
+                               item.State.HasFlag(FileStatus.RenamedInIndex)
+                });
+            }
+
+            return Task.FromResult<IEnumerable<GitFileChange>>(fileChanges);
+        }
+        catch
+        {
+            return Task.FromResult(Enumerable.Empty<GitFileChange>());
+        }
+    }
+
+    public Task<bool> StageFileAsync(string filePath)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            Commands.Stage(repo, filePath);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> UnstageFileAsync(string filePath)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            Commands.Unstage(repo, filePath);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
 }

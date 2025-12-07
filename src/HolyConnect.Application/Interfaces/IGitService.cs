@@ -74,6 +74,52 @@ public interface IGitService
     /// Gets outgoing commits (commits in local that are not pushed to remote)
     /// </summary>
     Task<IEnumerable<GitCommitInfo>> GetOutgoingCommitsAsync();
+
+    /// <summary>
+    /// Gets commit history for the current branch
+    /// </summary>
+    /// <param name="maxCount">Maximum number of commits to retrieve</param>
+    Task<IEnumerable<GitCommitInfo>> GetCommitHistoryAsync(int maxCount = 50);
+
+    /// <summary>
+    /// Gets all configured remotes
+    /// </summary>
+    Task<IEnumerable<GitRemoteInfo>> GetRemotesAsync();
+
+    /// <summary>
+    /// Adds a new remote repository
+    /// </summary>
+    Task<bool> AddRemoteAsync(string name, string url);
+
+    /// <summary>
+    /// Removes a remote repository
+    /// </summary>
+    Task<bool> RemoveRemoteAsync(string name);
+
+    /// <summary>
+    /// Gets the git user configuration
+    /// </summary>
+    Task<GitUserConfig> GetUserConfigAsync();
+
+    /// <summary>
+    /// Sets the git user configuration
+    /// </summary>
+    Task<bool> SetUserConfigAsync(string name, string email);
+
+    /// <summary>
+    /// Gets detailed file changes for unstaged/staged files
+    /// </summary>
+    Task<IEnumerable<GitFileChange>> GetFileChangesAsync();
+
+    /// <summary>
+    /// Stages a specific file
+    /// </summary>
+    Task<bool> StageFileAsync(string filePath);
+
+    /// <summary>
+    /// Unstages a specific file
+    /// </summary>
+    Task<bool> UnstageFileAsync(string filePath);
 }
 
 /// <summary>
@@ -99,4 +145,32 @@ public class GitCommitInfo
     public string Message { get; set; } = string.Empty;
     public string Author { get; set; } = string.Empty;
     public DateTimeOffset Date { get; set; }
+}
+
+/// <summary>
+/// Represents information about a git remote
+/// </summary>
+public class GitRemoteInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Represents git user configuration
+/// </summary>
+public class GitUserConfig
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Represents a file change in the git repository
+/// </summary>
+public class GitFileChange
+{
+    public string FilePath { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public bool IsStaged { get; set; }
 }

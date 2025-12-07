@@ -248,10 +248,156 @@
             </MudCardContent>
         </MudCard>
 
+        <!-- User Configuration -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">User Configuration</MudText>
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    Configure your git identity. This information will be used for commits.
+                </MudText>
+                
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_userName" 
+                                     Label="Name" 
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Your Name" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_userEmail" 
+                                     Label="Email" 
+                                     Variant="Variant.Outlined"
+                                     Placeholder="your.email@example.com" />
+                    </MudItem>
+                </MudGrid>
+                
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="SaveUserConfig"
+                          Disabled="@(string.IsNullOrWhiteSpace(_userName) || string.IsNullOrWhiteSpace(_userEmail))"
+                          StartIcon="@Icons.Material.Filled.Save"
+                          Class="mt-3">
+                    Save Configuration
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Remote Configuration -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6">Remote Repositories</MudText>
+                    <MudButton Variant="Variant.Outlined" 
+                              Color="Color.Info" 
+                              OnClick="RefreshRemotes"
+                              StartIcon="@Icons.Material.Filled.Refresh"
+                              Size="Size.Small"
+                              Disabled="_isLoading">
+                        Refresh
+                    </MudButton>
+                </MudStack>
+
+                @if (_remotes.Any())
+                {
+                    <MudList T="string" Dense="true" Class="mb-3">
+                        @foreach (var remote in _remotes)
+                        {
+                            <MudListItem T="string">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <div>
+                                        <MudText Typo="Typo.body1"><strong>@remote.Name</strong></MudText>
+                                        <MudText Typo="Typo.body2" Style="font-size: 0.85em; color: gray;">@remote.Url</MudText>
+                                    </div>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                  Color="Color.Error" 
+                                                  Size="Size.Small"
+                                                  OnClick="@(() => RemoveRemote(remote.Name))" />
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-3">No remotes configured.</MudAlert>
+                }
+
+                <MudDivider Class="my-3" />
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Add Remote:</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="_remoteName" 
+                                     Label="Remote Name" 
+                                     Variant="Variant.Outlined"
+                                     Placeholder="origin" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_remoteUrl" 
+                                     Label="Remote URL" 
+                                     Variant="Variant.Outlined"
+                                     Placeholder="https://github.com/user/repo.git" />
+                    </MudItem>
+                    <MudItem xs="12" sm="2">
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Success" 
+                                  OnClick="AddRemote"
+                                  Disabled="@(string.IsNullOrWhiteSpace(_remoteName) || string.IsNullOrWhiteSpace(_remoteUrl))"
+                                  FullWidth="true"
+                                  StartIcon="@Icons.Material.Filled.Add">
+                            Add
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
         <!-- Commit Changes -->
         <MudCard Class="mb-4">
             <MudCardContent>
                 <MudText Typo="Typo.h6" Class="mb-3">Commit Changes</MudText>
+                
+                @if (_fileChanges.Any())
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Files to Commit:</MudText>
+                    <MudPaper Class="pa-3 mb-3" Outlined="true" Style="max-height: 300px; overflow-y: auto;">
+                        <MudList T="string" Dense="true">
+                            @foreach (var file in _fileChanges)
+                            {
+                                <MudListItem T="string">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <div style="flex-grow: 1;">
+                                            <MudText Typo="Typo.body2">
+                                                <MudChip Size="Size.Small" Color="@GetFileStatusColor(file.Status)" Variant="Variant.Text">
+                                                    @file.Status
+                                                </MudChip>
+                                                @file.FilePath
+                                            </MudText>
+                                        </div>
+                                        @if (!file.IsStaged)
+                                        {
+                                            <MudButton Size="Size.Small" 
+                                                      Variant="Variant.Text" 
+                                                      OnClick="@(() => StageFile(file.FilePath))"
+                                                      StartIcon="@Icons.Material.Filled.Add">
+                                                Stage
+                                            </MudButton>
+                                        }
+                                        else
+                                        {
+                                            <MudButton Size="Size.Small" 
+                                                      Variant="Variant.Text" 
+                                                      OnClick="@(() => UnstageFile(file.FilePath))"
+                                                      StartIcon="@Icons.Material.Filled.Remove">
+                                                Unstage
+                                            </MudButton>
+                                        }
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudPaper>
+                }
                 
                 <MudTextField @bind-Value="_commitMessage" 
                              Label="Commit Message" 
@@ -266,6 +412,48 @@
                           StartIcon="@Icons.Material.Filled.Save">
                     Commit All Changes
                 </MudButton>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Commit History -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6">Commit History</MudText>
+                    <MudButton Variant="Variant.Outlined" 
+                              Color="Color.Info" 
+                              OnClick="RefreshCommitHistory"
+                              StartIcon="@Icons.Material.Filled.Refresh"
+                              Size="Size.Small"
+                              Disabled="_isLoading">
+                        Refresh
+                    </MudButton>
+                </MudStack>
+
+                @if (_commitHistory.Any())
+                {
+                    <MudPaper Class="pa-3" Outlined="true" Style="max-height: 500px; overflow-y: auto;">
+                        <MudList T="string" Dense="true">
+                            @foreach (var commit in _commitHistory)
+                            {
+                                <MudListItem T="string">
+                                    <MudText Typo="Typo.body2">
+                                        <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@commit.ShortSha</MudChip>
+                                        <strong>@commit.Message</strong>
+                                        <br />
+                                        <span style="font-size: 0.8em; color: gray;">
+                                            @commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm:ss")
+                                        </span>
+                                    </MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudPaper>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No commit history available.</MudAlert>
+                }
             </MudCardContent>
         </MudCard>
 
@@ -340,6 +528,13 @@
     private GitStatus? _status;
     private IEnumerable<GitCommitInfo> _incomingCommits = Enumerable.Empty<GitCommitInfo>();
     private IEnumerable<GitCommitInfo> _outgoingCommits = Enumerable.Empty<GitCommitInfo>();
+    private IEnumerable<GitCommitInfo> _commitHistory = Enumerable.Empty<GitCommitInfo>();
+    private IEnumerable<GitRemoteInfo> _remotes = Enumerable.Empty<GitRemoteInfo>();
+    private IEnumerable<GitFileChange> _fileChanges = Enumerable.Empty<GitFileChange>();
+    private string _userName = string.Empty;
+    private string _userEmail = string.Empty;
+    private string _remoteName = string.Empty;
+    private string _remoteUrl = string.Empty;
     private bool _isLoading;
     private bool _isFetching;
     private bool _isPulling;
@@ -367,6 +562,14 @@
         _status = await GitService.GetStatusAsync();
         _incomingCommits = await GitService.GetIncomingCommitsAsync();
         _outgoingCommits = await GitService.GetOutgoingCommitsAsync();
+        _commitHistory = await GitService.GetCommitHistoryAsync(50);
+        _remotes = await GitService.GetRemotesAsync();
+        _fileChanges = await GitService.GetFileChangesAsync();
+        
+        var userConfig = await GitService.GetUserConfigAsync();
+        _userName = userConfig.Name;
+        _userEmail = userConfig.Email;
+        
         StateHasChanged();
     }
 
@@ -619,5 +822,161 @@
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private async Task SaveUserConfig()
+    {
+        try
+        {
+            var success = await GitService.SetUserConfigAsync(_userName, _userEmail);
+            
+            if (success)
+            {
+                Snackbar.Add("User configuration saved successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to save user configuration", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving user configuration: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AddRemote()
+    {
+        if (string.IsNullOrWhiteSpace(_remoteName) || string.IsNullOrWhiteSpace(_remoteUrl))
+            return;
+
+        try
+        {
+            var success = await GitService.AddRemoteAsync(_remoteName, _remoteUrl);
+            
+            if (success)
+            {
+                Snackbar.Add($"Remote '{_remoteName}' added successfully", Severity.Success);
+                _remoteName = string.Empty;
+                _remoteUrl = string.Empty;
+                await RefreshRemotes();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to add remote '{_remoteName}'. It may already exist.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding remote: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveRemote(string name)
+    {
+        try
+        {
+            var success = await GitService.RemoveRemoteAsync(name);
+            
+            if (success)
+            {
+                Snackbar.Add($"Remote '{name}' removed successfully", Severity.Success);
+                await RefreshRemotes();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to remove remote '{name}'", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error removing remote: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RefreshRemotes()
+    {
+        try
+        {
+            _remotes = await GitService.GetRemotesAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing remotes: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RefreshCommitHistory()
+    {
+        try
+        {
+            _commitHistory = await GitService.GetCommitHistoryAsync(50);
+            Snackbar.Add("Commit history refreshed", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing commit history: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task StageFile(string filePath)
+    {
+        try
+        {
+            var success = await GitService.StageFileAsync(filePath);
+            
+            if (success)
+            {
+                Snackbar.Add($"Staged {filePath}", Severity.Success);
+                _fileChanges = await GitService.GetFileChangesAsync();
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to stage {filePath}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error staging file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UnstageFile(string filePath)
+    {
+        try
+        {
+            var success = await GitService.UnstageFileAsync(filePath);
+            
+            if (success)
+            {
+                Snackbar.Add($"Unstaged {filePath}", Severity.Success);
+                _fileChanges = await GitService.GetFileChangesAsync();
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to unstage {filePath}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error unstaging file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetFileStatusColor(string status)
+    {
+        return status switch
+        {
+            "Added" => Color.Success,
+            "Modified" => Color.Warning,
+            "Deleted" => Color.Error,
+            "Untracked" => Color.Info,
+            "Renamed" => Color.Primary,
+            _ => Color.Default
+        };
     }
 }
