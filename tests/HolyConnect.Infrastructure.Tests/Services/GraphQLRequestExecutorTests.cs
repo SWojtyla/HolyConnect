@@ -651,4 +651,45 @@ public class GraphQLRequestExecutorTests
         Assert.NotNull(response.SentRequest);
         Assert.False(response.SentRequest.Headers.ContainsKey("User-Agent"));
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldNotAddContentType_WhenDisabled()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\": {}}")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new GraphQLRequestExecutor(httpClient);
+        var request = new GraphQLRequest
+        {
+            Url = "https://api.example.com/graphql",
+            Query = "query { test }",
+            DisabledHeaders = { "Content-Type" }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest.Content);
+        Assert.Null(capturedRequest.Content.Headers.ContentType);
+        
+        // Verify it's not in the sent request
+        Assert.NotNull(response.SentRequest);
+        Assert.False(response.SentRequest.Headers.ContainsKey("Content-Type"));
+    }
 }

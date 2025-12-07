@@ -146,8 +146,18 @@ public class RestRequestExecutor : IRequestExecutor
 
         if (!string.IsNullOrEmpty(request.Body))
         {
-            var contentType = GetContentType(request);
-            httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
+            // Check if Content-Type is disabled
+            if (request.DisabledHeaders.Contains(HttpConstants.Headers.ContentType))
+            {
+                // Create content without Content-Type header
+                httpRequest.Content = new StringContent(request.Body, Encoding.UTF8);
+                httpRequest.Content.Headers.ContentType = null;
+            }
+            else
+            {
+                var contentType = GetContentType(request);
+                httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, contentType);
+            }
         }
 
         return httpRequest;
