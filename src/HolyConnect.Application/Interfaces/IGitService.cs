@@ -74,6 +74,27 @@ public interface IGitService
     /// Gets outgoing commits (commits in local that are not pushed to remote)
     /// </summary>
     Task<IEnumerable<GitCommitInfo>> GetOutgoingCommitsAsync();
+
+    /// <summary>
+    /// Gets commit history for the current branch
+    /// </summary>
+    /// <param name="maxCount">Maximum number of commits to retrieve</param>
+    Task<IEnumerable<GitCommitInfo>> GetCommitHistoryAsync(int maxCount = 50);
+
+    /// <summary>
+    /// Gets detailed file changes for unstaged/staged files
+    /// </summary>
+    Task<IEnumerable<GitFileChange>> GetFileChangesAsync();
+
+    /// <summary>
+    /// Stages a specific file
+    /// </summary>
+    Task<bool> StageFileAsync(string filePath);
+
+    /// <summary>
+    /// Unstages a specific file
+    /// </summary>
+    Task<bool> UnstageFileAsync(string filePath);
 }
 
 /// <summary>
@@ -99,4 +120,14 @@ public class GitCommitInfo
     public string Message { get; set; } = string.Empty;
     public string Author { get; set; } = string.Empty;
     public DateTimeOffset Date { get; set; }
+}
+
+/// <summary>
+/// Represents a file change in the git repository
+/// </summary>
+public class GitFileChange
+{
+    public string FilePath { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public bool IsStaged { get; set; }
 }

@@ -4,13 +4,13 @@ namespace HolyConnect.Maui;
 
 public partial class App : MauiApp
 {
-	public App()
-	{
-		InitializeComponent();
-	}
+    public App()
+    {
+        InitializeComponent();
+    }
 
-	protected override Window CreateWindow(IActivationState? activationState)
-	{
-		return new Window(new MainPage()) { Title = "HolyConnect.Maui" };
-	}
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        return new Window(new MainPage()) { Title = "HolyConnect" };
+    }
 }

@@ -457,4 +457,145 @@ public class GitServiceTests : IDisposable
         var signature = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
         repo.Commit("Initial commit", signature, signature);
     }
+
+    [Fact]
+    public async Task GetCommitHistoryAsync_WithCommits_ShouldReturnCommitList()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var commits = await _gitService.GetCommitHistoryAsync(10);
+
+        // Assert
+        Assert.NotEmpty(commits);
+        Assert.Single(commits);
+        Assert.Equal("Initial commit", commits.First().Message);
+    }
+
+    [Fact]
+    public async Task GetCommitHistoryAsync_WithMaxCount_ShouldLimitResults()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        using var repo = new Repository(_testRepoPath);
+        var signature = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+        
+        // Create multiple commits
+        for (int i = 0; i < 5; i++)
+        {
+            var file = Path.Combine(_testRepoPath, $"file{i}.txt");
+            File.WriteAllText(file, $"content {i}");
+            Commands.Stage(repo, $"file{i}.txt");
+            repo.Commit($"Commit {i}", signature, signature);
+        }
+
+        // Act
+        var commits = await _gitService.GetCommitHistoryAsync(3);
+
+        // Assert
+        Assert.Equal(3, commits.Count());
+    }
+
+    [Fact]
+    public async Task GetFileChangesAsync_WithoutChanges_ShouldReturnEmptyList()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var changes = await _gitService.GetFileChangesAsync();
+
+        // Assert
+        Assert.Empty(changes);
+    }
+
+    [Fact]
+    public async Task GetFileChangesAsync_WithUnstagedChanges_ShouldReturnChanges()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        var modifiedFile = Path.Combine(_testRepoPath, "test.txt");
+        File.WriteAllText(modifiedFile, "modified content");
+
+        // Act
+        var changes = await _gitService.GetFileChangesAsync();
+
+        // Assert
+        Assert.Single(changes);
+        Assert.Equal("test.txt", changes.First().FilePath);
+        Assert.Equal("Modified", changes.First().Status);
+        Assert.False(changes.First().IsStaged);
+    }
+
+    [Fact]
+    public async Task StageFileAsync_WithValidFile_ShouldStageFile()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        var modifiedFile = Path.Combine(_testRepoPath, "test.txt");
+        File.WriteAllText(modifiedFile, "modified content");
+
+        // Act
+        var success = await _gitService.StageFileAsync("test.txt");
+        var changes = await _gitService.GetFileChangesAsync();
+
+        // Assert
+        Assert.True(success);
+        Assert.Single(changes);
+        Assert.True(changes.First().IsStaged);
+    }
+
+    [Fact]
+    public async Task UnstageFileAsync_WithStagedFile_ShouldUnstageFile()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        var modifiedFile = Path.Combine(_testRepoPath, "test.txt");
+        File.WriteAllText(modifiedFile, "modified content");
+        await _gitService.StageFileAsync("test.txt");
+
+        // Act
+        var success = await _gitService.UnstageFileAsync("test.txt");
+        var changes = await _gitService.GetFileChangesAsync();
+
+        // Assert
+        Assert.True(success);
+        Assert.Single(changes);
+        Assert.False(changes.First().IsStaged);
+    }
+
+    [Fact]
+    public async Task GetFileChangesAsync_WithMultipleChanges_ShouldReturnAllChanges()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        // Modified file
+        var modifiedFile = Path.Combine(_testRepoPath, "test.txt");
+        File.WriteAllText(modifiedFile, "modified content");
+        
+        // New file
+        var newFile = Path.Combine(_testRepoPath, "new.txt");
+        File.WriteAllText(newFile, "new content");
+
+        // Act
+        var changes = await _gitService.GetFileChangesAsync();
+
+        // Assert
+        Assert.Equal(2, changes.Count());
+        Assert.Contains(changes, c => c.FilePath == "test.txt" && c.Status == "Modified");
+        Assert.Contains(changes, c => c.FilePath == "new.txt" && c.Status == "Untracked");
+    }
 }

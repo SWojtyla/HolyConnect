@@ -253,6 +253,60 @@
             <MudCardContent>
                 <MudText Typo="Typo.h6" Class="mb-3">Commit Changes</MudText>
                 
+                @if (_fileChanges.Any())
+                {
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.subtitle2">Files to Commit:</MudText>
+                        @if (_fileChanges.Any(f => !f.IsStaged))
+                        {
+                            <MudButton Size="Size.Small" 
+                                      Variant="Variant.Outlined" 
+                                      Color="Color.Primary"
+                                      OnClick="StageAllFiles"
+                                      StartIcon="@Icons.Material.Filled.DoneAll">
+                                Stage All
+                            </MudButton>
+                        }
+                    </MudStack>
+                    <MudPaper Class="pa-3 mb-3" Outlined="true" Style="max-height: 300px; overflow-y: auto;">
+                        <MudList T="string" Dense="true">
+                            @foreach (var file in _fileChanges)
+                            {
+                                <MudListItem T="string">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <div style="flex-grow: 1;">
+                                            <MudText Typo="Typo.body2">
+                                                <MudChip Size="Size.Small" Color="@GetFileStatusColor(file.Status)" Variant="Variant.Text">
+                                                    @file.Status
+                                                </MudChip>
+                                                @file.FilePath
+                                            </MudText>
+                                        </div>
+                                        @if (!file.IsStaged)
+                                        {
+                                            <MudButton Size="Size.Small" 
+                                                      Variant="Variant.Text" 
+                                                      OnClick="@(() => StageFile(file.FilePath))"
+                                                      StartIcon="@Icons.Material.Filled.Add">
+                                                Stage
+                                            </MudButton>
+                                        }
+                                        else
+                                        {
+                                            <MudButton Size="Size.Small" 
+                                                      Variant="Variant.Text" 
+                                                      OnClick="@(() => UnstageFile(file.FilePath))"
+                                                      StartIcon="@Icons.Material.Filled.Remove">
+                                                Unstage
+                                            </MudButton>
+                                        }
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudPaper>
+                }
+                
                 <MudTextField @bind-Value="_commitMessage" 
                              Label="Commit Message" 
                              Variant="Variant.Outlined" 
@@ -268,6 +322,52 @@
                 </MudButton>
             </MudCardContent>
         </MudCard>
+
+        <!-- Commit History -->
+        <MudExpansionPanels Class="mb-4">
+            <MudExpansionPanel @bind-IsExpanded="_commitHistoryExpanded">
+                <TitleContent>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
+                        <MudText Typo="Typo.h6">Commit History</MudText>
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Info" 
+                                  OnClick="RefreshCommitHistory"
+                                  StartIcon="@Icons.Material.Filled.Refresh"
+                                  Size="Size.Small"
+                                  Disabled="_isLoading"
+                                  OnClick:StopPropagation="true">
+                            Refresh
+                        </MudButton>
+                    </MudStack>
+                </TitleContent>
+                <ChildContent>
+                    @if (_commitHistory.Any())
+                    {
+                        <MudPaper Class="pa-3" Outlined="true" Style="max-height: 500px; overflow-y: auto;">
+                            <MudList T="string" Dense="true">
+                                @foreach (var commit in _commitHistory)
+                                {
+                                    <MudListItem T="string">
+                                        <MudText Typo="Typo.body2">
+                                            <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@commit.ShortSha</MudChip>
+                                            <strong>@commit.Message</strong>
+                                            <br />
+                                            <span style="font-size: 0.8em; color: gray;">
+                                                @commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm:ss")
+                                            </span>
+                                        </MudText>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">No commit history available.</MudAlert>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
 
         <!-- Remote Operations -->
         <MudCard Class="mb-4">
@@ -340,10 +440,15 @@
     private GitStatus? _status;
     private IEnumerable<GitCommitInfo> _incomingCommits = Enumerable.Empty<GitCommitInfo>();
     private IEnumerable<GitCommitInfo> _outgoingCommits = Enumerable.Empty<GitCommitInfo>();
+    private IEnumerable<GitCommitInfo> _commitHistory = Enumerable.Empty<GitCommitInfo>();
+    private IEnumerable<GitFileChange> _fileChanges = Enumerable.Empty<GitFileChange>();
     private bool _isLoading;
     private bool _isFetching;
     private bool _isPulling;
     private bool _isPushing;
+    private bool _commitHistoryExpanded = false;
+
+    private const int COMMIT_HISTORY_MAX_COUNT = 50;
 
     protected override async Task OnInitializedAsync()
     {
@@ -367,6 +472,9 @@
         _status = await GitService.GetStatusAsync();
         _incomingCommits = await GitService.GetIncomingCommitsAsync();
         _outgoingCommits = await GitService.GetOutgoingCommitsAsync();
+        _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
+        _fileChanges = await GitService.GetFileChangesAsync();
+        
         StateHasChanged();
     }
 
@@ -619,5 +727,113 @@
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+
+    private async Task RefreshCommitHistory()
+    {
+        try
+        {
+            _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
+            Snackbar.Add("Commit history refreshed", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing commit history: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task StageFile(string filePath)
+    {
+        try
+        {
+            var success = await GitService.StageFileAsync(filePath);
+            
+            if (success)
+            {
+                Snackbar.Add($"Staged {filePath}", Severity.Success);
+                _fileChanges = await GitService.GetFileChangesAsync();
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to stage {filePath}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error staging file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UnstageFile(string filePath)
+    {
+        try
+        {
+            var success = await GitService.UnstageFileAsync(filePath);
+            
+            if (success)
+            {
+                Snackbar.Add($"Unstaged {filePath}", Severity.Success);
+                _fileChanges = await GitService.GetFileChangesAsync();
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to unstage {filePath}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error unstaging file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task StageAllFiles()
+    {
+        try
+        {
+            var unstagedFiles = _fileChanges.Where(f => !f.IsStaged).ToList();
+            if (!unstagedFiles.Any())
+                return;
+
+            int successCount = 0;
+            foreach (var file in unstagedFiles)
+            {
+                var success = await GitService.StageFileAsync(file.FilePath);
+                if (success)
+                    successCount++;
+            }
+
+            _fileChanges = await GitService.GetFileChangesAsync();
+            StateHasChanged();
+            
+            if (successCount == unstagedFiles.Count)
+            {
+                Snackbar.Add($"Staged all {successCount} files", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Staged {successCount} of {unstagedFiles.Count} files", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error staging files: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetFileStatusColor(string status)
+    {
+        return status switch
+        {
+            "Added" => Color.Success,
+            "Modified" => Color.Warning,
+            "Deleted" => Color.Error,
+            "Untracked" => Color.Info,
+            "Renamed" => Color.Primary,
+            _ => Color.Default
+        };
     }
 }
