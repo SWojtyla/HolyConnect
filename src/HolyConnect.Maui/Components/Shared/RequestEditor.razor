@@ -182,7 +182,8 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <VariableTextField @bind-Value="graphQLRequest.Query" Label="GraphQL Query" Lines="15" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
+                        <MudText Typo="Typo.body2" Class="mb-2">Press <strong>Ctrl+Space</strong> for autocomplete suggestions</MudText>
+                        <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="400px" />
                     </div>
                 </MudTabPanel>
                 
