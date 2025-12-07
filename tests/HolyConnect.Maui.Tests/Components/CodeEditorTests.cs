@@ -73,7 +73,7 @@ public class CodeEditorTests
     }
     
     [Fact]
-    public void CodeEditor_TextBodyTypeMapsToPlanText()
+    public void CodeEditor_TextBodyTypeMapsToPlainText()
     {
         // Arrange
         var language = "text";
