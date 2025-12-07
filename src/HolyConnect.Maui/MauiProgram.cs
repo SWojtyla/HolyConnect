@@ -107,6 +107,7 @@ public static class MauiProgram
 		builder.Services.AddScoped<IGitService>(sp => new GitService(GetStoragePathSafe));
 		builder.Services.AddScoped<IResponseValueExtractor, ResponseValueExtractor>();
 		builder.Services.AddScoped<IClipboardService, ClipboardService>();
+		builder.Services.AddScoped<IGraphQLSchemaService, GraphQLSchemaService>();
 
 		// Add request executors
 		builder.Services.AddScoped<IRequestExecutor, RestRequestExecutor>();
