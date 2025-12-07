@@ -49,7 +49,9 @@ public class RequestJsonConverter : JsonConverter<Request>
 
     public override void Write(Utf8JsonWriter writer, Request value, JsonSerializerOptions options)
     {
-        // Store original secret header values
+        // Temporarily replace secret header values with placeholder for serialization
+        // Note: This mutates the original object briefly, but the finally block ensures restoration
+        // even if an exception occurs during serialization
         var originalSecretValues = new Dictionary<string, string>();
         foreach (var secretHeader in value.SecretHeaders)
         {
