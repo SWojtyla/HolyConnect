@@ -169,28 +169,28 @@
             <MudText Typo="Typo.h6" Class="mb-3">Flow Steps (@_selectedFlow.Steps.Count)</MudText>
             @if (_selectedFlow.Steps != null && _selectedFlow.Steps.Any())
             {
-                <MudList>
+                <MudList T="string">
                     @foreach (var step in _selectedFlow.Steps.OrderBy(s => s.Order))
                     {
-                        <MudListItem>
+                        <MudListItem T="string">
                             <MudPaper Class="pa-3 mb-2" Outlined="true">
                                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                        <MudChip Size="Size.Small" Color="Color.Primary">Step @step.Order</MudChip>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">Step @step.Order</MudChip>
                                         <MudText Typo="Typo.body1">@(step.Request?.Name ?? "Unknown Request")</MudText>
                                     </MudStack>
                                     <MudStack Row="true" Spacing="1">
                                         @if (!step.IsEnabled)
                                         {
-                                            <MudChip Size="Size.Small" Color="Color.Default">Disabled</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Disabled</MudChip>
                                         }
                                         @if (step.ContinueOnError)
                                         {
-                                            <MudChip Size="Size.Small" Color="Color.Warning">Continue on Error</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Continue on Error</MudChip>
                                         }
                                         @if (step.DelayBeforeExecutionMs.HasValue && step.DelayBeforeExecutionMs.Value > 0)
                                         {
-                                            <MudChip Size="Size.Small" Color="Color.Info">Delay: @step.DelayBeforeExecutionMs ms</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Delay: @step.DelayBeforeExecutionMs ms</MudChip>
                                         }
                                     </MudStack>
                                 </MudStack>

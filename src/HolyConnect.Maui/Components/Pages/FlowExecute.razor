@@ -30,7 +30,7 @@
                 <MudPaper Class="pa-4 mb-4" Outlined="true">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                         <MudText Typo="Typo.h6">Execution Result</MudText>
-                        <MudChip Color="@GetStatusColor(_executionResult.Status)" 
+                        <MudChip T="string" Color="@GetStatusColor(_executionResult.Status)" 
                                 Variant="Variant.Filled" 
                                 Size="Size.Medium">
                             @_executionResult.Status
@@ -74,7 +74,7 @@
                                 <MudText Typo="Typo.h6">Step @stepResult.StepOrder</MudText>
                                 <MudText Typo="Typo.body1">@stepResult.RequestName</MudText>
                             </MudStack>
-                            <MudChip Color="@GetStepStatusColor(stepResult.Status)" 
+                            <MudChip T="string" Color="@GetStepStatusColor(stepResult.Status)" 
                                     Variant="Variant.Filled" 
                                     Size="Size.Small">
                                 @stepResult.Status
@@ -94,7 +94,7 @@
                                 </MudItem>
                                 <MudItem xs="12" sm="4">
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">Response Time</MudText>
-                                    <MudText Typo="Typo.body1">@stepResult.Response.DurationMs ms</MudText>
+                                    <MudText Typo="Typo.body1">@stepResult.Response.ResponseTime ms</MudText>
                                 </MudItem>
                             }
                         </MudGrid>

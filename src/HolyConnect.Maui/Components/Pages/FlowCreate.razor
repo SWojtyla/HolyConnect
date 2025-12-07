@@ -59,10 +59,10 @@
 
             @if (_steps.Any())
             {
-                <MudList>
+                <MudList T="string">
                     @foreach (var step in _steps.OrderBy(s => s.Order))
                     {
-                        <MudListItem Class="mb-2">
+                        <MudListItem T="string" Class="mb-2">
                             <MudPaper Class="pa-3" Outlined="true">
                                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
                                     <div style="flex: 1;">
@@ -192,7 +192,8 @@
     {
         if (!_selectedEnvironmentId.HasValue) return;
 
-        _collections = (await CollectionService.GetCollectionsByEnvironmentIdAsync(_selectedEnvironmentId.Value)).ToList();
+        var allCollections = await CollectionService.GetAllCollectionsAsync();
+        _collections = allCollections.Where(c => c.EnvironmentId == _selectedEnvironmentId.Value).ToList();
         
         // Load requests
         var environmentRequests = await RequestService.GetRequestsByEnvironmentIdAsync(_selectedEnvironmentId.Value);
