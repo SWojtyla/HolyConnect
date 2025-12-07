@@ -204,6 +204,9 @@
                     }
                 }
             }
+
+            // Set loading to false on successful parse
+            SetLoadingState(false, null);
         }
         catch (Exception ex)
         {
