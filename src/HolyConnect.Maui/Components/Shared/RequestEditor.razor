@@ -106,10 +106,22 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <VariableTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                    <VariableTextField @bind-Value="header.Key" 
+                                                       Label="Header Name" 
+                                                       Variant="Variant.Outlined" 
+                                                       Disabled="@(!header.Enabled)" 
+                                                       HelperText="@(header.IsDefault ? "(auto-added)" : "")"
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                    <VariableTextField @bind-Value="header.Value" 
+                                                       Label="Header Value" 
+                                                       Variant="Variant.Outlined" 
+                                                       Disabled="@(!header.Enabled)" 
+                                                       HelperText="@(header.IsDefault ? "(can be overridden)" : "")"
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
@@ -232,10 +244,22 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <VariableTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                    <VariableTextField @bind-Value="header.Key" 
+                                                       Label="Header Name" 
+                                                       Variant="Variant.Outlined" 
+                                                       Disabled="@(!header.Enabled)" 
+                                                       HelperText="@(header.IsDefault ? "(auto-added)" : "")"
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                    <VariableTextField @bind-Value="header.Value" 
+                                                       Label="Header Value" 
+                                                       Variant="Variant.Outlined" 
+                                                       Disabled="@(!header.Enabled)" 
+                                                       HelperText="@(header.IsDefault ? "(can be overridden)" : "")"
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
@@ -309,10 +333,22 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <VariableTextField @bind-Value="header.Key" Label="Header Name" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                    <VariableTextField @bind-Value="header.Key" 
+                                                       Label="Header Name" 
+                                                       Variant="Variant.Outlined" 
+                                                       Disabled="@(!header.Enabled)" 
+                                                       HelperText="@(header.IsDefault ? "(auto-added)" : "")"
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <VariableTextField @bind-Value="header.Value" Label="Header Value" Variant="Variant.Outlined" Disabled="@(!header.Enabled)" Environment="@Environment" Collection="@Collection" />
+                                    <VariableTextField @bind-Value="header.Value" 
+                                                       Label="Header Value" 
+                                                       Variant="Variant.Outlined" 
+                                                       Disabled="@(!header.Enabled)" 
+                                                       HelperText="@(header.IsDefault ? "(can be overridden)" : "")"
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
                                 </MudItem>
                                 <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
@@ -435,6 +471,7 @@ else
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = false;
     }
 
     private class ParamModel
@@ -466,6 +503,19 @@ else
                 Enabled = !Request.DisabledHeaders.Contains(h.Key)
             }).ToList();
             
+            // Add default User-Agent header if not already present
+            if (!_headers.Any(h => h.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase)))
+            {
+                _headers.Insert(0, new HeaderModel 
+                { 
+                    Key = "User-Agent", 
+                    Value = "HolyConnect/1.0",
+                    Enabled = true,
+                    IsDefault = true
+                });
+            }
+            
+            // Add default Content-Type header for REST requests with body
             if (Request is RestRequest restRequest)
             {
                 _queryParams = restRequest.QueryParameters.Select(p => new ParamModel 
@@ -474,6 +524,33 @@ else
                     Value = p.Value,
                     Enabled = !restRequest.DisabledQueryParameters.Contains(p.Key)
                 }).ToList();
+                
+                // Add Content-Type header if there's a body and no explicit Content-Type
+                if (!string.IsNullOrEmpty(restRequest.Body) && 
+                    !_headers.Any(h => h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var contentType = GetDefaultContentType(restRequest);
+                    _headers.Insert(_headers.Any(h => h.IsDefault) ? 1 : 0, new HeaderModel 
+                    { 
+                        Key = "Content-Type", 
+                        Value = contentType,
+                        Enabled = true,
+                        IsDefault = true
+                    });
+                }
+            }
+            
+            // Add default Content-Type header for GraphQL requests (always JSON)
+            if (Request is GraphQLRequest && 
+                !_headers.Any(h => h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)))
+            {
+                _headers.Insert(_headers.Any(h => h.IsDefault) ? 1 : 0, new HeaderModel 
+                { 
+                    Key = "Content-Type", 
+                    Value = "application/json",
+                    Enabled = true,
+                    IsDefault = true
+                });
             }
             
             if (Request is WebSocketRequest wsRequest)
@@ -481,6 +558,24 @@ else
                 _protocols = wsRequest.Protocols.Select(p => new ProtocolModel { Value = p }).ToList();
             }
         }
+    }
+
+    private string GetDefaultContentType(RestRequest request)
+    {
+        if (!string.IsNullOrEmpty(request.ContentType))
+        {
+            return request.ContentType;
+        }
+
+        return request.BodyType switch
+        {
+            BodyType.Json => "application/json",
+            BodyType.Xml => "application/xml",
+            BodyType.Html => "text/html",
+            BodyType.JavaScript => "application/javascript",
+            BodyType.Text => "text/plain",
+            _ => "text/plain"
+        };
     }
 
     private void AddHeader()
@@ -626,6 +721,12 @@ else
             
             foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
             {
+                // Skip default headers unless they've been modified
+                if (header.IsDefault && !IsHeaderModified(header))
+                {
+                    continue;
+                }
+                
                 if (header.Enabled)
                 {
                     Request.Headers[header.Key] = header.Value;
@@ -636,6 +737,31 @@ else
                 }
             }
         }
+    }
+
+    private bool IsHeaderModified(HeaderModel header)
+    {
+        // Check if the default header has been modified from its default value
+        if (header.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+        {
+            return header.Value != "HolyConnect/1.0";
+        }
+        
+        if (header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Request is RestRequest restRequest)
+            {
+                var defaultContentType = GetDefaultContentType(restRequest);
+                return header.Value != defaultContentType;
+            }
+            
+            if (Request is GraphQLRequest)
+            {
+                return header.Value != "application/json";
+            }
+        }
+        
+        return true; // If we can't determine, assume it's modified
     }
 
     private void SyncQueryParams()
