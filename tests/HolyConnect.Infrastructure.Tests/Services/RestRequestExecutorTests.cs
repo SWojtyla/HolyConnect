@@ -743,4 +743,84 @@ public class RestRequestExecutorTests
         Assert.NotNull(capturedRequest.Content);
         Assert.Equal("application/custom+json", capturedRequest.Content.Headers.ContentType?.MediaType);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldNotAddUserAgent_WhenDisabled()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Get,
+            DisabledHeaders = { "User-Agent" }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.False(capturedRequest.Headers.Contains("User-Agent"));
+        
+        // Verify it's not in the sent request
+        Assert.NotNull(response.SentRequest);
+        Assert.False(response.SentRequest.Headers.ContainsKey("User-Agent"));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldNotAddContentType_WhenUserAgentDisabledButNotContentType()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("test")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/test",
+            Method = Domain.Entities.HttpMethod.Post,
+            Body = "{\"test\": \"data\"}",
+            BodyType = BodyType.Json,
+            DisabledHeaders = { "User-Agent" }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.False(capturedRequest.Headers.Contains("User-Agent"));
+        Assert.NotNull(capturedRequest.Content);
+        Assert.Equal("application/json", capturedRequest.Content.Headers.ContentType?.MediaType);
+    }
 }

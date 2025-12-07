@@ -56,7 +56,11 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
             };
 
             // Add User-Agent header by default (can be overridden by custom headers)
-            httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+            // Only add if not explicitly disabled
+            if (!graphQLRequest.DisabledHeaders.Contains(HttpConstants.Headers.UserAgent))
+            {
+                httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+            }
 
             // Accept SSE content type
             httpRequest.Headers.TryAddWithoutValidation("Accept", "text/event-stream");

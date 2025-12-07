@@ -751,18 +751,20 @@ else
             
             foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
             {
-                // Skip default headers unless they've been modified
-                if (header.IsDefault && !IsHeaderModified(header))
-                {
-                    continue;
-                }
-                
                 if (header.Enabled)
                 {
+                    // For default headers that haven't been modified, skip adding to Headers
+                    // (they'll be auto-added by the executor)
+                    if (header.IsDefault && !IsHeaderModified(header))
+                    {
+                        continue;
+                    }
+                    
                     Request.Headers[header.Key] = header.Value;
                 }
                 else
                 {
+                    // Always add disabled headers to DisabledHeaders, including default ones
                     Request.DisabledHeaders.Add(header.Key);
                 }
             }

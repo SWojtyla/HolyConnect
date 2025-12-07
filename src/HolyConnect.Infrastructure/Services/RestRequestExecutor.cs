@@ -132,7 +132,11 @@ public class RestRequestExecutor : IRequestExecutor
         var httpRequest = new HttpRequestMessage(httpMethod, url);
 
         // Add User-Agent header by default (can be overridden by custom headers)
-        httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+        // Only add if not explicitly disabled
+        if (!request.DisabledHeaders.Contains(HttpConstants.Headers.UserAgent))
+        {
+            httpRequest.Headers.TryAddWithoutValidation(HttpConstants.Headers.UserAgent, HttpConstants.Defaults.UserAgent);
+        }
 
         // Apply authentication using helper
         HttpAuthenticationHelper.ApplyAuthentication(httpRequest, request);
