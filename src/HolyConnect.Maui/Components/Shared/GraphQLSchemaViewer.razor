@@ -1,0 +1,396 @@
+@inject IGraphQLSchemaService SchemaService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+            <MudText Typo="Typo.body1" Align="Align.Center">Loading schema...</MudText>
+        }
+        else if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+            <MudText Typo="Typo.body2">
+                Make sure the GraphQL endpoint is accessible and supports introspection queries.
+            </MudText>
+        }
+        else if (_schema != null)
+        {
+            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+                @if (_schema.QueryType != null)
+                {
+                    <MudTabPanel Text="Queries">
+                        <MudText Typo="Typo.h6" Class="mb-3">Available Queries</MudText>
+                        @RenderTypeFields(_schema.QueryType)
+                    </MudTabPanel>
+                }
+                
+                @if (_schema.MutationType != null)
+                {
+                    <MudTabPanel Text="Mutations">
+                        <MudText Typo="Typo.h6" Class="mb-3">Available Mutations</MudText>
+                        @RenderTypeFields(_schema.MutationType)
+                    </MudTabPanel>
+                }
+                
+                @if (_schema.SubscriptionType != null)
+                {
+                    <MudTabPanel Text="Subscriptions">
+                        <MudText Typo="Typo.h6" Class="mb-3">Available Subscriptions</MudText>
+                        @RenderTypeFields(_schema.SubscriptionType)
+                    </MudTabPanel>
+                }
+                
+                <MudTabPanel Text="Types">
+                    <MudText Typo="Typo.h6" Class="mb-3">Schema Types</MudText>
+                    @if (_schema.Types != null && _schema.Types.Count > 0)
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var type in _schema.Types.Where(t => !t.Name.StartsWith("__")).OrderBy(t => t.Name))
+                            {
+                                <MudListItem T="string">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudChip T="string" Size="Size.Small" Color="GetTypeColor(type.Kind)">@type.Kind</MudChip>
+                                        <MudText Typo="Typo.body1"><strong>@type.Name</strong></MudText>
+                                    </MudStack>
+                                    @if (!string.IsNullOrWhiteSpace(type.Description))
+                                    {
+                                        <MudText Typo="Typo.body2" Class="ml-8 mt-1">@type.Description</MudText>
+                                    }
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudTabPanel>
+            </MudTabs>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+    
+    [Parameter]
+    public GraphQLRequest? Request { get; set; }
+    
+    private bool _isLoading = true;
+    private string? _error;
+    private GraphQLSchemaInfo? _schema;
+    
+    private class GraphQLSchemaInfo
+    {
+        public GraphQLTypeInfo? QueryType { get; set; }
+        public GraphQLTypeInfo? MutationType { get; set; }
+        public GraphQLTypeInfo? SubscriptionType { get; set; }
+        public List<GraphQLTypeInfo> Types { get; set; } = new();
+    }
+    
+    private class GraphQLTypeInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Kind { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public List<GraphQLFieldInfo> Fields { get; set; } = new();
+    }
+    
+    private class GraphQLFieldInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public GraphQLTypeRef? Type { get; set; }
+        public List<GraphQLArgInfo> Args { get; set; } = new();
+    }
+    
+    private class GraphQLArgInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public GraphQLTypeRef? Type { get; set; }
+    }
+    
+    private class GraphQLTypeRef
+    {
+        public string? Kind { get; set; }
+        public string? Name { get; set; }
+        public GraphQLTypeRef? OfType { get; set; }
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSchemaAsync();
+    }
+    
+    private async Task LoadSchemaAsync()
+    {
+        if (Request == null || string.IsNullOrWhiteSpace(Request.Url))
+        {
+            _error = "No GraphQL endpoint URL provided";
+            _isLoading = false;
+            return;
+        }
+        
+        try
+        {
+            _isLoading = true;
+            _error = null;
+            
+            var schemaJson = await SchemaService.FetchSchemaAsync(Request.Url, Request);
+            
+            if (string.IsNullOrEmpty(schemaJson))
+            {
+                _error = "Failed to fetch schema from the endpoint";
+                return;
+            }
+            
+            // Parse the schema JSON
+            using var document = System.Text.Json.JsonDocument.Parse(schemaJson);
+            var root = document.RootElement;
+            
+            if (!root.TryGetProperty("data", out var data) || 
+                !data.TryGetProperty("__schema", out var schemaElement))
+            {
+                _error = "Invalid schema response format";
+                return;
+            }
+            
+            _schema = new GraphQLSchemaInfo();
+            
+            // Parse query type
+            if (schemaElement.TryGetProperty("queryType", out var queryTypeElement))
+            {
+                var queryTypeName = queryTypeElement.GetProperty("name").GetString();
+                _schema.QueryType = FindAndParseType(schemaElement, queryTypeName);
+            }
+            
+            // Parse mutation type
+            if (schemaElement.TryGetProperty("mutationType", out var mutationTypeElement))
+            {
+                var mutationTypeName = mutationTypeElement.GetProperty("name").GetString();
+                _schema.MutationType = FindAndParseType(schemaElement, mutationTypeName);
+            }
+            
+            // Parse subscription type
+            if (schemaElement.TryGetProperty("subscriptionType", out var subscriptionTypeElement))
+            {
+                var subscriptionTypeName = subscriptionTypeElement.GetProperty("name").GetString();
+                _schema.SubscriptionType = FindAndParseType(schemaElement, subscriptionTypeName);
+            }
+            
+            // Parse all types
+            if (schemaElement.TryGetProperty("types", out var typesElement))
+            {
+                foreach (var typeElement in typesElement.EnumerateArray())
+                {
+                    var typeInfo = ParseTypeInfo(typeElement);
+                    if (typeInfo != null)
+                    {
+                        _schema.Types.Add(typeInfo);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error loading schema: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private GraphQLTypeInfo? FindAndParseType(System.Text.Json.JsonElement schemaElement, string? typeName)
+    {
+        if (string.IsNullOrEmpty(typeName) || !schemaElement.TryGetProperty("types", out var typesElement))
+        {
+            return null;
+        }
+        
+        foreach (var typeElement in typesElement.EnumerateArray())
+        {
+            if (typeElement.TryGetProperty("name", out var nameElement) && 
+                nameElement.GetString() == typeName)
+            {
+                return ParseTypeInfo(typeElement);
+            }
+        }
+        
+        return null;
+    }
+    
+    private GraphQLTypeInfo? ParseTypeInfo(System.Text.Json.JsonElement typeElement)
+    {
+        if (!typeElement.TryGetProperty("name", out var nameElement))
+        {
+            return null;
+        }
+        
+        var typeInfo = new GraphQLTypeInfo
+        {
+            Name = nameElement.GetString() ?? string.Empty,
+            Kind = typeElement.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() ?? string.Empty : string.Empty,
+            Description = typeElement.TryGetProperty("description", out var descElement) ? descElement.GetString() : null
+        };
+        
+        if (typeElement.TryGetProperty("fields", out var fieldsElement) && fieldsElement.ValueKind != System.Text.Json.JsonValueKind.Null)
+        {
+            foreach (var fieldElement in fieldsElement.EnumerateArray())
+            {
+                var fieldInfo = ParseFieldInfo(fieldElement);
+                if (fieldInfo != null)
+                {
+                    typeInfo.Fields.Add(fieldInfo);
+                }
+            }
+        }
+        
+        return typeInfo;
+    }
+    
+    private GraphQLFieldInfo? ParseFieldInfo(System.Text.Json.JsonElement fieldElement)
+    {
+        if (!fieldElement.TryGetProperty("name", out var nameElement))
+        {
+            return null;
+        }
+        
+        var fieldInfo = new GraphQLFieldInfo
+        {
+            Name = nameElement.GetString() ?? string.Empty,
+            Description = fieldElement.TryGetProperty("description", out var descElement) ? descElement.GetString() : null
+        };
+        
+        if (fieldElement.TryGetProperty("type", out var typeElement))
+        {
+            fieldInfo.Type = ParseTypeRef(typeElement);
+        }
+        
+        if (fieldElement.TryGetProperty("args", out var argsElement))
+        {
+            foreach (var argElement in argsElement.EnumerateArray())
+            {
+                var argInfo = ParseArgInfo(argElement);
+                if (argInfo != null)
+                {
+                    fieldInfo.Args.Add(argInfo);
+                }
+            }
+        }
+        
+        return fieldInfo;
+    }
+    
+    private GraphQLArgInfo? ParseArgInfo(System.Text.Json.JsonElement argElement)
+    {
+        if (!argElement.TryGetProperty("name", out var nameElement))
+        {
+            return null;
+        }
+        
+        var argInfo = new GraphQLArgInfo
+        {
+            Name = nameElement.GetString() ?? string.Empty,
+            Description = argElement.TryGetProperty("description", out var descElement) ? descElement.GetString() : null
+        };
+        
+        if (argElement.TryGetProperty("type", out var typeElement))
+        {
+            argInfo.Type = ParseTypeRef(typeElement);
+        }
+        
+        return argInfo;
+    }
+    
+    private GraphQLTypeRef? ParseTypeRef(System.Text.Json.JsonElement typeElement)
+    {
+        var typeRef = new GraphQLTypeRef
+        {
+            Kind = typeElement.TryGetProperty("kind", out var kindElement) ? kindElement.GetString() : null,
+            Name = typeElement.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null
+        };
+        
+        if (typeElement.TryGetProperty("ofType", out var ofTypeElement) && ofTypeElement.ValueKind != System.Text.Json.JsonValueKind.Null)
+        {
+            typeRef.OfType = ParseTypeRef(ofTypeElement);
+        }
+        
+        return typeRef;
+    }
+    
+    private RenderFragment RenderTypeFields(GraphQLTypeInfo typeInfo) => __builder =>
+    {
+        if (typeInfo.Fields == null || typeInfo.Fields.Count == 0)
+        {
+            <MudText Typo="Typo.body2">No fields available</MudText>
+            return;
+        }
+        
+        <MudList T="string" Dense="true">
+            @foreach (var field in typeInfo.Fields)
+            {
+                <MudListItem T="string">
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudText Typo="Typo.body1"><strong>@field.Name</strong></MudText>
+                            @if (field.Args != null && field.Args.Count > 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    (@string.Join(", ", field.Args.Select(a => $"{a.Name}: {FormatType(a.Type)}")))
+                                </MudText>
+                            }
+                            <MudText Typo="Typo.body2">: @FormatType(field.Type)</MudText>
+                        </MudStack>
+                        @if (!string.IsNullOrWhiteSpace(field.Description))
+                        {
+                            <MudText Typo="Typo.body2" Class="ml-4">@field.Description</MudText>
+                        }
+                    </MudStack>
+                </MudListItem>
+            }
+        </MudList>
+    };
+    
+    private string FormatType(GraphQLTypeRef? typeRef)
+    {
+        if (typeRef == null)
+        {
+            return "Unknown";
+        }
+        
+        if (typeRef.Kind == "NON_NULL")
+        {
+            return $"{FormatType(typeRef.OfType)}!";
+        }
+        
+        if (typeRef.Kind == "LIST")
+        {
+            return $"[{FormatType(typeRef.OfType)}]";
+        }
+        
+        return typeRef.Name ?? "Unknown";
+    }
+    
+    private Color GetTypeColor(string kind)
+    {
+        return kind switch
+        {
+            "OBJECT" => Color.Primary,
+            "SCALAR" => Color.Success,
+            "ENUM" => Color.Info,
+            "INPUT_OBJECT" => Color.Secondary,
+            "INTERFACE" => Color.Warning,
+            "UNION" => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+    
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+}
