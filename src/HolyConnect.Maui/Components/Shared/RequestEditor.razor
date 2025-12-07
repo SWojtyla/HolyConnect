@@ -106,22 +106,32 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <VariableTextField @bind-Value="header.Key" 
-                                                       Label="Header Name" 
-                                                       Variant="Variant.Outlined" 
-                                                       Disabled="@(!header.Enabled)" 
-                                                       HelperText="@(header.IsDefault ? "(auto-added)" : "")"
-                                                       Environment="@Environment" 
-                                                       Collection="@Collection" />
+                                    <MudStack Spacing="1">
+                                        <VariableTextField @bind-Value="header.Key" 
+                                                           Label="Header Name" 
+                                                           Variant="Variant.Outlined" 
+                                                           Disabled="@(!header.Enabled)" 
+                                                           Environment="@Environment" 
+                                                           Collection="@Collection" />
+                                        @if (header.IsDefault)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
+                                        }
+                                    </MudStack>
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <VariableTextField @bind-Value="header.Value" 
-                                                       Label="Header Value" 
-                                                       Variant="Variant.Outlined" 
-                                                       Disabled="@(!header.Enabled)" 
-                                                       HelperText="@(header.IsDefault ? "(can be overridden)" : "")"
-                                                       Environment="@Environment" 
-                                                       Collection="@Collection" />
+                                    <MudStack Spacing="1">
+                                        <VariableTextField @bind-Value="header.Value" 
+                                                           Label="Header Value" 
+                                                           Variant="Variant.Outlined" 
+                                                           Disabled="@(!header.Enabled)" 
+                                                           Environment="@Environment" 
+                                                           Collection="@Collection" />
+                                        @if (header.IsDefault)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
+                                        }
+                                    </MudStack>
                                 </MudItem>
                                 <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
@@ -244,22 +254,32 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <VariableTextField @bind-Value="header.Key" 
-                                                       Label="Header Name" 
-                                                       Variant="Variant.Outlined" 
-                                                       Disabled="@(!header.Enabled)" 
-                                                       HelperText="@(header.IsDefault ? "(auto-added)" : "")"
-                                                       Environment="@Environment" 
-                                                       Collection="@Collection" />
+                                    <MudStack Spacing="1">
+                                        <VariableTextField @bind-Value="header.Key" 
+                                                           Label="Header Name" 
+                                                           Variant="Variant.Outlined" 
+                                                           Disabled="@(!header.Enabled)" 
+                                                           Environment="@Environment" 
+                                                           Collection="@Collection" />
+                                        @if (header.IsDefault)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
+                                        }
+                                    </MudStack>
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <VariableTextField @bind-Value="header.Value" 
-                                                       Label="Header Value" 
-                                                       Variant="Variant.Outlined" 
-                                                       Disabled="@(!header.Enabled)" 
-                                                       HelperText="@(header.IsDefault ? "(can be overridden)" : "")"
-                                                       Environment="@Environment" 
-                                                       Collection="@Collection" />
+                                    <MudStack Spacing="1">
+                                        <VariableTextField @bind-Value="header.Value" 
+                                                           Label="Header Value" 
+                                                           Variant="Variant.Outlined" 
+                                                           Disabled="@(!header.Enabled)" 
+                                                           Environment="@Environment" 
+                                                           Collection="@Collection" />
+                                        @if (header.IsDefault)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
+                                        }
+                                    </MudStack>
                                 </MudItem>
                                 <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
@@ -333,22 +353,32 @@ else
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
                                 <MudItem xs="5">
-                                    <VariableTextField @bind-Value="header.Key" 
-                                                       Label="Header Name" 
-                                                       Variant="Variant.Outlined" 
-                                                       Disabled="@(!header.Enabled)" 
-                                                       HelperText="@(header.IsDefault ? "(auto-added)" : "")"
-                                                       Environment="@Environment" 
-                                                       Collection="@Collection" />
+                                    <MudStack Spacing="1">
+                                        <VariableTextField @bind-Value="header.Key" 
+                                                           Label="Header Name" 
+                                                           Variant="Variant.Outlined" 
+                                                           Disabled="@(!header.Enabled)" 
+                                                           Environment="@Environment" 
+                                                           Collection="@Collection" />
+                                        @if (header.IsDefault)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
+                                        }
+                                    </MudStack>
                                 </MudItem>
                                 <MudItem xs="4">
-                                    <VariableTextField @bind-Value="header.Value" 
-                                                       Label="Header Value" 
-                                                       Variant="Variant.Outlined" 
-                                                       Disabled="@(!header.Enabled)" 
-                                                       HelperText="@(header.IsDefault ? "(can be overridden)" : "")"
-                                                       Environment="@Environment" 
-                                                       Collection="@Collection" />
+                                    <MudStack Spacing="1">
+                                        <VariableTextField @bind-Value="header.Value" 
+                                                           Label="Header Value" 
+                                                           Variant="Variant.Outlined" 
+                                                           Disabled="@(!header.Enabled)" 
+                                                           Environment="@Environment" 
+                                                           Collection="@Collection" />
+                                        @if (header.IsDefault)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
+                                        }
+                                    </MudStack>
                                 </MudItem>
                                 <MudItem xs="2" Class="d-flex align-center">
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
