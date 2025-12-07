@@ -30,12 +30,8 @@ window.monacoEditorInterop = {
                 lineNumbers: 'on',
                 renderLineHighlight: 'all',
                 contextmenu: true,
-                quickSuggestions: {
-                    other: true,
-                    comments: false,
-                    strings: true
-                },
-                suggestOnTriggerCharacters: true,
+                quickSuggestions: false,
+                suggestOnTriggerCharacters: false,
                 acceptSuggestionOnEnter: 'on',
                 tabCompletion: 'on',
                 wordBasedSuggestions: false
