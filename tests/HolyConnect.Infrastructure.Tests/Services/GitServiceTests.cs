@@ -45,15 +45,6 @@ public class GitServiceTests : IDisposable
         return remoteRepoPath;
     }
 
-    private void CleanupRemoteRepository(string remoteRepoPath)
-    {
-        if (Directory.Exists(remoteRepoPath))
-        {
-            RemoveReadOnlyAttributes(remoteRepoPath);
-            Directory.Delete(remoteRepoPath, true);
-        }
-    }
-
     private void SetupRemoteTracking(Repository localRepo, string remoteRepoPath)
     {
         localRepo.Network.Remotes.Add("origin", remoteRepoPath);
@@ -507,122 +498,6 @@ public class GitServiceTests : IDisposable
 
         // Assert
         Assert.Equal(3, commits.Count());
-    }
-
-    [Fact]
-    public async Task GetRemotesAsync_WithoutRemotes_ShouldReturnEmptyList()
-    {
-        // Arrange
-        await _gitService.InitRepositoryAsync(_testRepoPath);
-
-        // Act
-        var remotes = await _gitService.GetRemotesAsync();
-
-        // Assert
-        Assert.Empty(remotes);
-    }
-
-    [Fact]
-    public async Task AddRemoteAsync_WithValidData_ShouldAddRemote()
-    {
-        // Arrange
-        await _gitService.InitRepositoryAsync(_testRepoPath);
-        var remoteRepoPath = CreateRemoteRepository();
-
-        // Act
-        var success = await _gitService.AddRemoteAsync("origin", remoteRepoPath);
-        var remotes = await _gitService.GetRemotesAsync();
-
-        // Assert
-        Assert.True(success);
-        Assert.Single(remotes);
-        Assert.Equal("origin", remotes.First().Name);
-        Assert.Equal(remoteRepoPath, remotes.First().Url);
-
-        // Cleanup
-        CleanupRemoteRepository(remoteRepoPath);
-    }
-
-    [Fact]
-    public async Task AddRemoteAsync_WithDuplicateName_ShouldReturnFalse()
-    {
-        // Arrange
-        await _gitService.InitRepositoryAsync(_testRepoPath);
-        var remoteRepoPath = CreateRemoteRepository();
-        await _gitService.AddRemoteAsync("origin", remoteRepoPath);
-
-        // Act
-        var success = await _gitService.AddRemoteAsync("origin", "https://github.com/test/repo.git");
-
-        // Assert
-        Assert.False(success);
-
-        // Cleanup
-        CleanupRemoteRepository(remoteRepoPath);
-    }
-
-    [Fact]
-    public async Task RemoveRemoteAsync_WithExistingRemote_ShouldRemoveRemote()
-    {
-        // Arrange
-        await _gitService.InitRepositoryAsync(_testRepoPath);
-        var remoteRepoPath = CreateRemoteRepository();
-        await _gitService.AddRemoteAsync("origin", remoteRepoPath);
-
-        // Act
-        var success = await _gitService.RemoveRemoteAsync("origin");
-        var remotes = await _gitService.GetRemotesAsync();
-
-        // Assert
-        Assert.True(success);
-        Assert.Empty(remotes);
-
-        // Cleanup
-        CleanupRemoteRepository(remoteRepoPath);
-    }
-
-    [Fact]
-    public async Task RemoveRemoteAsync_WithNonExistentRemote_ShouldReturnFalse()
-    {
-        // Arrange
-        await _gitService.InitRepositoryAsync(_testRepoPath);
-
-        // Act
-        var success = await _gitService.RemoveRemoteAsync("nonexistent");
-
-        // Assert
-        Assert.False(success);
-    }
-
-    [Fact]
-    public async Task GetUserConfigAsync_WithoutConfig_ShouldReturnEmptyConfig()
-    {
-        // Arrange
-        await _gitService.InitRepositoryAsync(_testRepoPath);
-
-        // Act
-        var config = await _gitService.GetUserConfigAsync();
-
-        // Assert
-        Assert.NotNull(config);
-        Assert.Equal(string.Empty, config.Name);
-        Assert.Equal(string.Empty, config.Email);
-    }
-
-    [Fact]
-    public async Task SetUserConfigAsync_WithValidData_ShouldSetConfig()
-    {
-        // Arrange
-        await _gitService.InitRepositoryAsync(_testRepoPath);
-
-        // Act
-        var success = await _gitService.SetUserConfigAsync("Test User", "test@example.com");
-        var config = await _gitService.GetUserConfigAsync();
-
-        // Assert
-        Assert.True(success);
-        Assert.Equal("Test User", config.Name);
-        Assert.Equal("test@example.com", config.Email);
     }
 
     [Fact]

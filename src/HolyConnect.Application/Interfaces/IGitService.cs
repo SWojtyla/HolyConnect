@@ -82,31 +82,6 @@ public interface IGitService
     Task<IEnumerable<GitCommitInfo>> GetCommitHistoryAsync(int maxCount = 50);
 
     /// <summary>
-    /// Gets all configured remotes
-    /// </summary>
-    Task<IEnumerable<GitRemoteInfo>> GetRemotesAsync();
-
-    /// <summary>
-    /// Adds a new remote repository
-    /// </summary>
-    Task<bool> AddRemoteAsync(string name, string url);
-
-    /// <summary>
-    /// Removes a remote repository
-    /// </summary>
-    Task<bool> RemoveRemoteAsync(string name);
-
-    /// <summary>
-    /// Gets the git user configuration
-    /// </summary>
-    Task<GitUserConfig> GetUserConfigAsync();
-
-    /// <summary>
-    /// Sets the git user configuration
-    /// </summary>
-    Task<bool> SetUserConfigAsync(string name, string email);
-
-    /// <summary>
     /// Gets detailed file changes for unstaged/staged files
     /// </summary>
     Task<IEnumerable<GitFileChange>> GetFileChangesAsync();
@@ -145,24 +120,6 @@ public class GitCommitInfo
     public string Message { get; set; } = string.Empty;
     public string Author { get; set; } = string.Empty;
     public DateTimeOffset Date { get; set; }
-}
-
-/// <summary>
-/// Represents information about a git remote
-/// </summary>
-public class GitRemoteInfo
-{
-    public string Name { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Represents git user configuration
-/// </summary>
-public class GitUserConfig
-{
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
 }
 
 /// <summary>

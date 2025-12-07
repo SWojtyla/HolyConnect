@@ -248,110 +248,6 @@
             </MudCardContent>
         </MudCard>
 
-        <!-- User Configuration -->
-        <MudCard Class="mb-4">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Class="mb-3">User Configuration</MudText>
-                <MudText Typo="Typo.body2" Class="mb-3">
-                    Configure your git identity. This information will be used for commits.
-                </MudText>
-                
-                <MudGrid>
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="_userName" 
-                                     Label="Name" 
-                                     Variant="Variant.Outlined"
-                                     Placeholder="Your Name" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="_userEmail" 
-                                     Label="Email" 
-                                     Variant="Variant.Outlined"
-                                     Placeholder="your.email@example.com" />
-                    </MudItem>
-                </MudGrid>
-                
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Primary" 
-                          OnClick="SaveUserConfig"
-                          Disabled="@(string.IsNullOrWhiteSpace(_userName) || string.IsNullOrWhiteSpace(_userEmail))"
-                          StartIcon="@Icons.Material.Filled.Save"
-                          Class="mt-3">
-                    Save Configuration
-                </MudButton>
-            </MudCardContent>
-        </MudCard>
-
-        <!-- Remote Configuration -->
-        <MudCard Class="mb-4">
-            <MudCardContent>
-                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-                    <MudText Typo="Typo.h6">Remote Repositories</MudText>
-                    <MudButton Variant="Variant.Outlined" 
-                              Color="Color.Info" 
-                              OnClick="RefreshRemotes"
-                              StartIcon="@Icons.Material.Filled.Refresh"
-                              Size="Size.Small"
-                              Disabled="_isLoading">
-                        Refresh
-                    </MudButton>
-                </MudStack>
-
-                @if (_remotes.Any())
-                {
-                    <MudList T="string" Dense="true" Class="mb-3">
-                        @foreach (var remote in _remotes)
-                        {
-                            <MudListItem T="string">
-                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                    <div>
-                                        <MudText Typo="Typo.body1"><strong>@remote.Name</strong></MudText>
-                                        <MudText Typo="Typo.body2" Style="font-size: 0.85em; color: gray;">@remote.Url</MudText>
-                                    </div>
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                  Color="Color.Error" 
-                                                  Size="Size.Small"
-                                                  OnClick="@(() => RemoveRemote(remote.Name))" />
-                                </MudStack>
-                            </MudListItem>
-                        }
-                    </MudList>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Info" Class="mb-3">No remotes configured.</MudAlert>
-                }
-
-                <MudDivider Class="my-3" />
-
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Add Remote:</MudText>
-                <MudGrid>
-                    <MudItem xs="12" sm="4">
-                        <MudTextField @bind-Value="_remoteName" 
-                                     Label="Remote Name" 
-                                     Variant="Variant.Outlined"
-                                     Placeholder="origin" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="_remoteUrl" 
-                                     Label="Remote URL" 
-                                     Variant="Variant.Outlined"
-                                     Placeholder="https://github.com/user/repo.git" />
-                    </MudItem>
-                    <MudItem xs="12" sm="2">
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Success" 
-                                  OnClick="AddRemote"
-                                  Disabled="@(string.IsNullOrWhiteSpace(_remoteName) || string.IsNullOrWhiteSpace(_remoteUrl))"
-                                  FullWidth="true"
-                                  StartIcon="@Icons.Material.Filled.Add">
-                            Add
-                        </MudButton>
-                    </MudItem>
-                </MudGrid>
-            </MudCardContent>
-        </MudCard>
-
         <!-- Commit Changes -->
         <MudCard Class="mb-4">
             <MudCardContent>
@@ -529,12 +425,7 @@
     private IEnumerable<GitCommitInfo> _incomingCommits = Enumerable.Empty<GitCommitInfo>();
     private IEnumerable<GitCommitInfo> _outgoingCommits = Enumerable.Empty<GitCommitInfo>();
     private IEnumerable<GitCommitInfo> _commitHistory = Enumerable.Empty<GitCommitInfo>();
-    private IEnumerable<GitRemoteInfo> _remotes = Enumerable.Empty<GitRemoteInfo>();
     private IEnumerable<GitFileChange> _fileChanges = Enumerable.Empty<GitFileChange>();
-    private string _userName = string.Empty;
-    private string _userEmail = string.Empty;
-    private string _remoteName = string.Empty;
-    private string _remoteUrl = string.Empty;
     private bool _isLoading;
     private bool _isFetching;
     private bool _isPulling;
@@ -565,12 +456,7 @@
         _incomingCommits = await GitService.GetIncomingCommitsAsync();
         _outgoingCommits = await GitService.GetOutgoingCommitsAsync();
         _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
-        _remotes = await GitService.GetRemotesAsync();
         _fileChanges = await GitService.GetFileChangesAsync();
-        
-        var userConfig = await GitService.GetUserConfigAsync();
-        _userName = userConfig.Name;
-        _userEmail = userConfig.Email;
         
         StateHasChanged();
     }
@@ -826,88 +712,6 @@
         }
     }
 
-    private async Task SaveUserConfig()
-    {
-        try
-        {
-            var success = await GitService.SetUserConfigAsync(_userName, _userEmail);
-            
-            if (success)
-            {
-                Snackbar.Add("User configuration saved successfully", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add("Failed to save user configuration", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error saving user configuration: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task AddRemote()
-    {
-        if (string.IsNullOrWhiteSpace(_remoteName) || string.IsNullOrWhiteSpace(_remoteUrl))
-            return;
-
-        try
-        {
-            var success = await GitService.AddRemoteAsync(_remoteName, _remoteUrl);
-            
-            if (success)
-            {
-                Snackbar.Add($"Remote '{_remoteName}' added successfully", Severity.Success);
-                _remoteName = string.Empty;
-                _remoteUrl = string.Empty;
-                await RefreshRemotes();
-            }
-            else
-            {
-                Snackbar.Add($"Failed to add remote '{_remoteName}'. It may already exist.", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error adding remote: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task RemoveRemote(string name)
-    {
-        try
-        {
-            var success = await GitService.RemoveRemoteAsync(name);
-            
-            if (success)
-            {
-                Snackbar.Add($"Remote '{name}' removed successfully", Severity.Success);
-                await RefreshRemotes();
-            }
-            else
-            {
-                Snackbar.Add($"Failed to remove remote '{name}'", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error removing remote: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task RefreshRemotes()
-    {
-        try
-        {
-            _remotes = await GitService.GetRemotesAsync();
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error refreshing remotes: {ex.Message}", Severity.Error);
-        }
-    }
 
     private async Task RefreshCommitHistory()
     {
