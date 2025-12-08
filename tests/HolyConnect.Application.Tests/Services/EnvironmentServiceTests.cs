@@ -191,4 +191,38 @@ public class EnvironmentServiceTests
         Assert.Equal("new_value", result.Variables["NEW_VAR"]);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()), Times.Once);
     }
+
+    [Fact]
+    public async Task CreateEnvironmentAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var name = "Duplicate Environment";
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<DomainEnvironment>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.CreateEnvironmentAsync(name));
+        Assert.Contains("already exists", exception.Message);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<DomainEnvironment>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateEnvironmentAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Id = Guid.NewGuid(),
+            Name = "Duplicate Environment"
+        };
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{environment.Name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.UpdateEnvironmentAsync(environment));
+        Assert.Contains("already exists", exception.Message);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<DomainEnvironment>()), Times.Once);
+    }
 }

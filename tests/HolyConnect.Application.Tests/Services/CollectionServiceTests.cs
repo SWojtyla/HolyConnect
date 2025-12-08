@@ -229,4 +229,40 @@ public class CollectionServiceTests
         Assert.Equal("another_value", result.Variables["ANOTHER_VAR"]);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Collection>()), Times.Once);
     }
+
+    [Fact]
+    public async Task CreateCollectionAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var name = "Duplicate Collection";
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Collection>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.CreateCollectionAsync(name, environmentId));
+        Assert.Contains("already exists", exception.Message);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Collection>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCollectionAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var collection = new Collection
+        {
+            Id = Guid.NewGuid(),
+            Name = "Duplicate Collection",
+            EnvironmentId = Guid.NewGuid()
+        };
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Collection>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{collection.Name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.UpdateCollectionAsync(collection));
+        Assert.Contains("already exists", exception.Message);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Collection>()), Times.Once);
+    }
 }

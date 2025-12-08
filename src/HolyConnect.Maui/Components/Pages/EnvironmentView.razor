@@ -524,16 +524,27 @@
     {
         if (_selectedRequest != null)
         {
-            var selectedRequestId = _selectedRequest.Id;
-            await RequestService.UpdateRequestAsync(_selectedRequest);
-            Snackbar.Add("Request saved", Severity.Success);          
-            await LoadData();
-            
-            // Re-select the request after reload to maintain state
-            var reloadedRequest = await RequestService.GetRequestByIdAsync(selectedRequestId);
-            if (reloadedRequest != null)
+            try
             {
-                SelectRequest(reloadedRequest);
+                var selectedRequestId = _selectedRequest.Id;
+                await RequestService.UpdateRequestAsync(_selectedRequest);
+                Snackbar.Add("Request saved", Severity.Success);          
+                await LoadData();
+                
+                // Re-select the request after reload to maintain state
+                var reloadedRequest = await RequestService.GetRequestByIdAsync(selectedRequestId);
+                if (reloadedRequest != null)
+                {
+                    SelectRequest(reloadedRequest);
+                }
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+            {
+                Snackbar.Add($"A request with the name '{_selectedRequest.Name}' already exists. Please choose a different name.", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error saving request: {ex.Message}", Severity.Error);
             }
         }
     }
@@ -597,12 +608,23 @@
         }
         else
         {
-            var request = await RequestService.GetRequestByIdAsync(updateInfo.RequestId);
-            if (request != null)
+            try
             {
-                request.Name = updateInfo.NewName;
-                await RequestService.UpdateRequestAsync(request);
-                Snackbar.Add("Request renamed successfully", Severity.Success);
+                var request = await RequestService.GetRequestByIdAsync(updateInfo.RequestId);
+                if (request != null)
+                {
+                    request.Name = updateInfo.NewName;
+                    await RequestService.UpdateRequestAsync(request);
+                    Snackbar.Add("Request renamed successfully", Severity.Success);
+                }
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+            {
+                Snackbar.Add($"A request with the name '{updateInfo.NewName}' already exists. Please choose a different name.", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error renaming request: {ex.Message}", Severity.Error);
             }
         }
         
@@ -713,20 +735,31 @@
 
         if (!result.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
         {
-            var selectedRequestId = _selectedRequest?.Id;
-            request.Name = newName;
-            await RequestService.UpdateRequestAsync(request);
-            Snackbar.Add("Request renamed successfully", Severity.Success);
-            await LoadData();
-            
-            // Re-select the request after reload to maintain state
-            if (selectedRequestId.HasValue)
+            try
             {
-                var reloadedRequest = await RequestService.GetRequestByIdAsync(selectedRequestId.Value);
-                if (reloadedRequest != null)
+                var selectedRequestId = _selectedRequest?.Id;
+                request.Name = newName;
+                await RequestService.UpdateRequestAsync(request);
+                Snackbar.Add("Request renamed successfully", Severity.Success);
+                await LoadData();
+                
+                // Re-select the request after reload to maintain state
+                if (selectedRequestId.HasValue)
                 {
-                    SelectRequest(reloadedRequest);
+                    var reloadedRequest = await RequestService.GetRequestByIdAsync(selectedRequestId.Value);
+                    if (reloadedRequest != null)
+                    {
+                        SelectRequest(reloadedRequest);
+                    }
                 }
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+            {
+                Snackbar.Add($"A request with the name '{newName}' already exists. Please choose a different name.", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error renaming request: {ex.Message}", Severity.Error);
             }
             
             StateHasChanged();

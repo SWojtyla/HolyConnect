@@ -124,66 +124,77 @@
 
     private async Task SaveRequest()
     {
-        // Determine the environment ID for navigation
-        Guid targetEnvironmentId;
-        if (CollectionId.HasValue)
+        try
         {
-            var collection = await CollectionService.GetCollectionByIdAsync(CollectionId.Value);
-            if (collection == null)
+            // Determine the environment ID for navigation
+            Guid targetEnvironmentId;
+            if (CollectionId.HasValue)
             {
-                Snackbar.Add("The collection could not be found. It may have been deleted.", Severity.Error);
+                var collection = await CollectionService.GetCollectionByIdAsync(CollectionId.Value);
+                if (collection == null)
+                {
+                    Snackbar.Add("The collection could not be found. It may have been deleted.", Severity.Error);
+                    NavigationManager.NavigateTo("/");
+                    return;
+                }
+                targetEnvironmentId = collection.EnvironmentId;
+            }
+            else if (EnvironmentId.HasValue)
+            {
+                targetEnvironmentId = EnvironmentId.Value;
+            }
+            else
+            {
+                Snackbar.Add("Unable to create request: no environment or collection specified. Please try again.", Severity.Error);
                 NavigationManager.NavigateTo("/");
                 return;
             }
-            targetEnvironmentId = collection.EnvironmentId;
-        }
-        else if (EnvironmentId.HasValue)
-        {
-            targetEnvironmentId = EnvironmentId.Value;
-        }
-        else
-        {
-            Snackbar.Add("Unable to create request: no environment or collection specified. Please try again.", Severity.Error);
-            NavigationManager.NavigateTo("/");
-            return;
-        }
 
-        Request request = _requestType switch
-        {
-            RequestType.Rest => new RestRequest
+            Request request = _requestType switch
             {
-                Name = _name,
-                Description = _description,
-                Url = _url,
-                CollectionId = CollectionId,
-                EnvironmentId = targetEnvironmentId,
-                Method = _httpMethod
-            },
-            RequestType.GraphQL => new GraphQLRequest
-            {
-                Name = _name,
-                Description = _description,
-                Url = _url,
-                CollectionId = CollectionId,
-                EnvironmentId = targetEnvironmentId
-            },
-            RequestType.WebSocket => new WebSocketRequest
-            {
-                Name = _name,
-                Description = _description,
-                Url = _url,
-                CollectionId = CollectionId,
-                EnvironmentId = targetEnvironmentId
-            },
-            _ => throw new NotSupportedException($"Request type {_requestType} not supported")
-        };
+                RequestType.Rest => new RestRequest
+                {
+                    Name = _name,
+                    Description = _description,
+                    Url = _url,
+                    CollectionId = CollectionId,
+                    EnvironmentId = targetEnvironmentId,
+                    Method = _httpMethod
+                },
+                RequestType.GraphQL => new GraphQLRequest
+                {
+                    Name = _name,
+                    Description = _description,
+                    Url = _url,
+                    CollectionId = CollectionId,
+                    EnvironmentId = targetEnvironmentId
+                },
+                RequestType.WebSocket => new WebSocketRequest
+                {
+                    Name = _name,
+                    Description = _description,
+                    Url = _url,
+                    CollectionId = CollectionId,
+                    EnvironmentId = targetEnvironmentId
+                },
+                _ => throw new NotSupportedException($"Request type {_requestType} not supported")
+            };
 
-        var createdRequest = await RequestService.CreateRequestAsync(request);
-        
-        Snackbar.Add($"Request '{_name}' created successfully", Severity.Success);
-        
-        // Navigate to the environment page with the newly created request selected
-        NavigationManager.NavigateTo($"/environment/{targetEnvironmentId}?requestId={createdRequest.Id}");
+            var createdRequest = await RequestService.CreateRequestAsync(request);
+            
+            Snackbar.Add($"Request '{_name}' created successfully", Severity.Success);
+            
+            // Navigate to the environment page with the newly created request selected
+            NavigationManager.NavigateTo($"/environment/{targetEnvironmentId}?requestId={createdRequest.Id}");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+        {
+            Snackbar.Add($"A request with the name '{_name}' already exists. Please choose a different name.", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating request: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task Cancel()

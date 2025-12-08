@@ -105,20 +105,31 @@
     {
         if (_collection == null) return;
 
-        _collection.Name = _name;
-        _collection.Description = _description;
-        
-        // Clear and rebuild variables dictionary
-        _collection.Variables.Clear();
-        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+        try
         {
-            _collection.Variables[variable.Key] = variable.Value;
-        }
+            _collection.Name = _name;
+            _collection.Description = _description;
+            
+            // Clear and rebuild variables dictionary
+            _collection.Variables.Clear();
+            foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+            {
+                _collection.Variables[variable.Key] = variable.Value;
+            }
 
-        await CollectionService.UpdateCollectionAsync(_collection);
-        
-        Snackbar.Add($"Collection '{_name}' updated successfully", Severity.Success);
-        NavigateBackWithRequest();
+            await CollectionService.UpdateCollectionAsync(_collection);
+            
+            Snackbar.Add($"Collection '{_name}' updated successfully", Severity.Success);
+            NavigateBackWithRequest();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+        {
+            Snackbar.Add($"A collection with the name '{_name}' already exists. Please choose a different name.", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating collection: {ex.Message}", Severity.Error);
+        }
     }
 
     private void Cancel()

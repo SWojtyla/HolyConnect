@@ -143,44 +143,56 @@
 
     private async Task SaveCollection()
     {
-        Guid targetEnvironmentId;
-        
-        // Determine the environment ID
-        if (ParentCollectionId.HasValue)
+        try
         {
-            var parentCollection = await CollectionService.GetCollectionByIdAsync(ParentCollectionId.Value);
-            if (parentCollection == null)
+            Guid targetEnvironmentId;
+            
+            // Determine the environment ID
+            if (ParentCollectionId.HasValue)
             {
-                Snackbar.Add("The parent collection could not be found. It may have been deleted.", Severity.Error);
+                var parentCollection = await CollectionService.GetCollectionByIdAsync(ParentCollectionId.Value);
+                if (parentCollection == null)
+                {
+                    Snackbar.Add("The parent collection could not be found. It may have been deleted.", Severity.Error);
+                    NavigationManager.NavigateTo("/");
+                    return;
+                }
+                targetEnvironmentId = parentCollection.EnvironmentId;
+            }
+            else if (EnvironmentId.HasValue)
+            {
+                targetEnvironmentId = EnvironmentId.Value;
+            }
+            else
+            {
+                Snackbar.Add("Unable to create collection: no environment or parent collection specified. Please try again.", Severity.Error);
                 NavigationManager.NavigateTo("/");
                 return;
             }
-            targetEnvironmentId = parentCollection.EnvironmentId;
-        }
-        else if (EnvironmentId.HasValue)
-        {
-            targetEnvironmentId = EnvironmentId.Value;
-        }
-        else
-        {
-            Snackbar.Add("Unable to create collection: no environment or parent collection specified. Please try again.", Severity.Error);
-            NavigationManager.NavigateTo("/");
-            return;
-        }
 
-        var collection = await CollectionService.CreateCollectionAsync(_name, targetEnvironmentId, ParentCollectionId, _description);
-        
-        // Add variables to collection
-        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
-        {
-            collection.Variables[variable.Key] = variable.Value;
-        }
+            var collection = await CollectionService.CreateCollectionAsync(_name, targetEnvironmentId, ParentCollectionId, _description);
+            
+            // Add variables to collection
+            foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+            {
+                collection.Variables[variable.Key] = variable.Value;
+            }
 
-        await CollectionService.UpdateCollectionAsync(collection);
-        
-        var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
-        Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
-        NavigationManager.NavigateTo($"/environment/{targetEnvironmentId}");
+            await CollectionService.UpdateCollectionAsync(collection);
+            
+            var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
+            Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
+            NavigationManager.NavigateTo($"/environment/{targetEnvironmentId}");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+        {
+            var collectionType = ParentCollectionId.HasValue ? "sub-collection" : "collection";
+            Snackbar.Add($"A {collectionType} with the name '{_name}' already exists. Please choose a different name.", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating collection: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task Cancel()
