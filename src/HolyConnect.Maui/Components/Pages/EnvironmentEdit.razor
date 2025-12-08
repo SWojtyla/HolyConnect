@@ -104,20 +104,31 @@
     {
         if (_environment == null) return;
 
-        _environment.Name = _name;
-        _environment.Description = _description;
-        
-        // Clear and rebuild variables dictionary
-        _environment.Variables.Clear();
-        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+        try
         {
-            _environment.Variables[variable.Key] = variable.Value;
-        }
+            _environment.Name = _name;
+            _environment.Description = _description;
+            
+            // Clear and rebuild variables dictionary
+            _environment.Variables.Clear();
+            foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+            {
+                _environment.Variables[variable.Key] = variable.Value;
+            }
 
-        await EnvironmentService.UpdateEnvironmentAsync(_environment);
-        
-        Snackbar.Add($"Environment '{_name}' updated successfully", Severity.Success);
-        NavigateBackWithRequest();
+            await EnvironmentService.UpdateEnvironmentAsync(_environment);
+            
+            Snackbar.Add($"Environment '{_name}' updated successfully", Severity.Success);
+            NavigateBackWithRequest();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+        {
+            Snackbar.Add($"An environment with the name '{_name}' already exists. Please choose a different name.", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating environment: {ex.Message}", Severity.Error);
+        }
     }
 
     private void Cancel()

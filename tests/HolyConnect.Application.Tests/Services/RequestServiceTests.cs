@@ -475,4 +475,45 @@ public class RequestServiceTests
         Assert.Equal(200, capturedHistoryEntry.Response.StatusCode);
         mockHistoryService.Verify(h => h.AddHistoryEntryAsync(It.IsAny<RequestHistoryEntry>()), Times.Once);
     }
+
+    [Fact]
+    public async Task CreateRequestAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var request = new RestRequest
+        {
+            Name = "Duplicate Request",
+            Url = "https://api.example.com",
+            EnvironmentId = Guid.NewGuid()
+        };
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Request>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{request.Name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.CreateRequestAsync(request));
+        Assert.Contains("already exists", exception.Message);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<Request>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateRequestAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var request = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Duplicate Request",
+            Url = "https://api.example.com",
+            EnvironmentId = Guid.NewGuid()
+        };
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Request>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{request.Name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.UpdateRequestAsync(request));
+        Assert.Contains("already exists", exception.Message);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Request>()), Times.Once);
+    }
 }

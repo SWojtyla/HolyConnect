@@ -533,4 +533,45 @@ public class FlowServiceTests
         Assert.Equal(FlowExecutionStatus.Cancelled, result.Status);
         Assert.Empty(result.StepResults); // No steps should execute
     }
+
+    [Fact]
+    public async Task CreateFlowAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var flow = new Flow
+        {
+            Name = "Duplicate Flow",
+            EnvironmentId = Guid.NewGuid(),
+            Steps = new List<FlowStep>()
+        };
+        _mockFlowRepository.Setup(r => r.AddAsync(It.IsAny<Flow>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{flow.Name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.CreateFlowAsync(flow));
+        Assert.Contains("already exists", exception.Message);
+        _mockFlowRepository.Verify(r => r.AddAsync(It.IsAny<Flow>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateFlowAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var flow = new Flow
+        {
+            Id = Guid.NewGuid(),
+            Name = "Duplicate Flow",
+            EnvironmentId = Guid.NewGuid(),
+            Steps = new List<FlowStep>()
+        };
+        _mockFlowRepository.Setup(r => r.UpdateAsync(It.IsAny<Flow>()))
+            .ThrowsAsync(new InvalidOperationException($"An entity with the name '{flow.Name}' already exists."));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.UpdateFlowAsync(flow));
+        Assert.Contains("already exists", exception.Message);
+        _mockFlowRepository.Verify(r => r.UpdateAsync(It.IsAny<Flow>()), Times.Once);
+    }
 }

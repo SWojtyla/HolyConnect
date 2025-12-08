@@ -132,17 +132,28 @@
 
     private async Task SaveEnvironment()
     {
-        var environment = await EnvironmentService.CreateEnvironmentAsync(_name, _description);
-        
-        foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+        try
         {
-            environment.Variables[variable.Key] = variable.Value;
-        }
+            var environment = await EnvironmentService.CreateEnvironmentAsync(_name, _description);
+            
+            foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
+            {
+                environment.Variables[variable.Key] = variable.Value;
+            }
 
-        await EnvironmentService.UpdateEnvironmentAsync(environment);
-        
-        Snackbar.Add($"Environment '{_name}' created successfully", Severity.Success);
-        NavigationManager.NavigateTo("/");
+            await EnvironmentService.UpdateEnvironmentAsync(environment);
+            
+            Snackbar.Add($"Environment '{_name}' created successfully", Severity.Success);
+            NavigationManager.NavigateTo("/");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+        {
+            Snackbar.Add($"An environment with the name '{_name}' already exists. Please choose a different name.", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating environment: {ex.Message}", Severity.Error);
+        }
     }
 
     private void Cancel()
