@@ -56,6 +56,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="CodeBeam.MudBlazor.Extensions" Version="8.3.0" />
         <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
