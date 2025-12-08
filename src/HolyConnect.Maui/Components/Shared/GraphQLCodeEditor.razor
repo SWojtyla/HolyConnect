@@ -4,7 +4,7 @@
 @inject SettingsService SettingsService
 @implements IAsyncDisposable
 
-<MudPaper Elevation="2" Class="pa-0" Style="@(string.IsNullOrEmpty(Height) ? "height: 400px;" : $"height: {Height};")">
+<MudPaper Elevation="2" Class="pa-0" Style="@(string.IsNullOrEmpty(Height) ? "height: 25rem;" : $"height: {Height};")">
     <div style="display: flex; flex-direction: column; height: 100%;">
         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="px-3 py-2" Style="border-bottom: 1px solid var(--mud-palette-divider);">
             <MudText Typo="Typo.subtitle2" Color="Color.Default">GraphQL Query Editor</MudText>
