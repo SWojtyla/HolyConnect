@@ -9,6 +9,10 @@ namespace HolyConnect.Infrastructure.Services;
 public class GitService : IGitService
 {
     private const int SHORT_SHA_LENGTH = 7;
+    private const string SECRETS_FOLDER_PATH = "secrets/";
+    private const string SECRETS_FILE_PATTERN = "secrets.json";
+    private const string GITIGNORE_SECRETS_FOLDER = "secrets/";
+    private const string GITIGNORE_SECRETS_FILES = "*secrets*.json";
     private readonly Func<string> _getStoragePath;
 
     public GitService(Func<string> getStoragePath)
@@ -621,8 +625,8 @@ public class GitService : IGitService
             // Check if any files in the secrets folder or secrets files are tracked or staged
             foreach (var item in status)
             {
-                if (item.FilePath.StartsWith("secrets/", StringComparison.OrdinalIgnoreCase) ||
-                    item.FilePath.Contains("secrets.json", StringComparison.OrdinalIgnoreCase))
+                if (item.FilePath.StartsWith(SECRETS_FOLDER_PATH, StringComparison.OrdinalIgnoreCase) ||
+                    item.FilePath.Contains(SECRETS_FILE_PATTERN, StringComparison.OrdinalIgnoreCase))
                 {
                     // If file is in index (staged, modified in index, etc.), it's tracked
                     if (item.State.HasFlag(FileStatus.NewInIndex) || 
@@ -640,16 +644,12 @@ public class GitService : IGitService
             // Also check the HEAD commit tree for already committed secrets files
             if (repo.Head.Tip != null)
             {
-                // Use TreeChanges to walk through all files in the tree
-                var commit = repo.Head.Tip;
-                var tree = commit.Tree;
+                var tree = repo.Head.Tip.Tree;
                 
                 // Recursively check all entries in the tree
-                bool foundSecrets = false;
                 foreach (var entry in tree)
                 {
-                    CheckTreeEntry(entry, ref foundSecrets);
-                    if (foundSecrets)
+                    if (CheckTreeEntryForSecrets(entry))
                         return Task.FromResult(true);
                 }
             }
@@ -662,24 +662,24 @@ public class GitService : IGitService
         }
     }
 
-    private void CheckTreeEntry(TreeEntry entry, ref bool foundSecrets)
+    private bool CheckTreeEntryForSecrets(TreeEntry entry)
     {
-        if (entry.Path.StartsWith("secrets/", StringComparison.OrdinalIgnoreCase) ||
-            entry.Path.Contains("secrets.json", StringComparison.OrdinalIgnoreCase))
+        if (entry.Path.StartsWith(SECRETS_FOLDER_PATH, StringComparison.OrdinalIgnoreCase) ||
+            entry.Path.Contains(SECRETS_FILE_PATTERN, StringComparison.OrdinalIgnoreCase))
         {
-            foundSecrets = true;
-            return;
+            return true;
         }
 
         if (entry.TargetType == TreeEntryTargetType.Tree && entry.Target is Tree subTree)
         {
             foreach (var subEntry in subTree)
             {
-                CheckTreeEntry(subEntry, ref foundSecrets);
-                if (foundSecrets)
-                    return;
+                if (CheckTreeEntryForSecrets(subEntry))
+                    return true;
             }
         }
+
+        return false;
     }
 
     public Task<bool> AddSecretsToGitignoreAsync()
@@ -691,12 +691,7 @@ public class GitService : IGitService
                 return Task.FromResult(false);
 
             var gitignorePath = Path.Combine(repoPath, ".gitignore");
-            var secretsEntries = new List<string>
-            {
-                "# Secret variables - should not be checked into git",
-                "secrets/",
-                "*secrets*.json"
-            };
+            const string secretsComment = "# Secret variables - should not be checked into git";
 
             List<string> lines;
             if (File.Exists(gitignorePath))
@@ -704,9 +699,9 @@ public class GitService : IGitService
                 // Read existing .gitignore
                 lines = File.ReadAllLines(gitignorePath).ToList();
                 
-                // Check if entries already exist
-                bool hasSecretsFolder = lines.Any(l => l.Trim() == "secrets/" || l.Trim() == "secrets");
-                bool hasSecretsJson = lines.Any(l => l.Trim().Contains("secrets") && l.Trim().Contains(".json"));
+                // Check if entries already exist (exact match for precision)
+                bool hasSecretsFolder = lines.Any(l => l.Trim() == GITIGNORE_SECRETS_FOLDER || l.Trim() == "secrets");
+                bool hasSecretsJson = lines.Any(l => l.Trim() == GITIGNORE_SECRETS_FILES);
                 
                 // Only add missing entries
                 if (!hasSecretsFolder || !hasSecretsJson)
@@ -720,24 +715,29 @@ public class GitService : IGitService
                     // Add comment if not already present
                     if (!lines.Any(l => l.Contains("Secret variables")))
                     {
-                        lines.Add(secretsEntries[0]);
+                        lines.Add(secretsComment);
                     }
                     
                     // Add missing entries
                     if (!hasSecretsFolder)
                     {
-                        lines.Add(secretsEntries[1]);
+                        lines.Add(GITIGNORE_SECRETS_FOLDER);
                     }
                     if (!hasSecretsJson)
                     {
-                        lines.Add(secretsEntries[2]);
+                        lines.Add(GITIGNORE_SECRETS_FILES);
                     }
                 }
             }
             else
             {
                 // Create new .gitignore with secrets entries
-                lines = secretsEntries;
+                lines = new List<string>
+                {
+                    secretsComment,
+                    GITIGNORE_SECRETS_FOLDER,
+                    GITIGNORE_SECRETS_FILES
+                };
             }
 
             // Write to .gitignore
