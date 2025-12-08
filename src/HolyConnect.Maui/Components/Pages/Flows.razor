@@ -66,11 +66,7 @@
                                     <MudChip T="string" Icon="@Icons.Material.Filled.ListAlt" Size="Size.Small">
                                         @flow.Steps.Count step@(flow.Steps.Count != 1 ? "s" : "")
                                     </MudChip>
-                                </MudStack>
-                                
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    Updated @flow.UpdatedAt.ToLocalTime().ToString("MMM dd, yyyy")
-                                </MudText>
+                                </MudStack>                                                        
                             </MudStack>
                         </MudCardContent>
                         <MudCardActions Class="d-flex justify-space-between pa-4">
