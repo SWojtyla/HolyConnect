@@ -6,33 +6,33 @@
 @if (Response != null)
 {
     <MudCard Style="height: 100%; display: flex; flex-direction: column;">
-        <MudCardContent Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="flex: 0 0 auto;">
-                <MudText Typo="Typo.h6">Response</MudText>
-                <MudText Typo="Typo.body2">Status: @Response.StatusCode - @Response.StatusMessage</MudText>
-                <MudText Typo="Typo.body2">Time: @Response.ResponseTime ms</MudText>
-                <MudText Typo="Typo.body2">Size: @Response.Size bytes</MudText>
+        <MudCardContent Style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px;">
+            <div style="flex: 0 0 auto; margin-bottom: 8px;">
+                <MudText Typo="Typo.subtitle1" Style="margin-bottom: 4px;"><strong>Response</strong></MudText>
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(Response.StatusCode)">@Response.StatusCode - @Response.StatusMessage</MudChip>
+                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">@Response.ResponseTime ms</MudChip>
+                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Storage">@FormatSize(Response.Size)</MudChip>
+                </MudStack>
             </div>
             
-            <MudTabs Class="mt-2" Elevation="2" Rounded="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <MudTabs Class="mt-1" Elevation="2" Rounded="true" PanelClass="pa-2" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
                 <MudTabPanel Text="Body" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="pa-4" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" Style="flex: 0 0 auto;">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="PrettifyResponseBody">
-                                Prettify
-                            </MudButton>
-                        </MudStack>
-                        <div style="flex: 1; min-height: 0; overflow-y: auto;">
-                            <MudTextField Value="@_responseBodyDisplay" Lines="20" Variant="Variant.Outlined" ReadOnly="true" />
-                        </div>
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" Style="flex: 0 0 auto;">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="PrettifyResponseBody">
+                            Prettify
+                        </MudButton>
+                    </MudStack>
+                    <div style="flex: 1; min-height: 0; overflow-y: auto;">
+                        <MudTextField Value="@_responseBodyDisplay" Lines="25" Variant="Variant.Outlined" ReadOnly="true" />
                     </div>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Headers" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="pa-4" style="flex: 1; overflow-y: auto;">
+                    <div style="flex: 1; overflow-y: auto;">
                         @foreach (var header in Response.Headers)
                         {
-                            <MudText Typo="Typo.body2" Style="word-break: break-word; overflow-wrap: break-word; white-space: normal; max-width: 100%;"><strong>@header.Key:</strong> @header.Value</MudText>
+                            <MudText Typo="Typo.caption" Style="word-break: break-word; overflow-wrap: break-word; white-space: normal; max-width: 100%; margin-bottom: 4px;"><strong>@header.Key:</strong> @header.Value</MudText>
                         }
                     </div>
                 </MudTabPanel>
@@ -40,29 +40,29 @@
                 @if (Response.SentRequest != null)
                 {
                     <MudTabPanel Text="Request" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                        <div class="pa-4" style="flex: 1; overflow-y: auto;">
-                            <MudText Typo="Typo.subtitle1" Class="mb-2"><strong>What was sent:</strong></MudText>
-                            <MudText Typo="Typo.body2" Class="mb-1"><strong>Method:</strong> @Response.SentRequest.Method</MudText>
-                            <MudText Typo="Typo.body2" Class="mb-2"><strong>URL:</strong> @Response.SentRequest.Url</MudText>
+                        <div style="flex: 1; overflow-y: auto;">
+                            <MudText Typo="Typo.caption" Class="mb-2" Color="Color.Primary"><strong>What was sent:</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mb-1"><strong>Method:</strong> @Response.SentRequest.Method</MudText>
+                            <MudText Typo="Typo.caption" Class="mb-2" Style="word-break: break-all;"><strong>URL:</strong> @Response.SentRequest.Url</MudText>
                             
-                            <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Headers:</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mt-2 mb-1" Color="Color.Primary"><strong>Headers:</strong></MudText>
                             @foreach (var header in @Response.SentRequest.Headers)
                             {
-                                <MudText Typo="Typo.body2">@header.Key: @header.Value</MudText>
+                                <MudText Typo="Typo.caption">@header.Key: @header.Value</MudText>
                             }
                             
                             @if (!string.IsNullOrEmpty(@Response.SentRequest.Body))
                             {
-                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Body:</strong></MudText>
-                                <MudTextField Value="@Response.SentRequest.Body" Lines="10" Variant="Variant.Outlined" ReadOnly="true" />
+                                <MudText Typo="Typo.caption" Class="mt-2 mb-1" Color="Color.Primary"><strong>Body:</strong></MudText>
+                                <MudTextField Value="@Response.SentRequest.Body" Lines="8" Variant="Variant.Outlined" ReadOnly="true" />
                             }
                             
                             @if (@Response.SentRequest.QueryParameters.Any())
                             {
-                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2"><strong>Query Parameters:</strong></MudText>
+                                <MudText Typo="Typo.caption" Class="mt-2 mb-1" Color="Color.Primary"><strong>Query Parameters:</strong></MudText>
                                 @foreach (var param in @Response.SentRequest.QueryParameters)
                                 {
-                                    <MudText Typo="Typo.body2">@param.Key: @param.Value</MudText>
+                                    <MudText Typo="Typo.caption">@param.Key: @param.Value</MudText>
                                 }
                             }
                         </div>
@@ -70,16 +70,17 @@
                 }
                 
                 <MudTabPanel Text="Extract" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="pa-4" style="flex: 1; overflow-y: auto;">
-                        <MudText Typo="Typo.subtitle1" Class="mb-3"><strong>Extract Values from Response</strong></MudText>
-                        <MudText Typo="Typo.body2" Class="mb-3">
+                    <div style="flex: 1; overflow-y: auto;">
+                        <MudText Typo="Typo.caption" Class="mb-2"><strong>Extract Values from Response</strong></MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
                             Use JSONPath (e.g., <code>$.data.user.id</code>) for JSON/GraphQL or XPath (e.g., <code>//user/id</code>) for XML.
                         </MudText>
                         
-                        <MudStack Spacing="3">
+                        <MudStack Spacing="2">
                             <MudTextField @bind-Value="_extractionPattern" 
                                           Label="Pattern" 
                                           Variant="Variant.Outlined"
+                                          Dense="true"
                                           Placeholder="$.data.id or //id"
                                           HelperText="JSONPath for JSON/GraphQL, XPath for XML" />
                             
@@ -265,5 +266,24 @@
         {
             Snackbar.Add($"Failed to copy to clipboard: {ex.Message}", Severity.Error);
         }
+    }
+
+    private Color GetStatusColor(int statusCode)
+    {
+        return statusCode switch
+        {
+            >= 200 and < 300 => Color.Success,
+            >= 300 and < 400 => Color.Info,
+            >= 400 and < 500 => Color.Warning,
+            >= 500 => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F2} KB";
+        return $"{bytes / (1024.0 * 1024.0):F2} MB";
     }
 }

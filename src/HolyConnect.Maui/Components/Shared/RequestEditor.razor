@@ -6,14 +6,14 @@
 @if (_layout == Domain.Entities.RequestLayout.Vertical)
 {
     <!-- Vertical Layout: Request on left, Response on right -->
-    <MudGrid Class="flex-grow-1" Style="height: 100%; display: flex;">
-        <MudItem xs="6" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="flex: 1; overflow-y: auto;">
+    <MudGrid Class="flex-grow-1" Style="height: 100%; display: flex; gap: 8px;">
+        <MudItem xs="12" sm="12" md="6" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="flex: 1; overflow-y: auto; overflow-x: hidden;">
                 @RequestConfigurationSection
             </div>
         </MudItem>
-        <MudItem xs="6" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="flex: 1; overflow-y: auto;">
+        <MudItem xs="12" sm="12" md="6" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="flex: 1; overflow-y: auto; overflow-x: hidden;">
                 @ResponseSection
             </div>
         </MudItem>
@@ -23,14 +23,14 @@ else
 {
     <!-- Horizontal Layout: Request on top, Response on bottom -->
     <div Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-        <div style="flex: 0 0 auto; overflow-y: auto; max-height: 60%;">
+        <div style="flex: 0 0 auto; overflow-y: auto; overflow-x: hidden; max-height: 45%;">
             @RequestConfigurationSection
         </div>
         
         @if (_response != null)
         {
-            <MudDivider Class="my-4" />
-            <div style="flex: 1; overflow-y: auto; min-height: 0;">
+            <MudDivider Class="my-2" />
+            <div style="flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0;">
                 @ResponseSection
             </div>
         }
@@ -42,259 +42,239 @@ else
     {
 <MudCard>
     <MudCardContent>
-        <MudText Typo="Typo.h5" Class="mb-4">@(Request?.Name ?? "New Request")</MudText>
+        <MudText Typo="Typo.h6" Class="mb-2">@(Request?.Name ?? "New Request")</MudText>
         
-        <MudTextField @bind-Value="Request!.Name" Label="Request Name" Variant="Variant.Outlined" Class="mb-2" />
-        <VariableTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Class="mb-2" Environment="@Environment" Collection="@Collection" />
+        <MudStack Row="true" Spacing="2" Class="mb-2" AlignItems="AlignItems.Center">
+            <MudTextField @bind-Value="Request!.Name" Label="Name" Variant="Variant.Outlined" Dense="true" Style="flex: 1; min-width: 0;" />
+            @if (Request is RestRequest restRequest)
+            {
+                <MudSelect @bind-Value="restRequest.Method" Label="Method" Variant="Variant.Outlined" Dense="true" Style="width: 120px; flex-shrink: 0;">
+                    @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
+                    {
+                        <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </MudStack>
+        <VariableTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Dense="true" Class="mb-2" Environment="@Environment" Collection="@Collection" />
         
-        @if (Request is RestRequest restRequest)
+        @if (Request is RestRequest restRequest2)
         {
-            <MudSelect @bind-Value="restRequest.Method" Label="Method" Variant="Variant.Outlined" Class="mb-2">
-                @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
-                {
-                    <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
-                }
-            </MudSelect>
             
-            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
                 <MudTabPanel Text="Body">
-                    <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
-                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Class="flex-shrink-1" Style="max-width: 200px;">
-                                @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
-                                {
-                                    <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
-                                }
-                            </MudSelect>
-                            <MudButton Variant="Variant.Outlined" 
-                                       Color="Color.Primary" 
-                                       Size="Size.Small" 
-                                       StartIcon="@Icons.Material.Filled.AutoFixHigh"
-                                       OnClick="@(() => FormatRestBody(restRequest))">
-                                Format
-                            </MudButton>
-                        </MudStack>
-                        <CodeEditor @ref="_restBodyEditor" 
-                                    @bind-Value="restRequest.Body" 
-                                    Language="@restRequest.BodyType.ToString()" 
-                                    Height="450px" />
-                    </div>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
+                        <MudSelect @bind-Value="restRequest2.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Style="width: 150px;">
+                            @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
+                            {
+                                <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton Variant="Variant.Outlined" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small" 
+                                   StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                   OnClick="@(() => FormatRestBody(restRequest2))">
+                            Format
+                        </MudButton>
+                    </MudStack>
+                    <CodeEditor @ref="_restBodyEditor" 
+                                @bind-Value="restRequest2.Body" 
+                                Language="@restRequest2.BodyType.ToString()" 
+                                Height="600px" />
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Headers">
-                    <div class="pa-4">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
-                        <MudStack Row="true" Spacing="2" Class="mb-4">
-                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
-                                + JSON
-                            </MudButton>
-                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/xml"))">
-                                + XML
-                            </MudButton>
-                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
-                                + Auth
-                            </MudButton>
-                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Accept", "*/*"))">
-                                + Accept
-                            </MudButton>
-                        </MudStack>
-                        
-                        @foreach (var header in _headers)
-                        {
-                            <MudGrid Class="mb-2">
-                                <MudItem xs="1" Class="d-flex align-center">
-                                    <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
-                                </MudItem>
-                                <MudItem xs="5">
-                                    <MudStack Spacing="1">
-                                        <VariableTextField @bind-Value="header.Key" 
-                                                           Label="Header Name" 
-                                                           Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
-                                                           Environment="@Environment" 
-                                                           Collection="@Collection" />
-                                        @if (header.IsDefault)
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
-                                        }
-                                    </MudStack>
-                                </MudItem>
-                                <MudItem xs="4">
-                                    <MudStack Spacing="1">
-                                        <VariableTextField @bind-Value="header.Value" 
-                                                           Label="Header Value" 
-                                                           Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
-                                                           Environment="@Environment" 
-                                                           Collection="@Collection" />
-                                        @if (header.IsDefault)
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
-                                        }
-                                    </MudStack>
-                                </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
-                                </MudItem>
-                            </MudGrid>
-                        }
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
-                            Add Header
+                    <MudText Typo="Typo.caption" Class="mb-2">Common Headers</MudText>
+                    <MudStack Row="true" Spacing="1" Class="mb-3" Wrap="Wrap.Wrap">
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
+                            + JSON
                         </MudButton>
-                    </div>
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/xml"))">
+                            + XML
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                            + Auth
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Accept", "*/*"))">
+                            + Accept
+                        </MudButton>
+                    </MudStack>
+                    
+                    @foreach (var header in _headers)
+                    {
+                        <MudGrid Class="mb-1" Spacing="1">
+                            <MudItem xs="1" Class="d-flex align-center">
+                                <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" Dense="true" />
+                            </MudItem>
+                            <MudItem xs="5">
+                                <MudStack Spacing="0">
+                                    <VariableTextField @bind-Value="header.Key" 
+                                                       Label="Header Name" 
+                                                       Variant="Variant.Outlined" 
+                                                       Dense="true"
+                                                       Disabled="@(!header.Enabled)" 
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
+                                    @if (header.IsDefault)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.7rem;">(auto)</MudText>
+                                    }
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <VariableTextField @bind-Value="header.Value" 
+                                                   Label="Value" 
+                                                   Variant="Variant.Outlined" 
+                                                   Dense="true"
+                                                   Disabled="@(!header.Enabled)" 
+                                                   Environment="@Environment" 
+                                                   Collection="@Collection" />
+                            </MudItem>
+                            <MudItem xs="2" Class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add" Class="mt-2">
+                        Add Header
+                    </MudButton>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Query Params">
-                    <div class="pa-4">
-                        @foreach (var param in _queryParams)
-                        {
-                            <MudGrid Class="mb-2">
-                                <MudItem xs="1" Class="d-flex align-center">
-                                    <MudCheckBox @bind-Value="param.Enabled" Color="Color.Primary" />
-                                </MudItem>
-                                <MudItem xs="5">
-                                    <VariableTextField @bind-Value="param.Key" Label="Parameter Name" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" Environment="@Environment" Collection="@Collection" />
-                                </MudItem>
-                                <MudItem xs="4">
-                                    <VariableTextField @bind-Value="param.Value" Label="Parameter Value" Variant="Variant.Outlined" Disabled="@(!param.Enabled)" Environment="@Environment" Collection="@Collection" />
-                                </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveQueryParam(param))" />
-                                </MudItem>
-                            </MudGrid>
-                        }
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddQueryParam" StartIcon="@Icons.Material.Filled.Add">
-                            Add Query Parameter
-                        </MudButton>
-                    </div>
+                    @foreach (var param in _queryParams)
+                    {
+                        <MudGrid Class="mb-1" Spacing="1">
+                            <MudItem xs="1" Class="d-flex align-center">
+                                <MudCheckBox @bind-Value="param.Enabled" Color="Color.Primary" Dense="true" />
+                            </MudItem>
+                            <MudItem xs="5">
+                                <VariableTextField @bind-Value="param.Key" Label="Name" Variant="Variant.Outlined" Dense="true" Disabled="@(!param.Enabled)" Environment="@Environment" Collection="@Collection" />
+                            </MudItem>
+                            <MudItem xs="4">
+                                <VariableTextField @bind-Value="param.Value" Label="Value" Variant="Variant.Outlined" Dense="true" Disabled="@(!param.Enabled)" Environment="@Environment" Collection="@Collection" />
+                            </MudItem>
+                            <MudItem xs="2" Class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveQueryParam(param))" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="AddQueryParam" StartIcon="@Icons.Material.Filled.Add" Class="mt-2">
+                        Add Query Parameter
+                    </MudButton>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Auth">
-                    <div class="pa-4">
-                        <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
-                            @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
-                            {
-                                <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
-                            }
-                        </MudSelect>
-                        
-                        @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
+                    <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                        @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
                         {
-                            <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
-                            <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+                            <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
                         }
-                        else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
-                        {
-                            <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
-                        }
-                    </div>
+                    </MudSelect>
+                    
+                    @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
+                    {
+                        <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Dense="true" Class="mb-2" />
+                        <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" Dense="true" InputType="InputType.Password" Class="mb-2" />
+                    }
+                    else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
+                    {
+                        <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Dense="true" Lines="3" Environment="@Environment" Collection="@Collection" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No authentication selected</MudText>
+                    }
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Extractions">
-                    <div class="pa-4">
-                        <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
-                    </div>
+                    <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
                 </MudTabPanel>
             </MudTabs>
         }
         else if (Request is GraphQLRequest graphQLRequest)
         {
-            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
                 <MudTabPanel Text="Query">
-                    <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Press <strong>Ctrl+Space</strong> for autocomplete suggestions</MudText>
-                            <MudButton Variant="Variant.Outlined" 
-                                      Color="Color.Primary" 
-                                      Size="Size.Small" 
-                                      StartIcon="@Icons.Material.Filled.AutoFixHigh"
-                                      OnClick="@(() => PrettifyGraphQLQuery(graphQLRequest))">
-                                Prettify
-                            </MudButton>
-                        </MudStack>
-                        <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="450px" />
-                    </div>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Press <strong>Ctrl+Space</strong> for autocomplete</MudText>
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Primary" 
+                                  Size="Size.Small" 
+                                  StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                  OnClick="@(() => PrettifyGraphQLQuery(graphQLRequest))">
+                            Prettify
+                        </MudButton>
+                    </MudStack>
+                    <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="600px" />
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Variables">
-                    <div class="pa-4">
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" AlignItems="AlignItems.Center">
-                            <MudButton Variant="Variant.Outlined" 
-                                       Color="Color.Primary" 
-                                       Size="Size.Small" 
-                                       StartIcon="@Icons.Material.Filled.AutoFixHigh"
-                                       OnClick="@(() => PrettifyGraphQLVariables(graphQLRequest))">
-                                Prettify
-                            </MudButton>
-                        </MudStack>
-                        <VariableTextField @bind-Value="graphQLRequest.Variables" Label="Variables (JSON)" Lines="8" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
-                    </div>
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" AlignItems="AlignItems.Center">
+                        <MudButton Variant="Variant.Outlined" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small" 
+                                   StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                   OnClick="@(() => PrettifyGraphQLVariables(graphQLRequest))">
+                            Prettify
+                        </MudButton>
+                    </MudStack>
+                    <VariableTextField @bind-Value="graphQLRequest.Variables" Label="Variables (JSON)" Lines="10" Variant="Variant.Outlined" Dense="true" Environment="@Environment" Collection="@Collection" />
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Headers">
-                    <div class="pa-4">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
-                        <MudStack Row="true" Spacing="2" Class="mb-4">
-                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
-                                + JSON
-                            </MudButton>
-                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
-                                + Auth
-                            </MudButton>
-                        </MudStack>
-                        
-                        @foreach (var header in _headers)
-                        {
-                            <MudGrid Class="mb-2">
-                                <MudItem xs="1" Class="d-flex align-center">
-                                    <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
-                                </MudItem>
-                                <MudItem xs="5">
-                                    <MudStack Spacing="1">
-                                        <VariableTextField @bind-Value="header.Key" 
-                                                           Label="Header Name" 
-                                                           Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
-                                                           Environment="@Environment" 
-                                                           Collection="@Collection" />
-                                        @if (header.IsDefault)
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
-                                        }
-                                    </MudStack>
-                                </MudItem>
-                                <MudItem xs="4">
-                                    <MudStack Spacing="1">
-                                        <VariableTextField @bind-Value="header.Value" 
-                                                           Label="Header Value" 
-                                                           Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
-                                                           Environment="@Environment" 
-                                                           Collection="@Collection" />
-                                        @if (header.IsDefault)
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
-                                        }
-                                    </MudStack>
-                                </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
-                                </MudItem>
-                            </MudGrid>
-                        }
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
-                            Add Header
+                    <MudText Typo="Typo.caption" Class="mb-2">Common Headers</MudText>
+                    <MudStack Row="true" Spacing="1" Class="mb-3" Wrap="Wrap.Wrap">
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
+                            + JSON
                         </MudButton>
-                    </div>
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                            + Auth
+                        </MudButton>
+                    </MudStack>
+                    
+                    @foreach (var header in _headers)
+                    {
+                        <MudGrid Class="mb-1" Spacing="1">
+                            <MudItem xs="1" Class="d-flex align-center">
+                                <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" Dense="true" />
+                            </MudItem>
+                            <MudItem xs="5">
+                                <MudStack Spacing="0">
+                                    <VariableTextField @bind-Value="header.Key" 
+                                                       Label="Header Name" 
+                                                       Variant="Variant.Outlined" 
+                                                       Dense="true"
+                                                       Disabled="@(!header.Enabled)" 
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
+                                    @if (header.IsDefault)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.7rem;">(auto)</MudText>
+                                    }
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <VariableTextField @bind-Value="header.Value" 
+                                                   Label="Value" 
+                                                   Variant="Variant.Outlined" 
+                                                   Dense="true"
+                                                   Disabled="@(!header.Enabled)" 
+                                                   Environment="@Environment" 
+                                                   Collection="@Collection" />
+                            </MudItem>
+                            <MudItem xs="2" Class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add" Class="mt-2">
+                        Add Header
+                    </MudButton>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Auth">
-                    <div class="pa-4">
-                        <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
+                    <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Dense="true" Class="mb-3">
                             @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
                             {
                                 <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
@@ -303,151 +283,138 @@ else
                         
                         @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
                         {
-                            <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
-                            <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+                            <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Dense="true" Class="mb-2" />
+                            <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" Dense="true" InputType="InputType.Password" Class="mb-2" />
                         }
                         else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
                         {
-                            <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
+                            <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Dense="true" Lines="3" Environment="@Environment" Collection="@Collection" />
                         }
                         else
                         {
-                            <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No authentication selected</MudText>
                         }
-                    </div>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Extractions">
-                    <div class="pa-4">
-                        <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
-                    </div>
+                    <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
                 </MudTabPanel>
             </MudTabs>
         }
         else if (Request is WebSocketRequest webSocketRequest)
         {
-            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
                 <MudTabPanel Text="Message">
-                    <div class="pa-4">
-                        <MudTextField @bind-Value="webSocketRequest.Message" 
-                                      Label="Message to Send" 
-                                      Lines="10" 
-                                      Variant="Variant.Outlined"
-                                      HelperText="Message to send after connection is established" />
-                    </div>
+                    <MudTextField @bind-Value="webSocketRequest.Message" 
+                                  Label="Message to Send" 
+                                  Lines="15" 
+                                  Variant="Variant.Outlined"
+                                  Dense="true"
+                                  HelperText="Message to send after connection is established" />
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Headers">
-                    <div class="pa-4">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
-                        <MudStack Row="true" Spacing="2" Class="mb-4">
-                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
-                                + Auth
-                            </MudButton>
-                        </MudStack>
-                        
-                        @foreach (var header in _headers)
-                        {
-                            <MudGrid Class="mb-2">
-                                <MudItem xs="1" Class="d-flex align-center">
-                                    <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
-                                </MudItem>
-                                <MudItem xs="5">
-                                    <MudStack Spacing="1">
-                                        <VariableTextField @bind-Value="header.Key" 
-                                                           Label="Header Name" 
-                                                           Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
-                                                           Environment="@Environment" 
-                                                           Collection="@Collection" />
-                                        @if (header.IsDefault)
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
-                                        }
-                                    </MudStack>
-                                </MudItem>
-                                <MudItem xs="4">
-                                    <MudStack Spacing="1">
-                                        <VariableTextField @bind-Value="header.Value" 
-                                                           Label="Header Value" 
-                                                           Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
-                                                           Environment="@Environment" 
-                                                           Collection="@Collection" />
-                                        @if (header.IsDefault)
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
-                                        }
-                                    </MudStack>
-                                </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
-                                </MudItem>
-                            </MudGrid>
-                        }
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
-                            Add Header
+                    <MudText Typo="Typo.caption" Class="mb-2">Common Headers</MudText>
+                    <MudStack Row="true" Spacing="1" Class="mb-3" Wrap="Wrap.Wrap">
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                            + Auth
                         </MudButton>
-                    </div>
+                    </MudStack>
+                    
+                    @foreach (var header in _headers)
+                    {
+                        <MudGrid Class="mb-1" Spacing="1">
+                            <MudItem xs="1" Class="d-flex align-center">
+                                <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" Dense="true" />
+                            </MudItem>
+                            <MudItem xs="5">
+                                <MudStack Spacing="0">
+                                    <VariableTextField @bind-Value="header.Key" 
+                                                       Label="Header Name" 
+                                                       Variant="Variant.Outlined" 
+                                                       Dense="true"
+                                                       Disabled="@(!header.Enabled)" 
+                                                       Environment="@Environment" 
+                                                       Collection="@Collection" />
+                                    @if (header.IsDefault)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.7rem;">(auto)</MudText>
+                                    }
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <VariableTextField @bind-Value="header.Value" 
+                                                   Label="Value" 
+                                                   Variant="Variant.Outlined" 
+                                                   Dense="true"
+                                                   Disabled="@(!header.Enabled)" 
+                                                   Environment="@Environment" 
+                                                   Collection="@Collection" />
+                            </MudItem>
+                            <MudItem xs="2" Class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add" Class="mt-2">
+                        Add Header
+                    </MudButton>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Protocols">
-                    <div class="pa-4">
-                        <MudText Typo="Typo.body2" Class="mb-2">Sub-protocols (optional)</MudText>
-                        @foreach (var protocol in _protocols)
-                        {
-                            <MudGrid Class="mb-2">
-                                <MudItem xs="10">
-                                    <MudTextField @bind-Value="protocol.Value" Label="Protocol" Variant="Variant.Outlined" />
-                                </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveProtocol(protocol))" />
-                                </MudItem>
-                            </MudGrid>
-                        }
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddProtocol" StartIcon="@Icons.Material.Filled.Add">
-                            Add Protocol
-                        </MudButton>
-                    </div>
+                    <MudText Typo="Typo.caption" Class="mb-2">Sub-protocols (optional)</MudText>
+                    @foreach (var protocol in _protocols)
+                    {
+                        <MudGrid Class="mb-1" Spacing="1">
+                            <MudItem xs="10">
+                                <MudTextField @bind-Value="protocol.Value" Label="Protocol" Variant="Variant.Outlined" Dense="true" />
+                            </MudItem>
+                            <MudItem xs="2" Class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveProtocol(protocol))" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="AddProtocol" StartIcon="@Icons.Material.Filled.Add" Class="mt-2">
+                        Add Protocol
+                    </MudButton>
                 </MudTabPanel>
                 
                 <MudTabPanel Text="Auth">
-                    <div class="pa-4">
-                        <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
-                            @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
-                            {
-                                <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
-                            }
-                        </MudSelect>
-                        
-                        @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
+                    <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                        @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
                         {
-                            <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
-                            <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+                            <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
                         }
-                        else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
-                        {
-                            <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
-                        }
-                    </div>
+                    </MudSelect>
+                    
+                    @if (Request.AuthType == Domain.Entities.AuthenticationType.Basic)
+                    {
+                        <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Dense="true" Class="mb-2" />
+                        <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" Dense="true" InputType="InputType.Password" Class="mb-2" />
+                    }
+                    else if (Request.AuthType == Domain.Entities.AuthenticationType.BearerToken)
+                    {
+                        <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Dense="true" Lines="3" Environment="@Environment" Collection="@Collection" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No authentication selected</MudText>
+                    }
                 </MudTabPanel>
             </MudTabs>
         }
     </MudCardContent>
-    <MudCardActions>
-        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+    <MudCardActions Class="pa-2">
+        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
             <MudButton Variant="Variant.Filled" 
                       Color="Color.Primary" 
+                      Size="Size.Small"
                       OnClick="ExecuteRequest" 
                       StartIcon="@Icons.Material.Filled.Send"
                       Disabled="_isExecuting">
                 @if (_isExecuting)
                 {
-                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                    <MudProgressCircular Class="mr-1" Size="Size.Small" Indeterminate="true" />
                     <span>Sending...</span>
                 }
                 else
@@ -455,13 +422,12 @@ else
                     <span>Send</span>
                 }
             </MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveRequestInternal" Disabled="_isExecuting">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small" OnClick="SaveRequestInternal" Disabled="_isExecuting">
                 Save
             </MudButton>
             <MudMenu Icon="@Icons.Material.Filled.SwapHoriz" 
                      Variant="Variant.Outlined" 
-                     Label="Convert To" 
-                     Size="Size.Medium"
+                     Size="Size.Small"
                      Disabled="_isExecuting">
                 @if (Request?.Type != RequestType.Rest)
                 {
@@ -476,7 +442,7 @@ else
                     <MudMenuItem OnClick="@(() => ConvertRequestTo(RequestType.WebSocket))">WebSocket</MudMenuItem>
                 }
             </MudMenu>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())" Disabled="_isExecuting">
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Default" OnClick="@(() => OnCancel.InvokeAsync())" Disabled="_isExecuting">
                 Cancel
             </MudButton>
         </MudStack>
