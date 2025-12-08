@@ -89,7 +89,7 @@
     display: block;
 }
 
-@media (min-width: 641px) {
+@media (min-width: 40.063em) {
     .navbar-toggler {
         display: none;
     }

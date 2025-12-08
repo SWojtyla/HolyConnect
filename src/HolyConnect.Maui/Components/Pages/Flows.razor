@@ -91,14 +91,14 @@
     }
     else if (_isLoading)
     {
-        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 300px;">
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 18.75rem;">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
             <MudText Typo="Typo.body1">Loading flows...</MudText>
         </MudStack>
     }
     else
     {
-        <MudPaper Class="pa-8 d-flex flex-column align-center justify-center" Elevation="0" Outlined="true" Style="min-height: 300px;">
+        <MudPaper Class="pa-8 d-flex flex-column align-center justify-center" Elevation="0" Outlined="true" Style="min-height: 18.75rem;">
             <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Large" Color="Color.Primary" Class="mb-4" Style="font-size: 5rem;" />
             <MudText Typo="Typo.h5" Class="mb-2">No Flows Yet</MudText>
             <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mb-4">

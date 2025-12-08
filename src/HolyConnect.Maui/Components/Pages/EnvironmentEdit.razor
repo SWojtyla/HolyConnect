@@ -30,7 +30,7 @@
                                           AdornmentIcon="@(variable.IsSecret ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                                           OnAdornmentClick="@(() => variable.IsSecret = !variable.IsSecret)" />
                         </MudItem>
-                        <MudItem xs="2" Style="display: flex; align-items: center; padding-top: 8px;">
+                        <MudItem xs="2" Style="display: flex; align-items: center; padding-top: 0.5rem;">
                             <MudCheckBox @bind-Value="variable.IsSecret" 
                                          Label="Secret" 
                                          Color="Color.Primary"

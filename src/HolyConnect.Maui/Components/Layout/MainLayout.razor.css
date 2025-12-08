@@ -36,7 +36,7 @@ main {
         text-overflow: ellipsis;
     }
 
-@media (max-width: 640.98px) {
+@media (max-width: 40.061em) {
     .top-row {
         justify-content: space-between;
     }
@@ -46,13 +46,13 @@ main {
     }
 }
 
-@media (min-width: 641px) {
+@media (min-width: 40.063em) {
     .page {
         flex-direction: row;
     }
 
     .sidebar {
-        width: 250px;
+        width: 15.625rem;
         height: 100vh;
         position: sticky;
         top: 0;

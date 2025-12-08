@@ -291,7 +291,7 @@
                             </MudButton>
                         }
                     </MudStack>
-                    <MudPaper Class="pa-3 mb-3" Outlined="true" Style="max-height: 300px; overflow-y: auto;">
+                    <MudPaper Class="pa-3 mb-3" Outlined="true" Style="max-height: 18.75rem; overflow-y: auto;">
                         <MudList T="string" Dense="true">
                             @foreach (var file in _fileChanges)
                             {
@@ -366,7 +366,7 @@
                 <ChildContent>
                     @if (_commitHistory.Any())
                     {
-                        <MudPaper Class="pa-3" Outlined="true" Style="max-height: 500px; overflow-y: auto;">
+                        <MudPaper Class="pa-3" Outlined="true" Style="max-height: 31.25rem; overflow-y: auto;">
                             <MudList T="string" Dense="true">
                                 @foreach (var commit in _commitHistory)
                                 {

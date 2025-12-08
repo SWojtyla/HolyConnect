@@ -13,14 +13,14 @@
                     }
                     else
                     {
-                        <span style="display: inline-block; width: 24px;"></span>
+                        <span style="display: inline-block; width: 1.5rem;"></span>
                     }
                 </span>
                 <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" style="cursor: pointer;">
                     <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="@(IsCollectionSelected ? Color.Primary : Color.Default)" /> @Collection.Name
                 </span>
             </MudText>
-            <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
+            <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="@(() => ShowAddMenu())" aria-label="Add sub-collection or request" />
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditCollection())" aria-label="Edit collection" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" />
@@ -38,7 +38,7 @@
                             <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
                             </MudText>
-                            <div style="display: flex; gap: 4px;" @onclick:stopPropagation="true">
+                            <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" />
                             </div>

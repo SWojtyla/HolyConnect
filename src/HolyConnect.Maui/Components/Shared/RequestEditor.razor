@@ -10,15 +10,15 @@
                  EnableSlide="true"
                  EnableMargin="true"
                  Sensitivity="0.1"
-                 Height="calc(100vh - 180px)"
+                 Height="calc(100vh - 11.25rem)"
                  Bordered="true">
         <StartContent>
-            <div style="height: 100%; overflow-y: auto; padding-right: 8px;">
+            <div style="height: 100%; overflow-y: auto; padding-right: 0.5rem;">
                 @RequestConfigurationSection
             </div>
         </StartContent>
         <EndContent>
-            <div style="height: 100%; overflow-y: auto; padding-left: 8px;">
+            <div style="height: 100%; overflow-y: auto; padding-left: 0.5rem;">
                 @ResponseSection
             </div>
         </EndContent>
@@ -27,7 +27,7 @@
 else
 {
     <!-- Horizontal Layout: Request on top, Response on bottom -->
-    <div Style="height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden;">
+    <div Style="height: calc(100vh - 11.25rem); display: flex; flex-direction: column; overflow: hidden;">
         <div style="flex: 0 0 auto; overflow-y: auto; max-height: 60%;">
             @RequestConfigurationSection
         </div>
@@ -64,7 +64,7 @@ else
                 <MudTabPanel Text="Body">
                     <div class="pa-4">
                         <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
-                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Class="flex-shrink-1" Style="max-width: 200px;">
+                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Class="flex-shrink-1" Style="max-width: 12.5rem;">
                                 @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
                                 {
                                     <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
@@ -81,7 +81,7 @@ else
                         <CodeEditor @ref="_restBodyEditor" 
                                     @bind-Value="restRequest.Body" 
                                     Language="@restRequest.BodyType.ToString()" 
-                                    Height="450px" />
+                                    Height="28rem" />
                     </div>
                 </MudTabPanel>
                 
@@ -220,7 +220,7 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="450px" />
+                        <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="28rem" />
                     </div>
                 </MudTabPanel>
                 
