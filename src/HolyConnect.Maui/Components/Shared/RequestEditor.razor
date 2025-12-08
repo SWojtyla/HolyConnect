@@ -46,8 +46,7 @@ else
     private RenderFragment RequestConfigurationSection => __builder =>
     {
 <MudCard>
-    <MudCardContent>
-        <MudText Typo="Typo.h5" Class="mb-4">@(Request?.Name ?? "New Request")</MudText>
+    <MudCardContent>      
         
         <VariableTextField @bind-Value="Request!.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-1" Environment="@Environment" Collection="@Collection" />
         
@@ -64,7 +63,7 @@ else
                 <MudTabPanel Text="Body">
                     <div class="pa-4">
                         <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
-                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Variant="Variant.Outlined" Dense="true" Class="flex-shrink-1" Style="max-width: 12.5rem;">
+                            <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width: 10rem;">
                                 @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
                                 {
                                     <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
@@ -498,6 +497,8 @@ else
     [Parameter]
     public Request? Request { get; set; }
 
+    private Margin _margin;
+
     [Parameter]
     public EventCallback OnSave { get; set; }
 
@@ -741,8 +742,7 @@ else
             SyncHeaders();
             SyncQueryParams();
             SyncProtocols();
-            _response = await RequestService.ExecuteRequestAsync(Request);
-            Snackbar.Add("Request executed successfully", Severity.Success);
+            _response = await RequestService.ExecuteRequestAsync(Request);          
         }
         catch (Exception ex)
         {
