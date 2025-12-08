@@ -212,4 +212,50 @@ public class RequestHistoryServiceTests
         Assert.Equal(environmentId, capturedEntry.EnvironmentId);
         Assert.Equal(collectionId, capturedEntry.CollectionId);
     }
+
+    [Fact]
+    public async Task AddHistoryEntryAsync_WithSameRequestName_ShouldSucceed()
+    {
+        // Arrange
+        var capturedEntries = new List<RequestHistoryEntry>();
+        var existingEntries = new List<RequestHistoryEntry>();
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<RequestHistoryEntry>()))
+            .Callback<RequestHistoryEntry>(e =>
+            {
+                capturedEntries.Add(e);
+                existingEntries.Add(e);
+            })
+            .ReturnsAsync((RequestHistoryEntry e) => e);
+
+        _mockRepository.Setup(r => r.GetAllAsync())
+            .ReturnsAsync(() => existingEntries);
+
+        var firstEntry = new RequestHistoryEntry
+        {
+            RequestName = "Get List objects",
+            RequestType = RequestType.Rest,
+            SentRequest = new SentRequest { Url = "https://api.example.com/list" },
+            Response = new RequestResponse { StatusCode = 200 }
+        };
+
+        var secondEntry = new RequestHistoryEntry
+        {
+            RequestName = "Get List objects",
+            RequestType = RequestType.Rest,
+            SentRequest = new SentRequest { Url = "https://api.example.com/list" },
+            Response = new RequestResponse { StatusCode = 200 }
+        };
+
+        // Act
+        await _service.AddHistoryEntryAsync(firstEntry);
+        await _service.AddHistoryEntryAsync(secondEntry);
+
+        // Assert
+        Assert.Equal(2, capturedEntries.Count);
+        Assert.Equal("Get List objects", capturedEntries[0].RequestName);
+        Assert.Equal("Get List objects", capturedEntries[1].RequestName);
+        Assert.NotEqual(capturedEntries[0].Id, capturedEntries[1].Id);
+        _mockRepository.Verify(r => r.AddAsync(It.IsAny<RequestHistoryEntry>()), Times.Exactly(2));
+    }
 }
