@@ -49,12 +49,11 @@ else
     <MudCardContent>
         <MudText Typo="Typo.h5" Class="mb-4">@(Request?.Name ?? "New Request")</MudText>
         
-        <MudTextField @bind-Value="Request!.Name" Label="Request Name" Variant="Variant.Outlined" Class="mb-2" />
-        <VariableTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Class="mb-2" Environment="@Environment" Collection="@Collection" />
+        <VariableTextField @bind-Value="Request!.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-1" Environment="@Environment" Collection="@Collection" />
         
         @if (Request is RestRequest restRequest)
         {
-            <MudSelect @bind-Value="restRequest.Method" Label="Method" Variant="Variant.Outlined" Class="mb-2">
+            <MudSelect @bind-Value="restRequest.Method" Label="Method" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-1">
                 @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
                 {
                     <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
