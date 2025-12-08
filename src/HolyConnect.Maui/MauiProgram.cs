@@ -34,6 +34,11 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ISettingsService, FileBasedSettingsService>();
 		builder.Services.AddSingleton<SettingsService>();
 
+		// Add Secret Variables Repository and Service
+		builder.Services.AddSingleton<ISecretVariablesRepository>(sp => 
+			new Infrastructure.Persistence.SecretVariablesRepository(GetStoragePathSafe));
+		builder.Services.AddScoped<ISecretVariablesService, SecretVariablesService>();
+
 		// Helper to synchronously read storage path without async blocking
 		string GetStoragePathSafe()
 		{

@@ -12,6 +12,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests
 - 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
+- 🔒 **Secret Variables**: Mark sensitive variables as secret to exclude them from git commits
 - 🔄 **Git Integration**: Full version control with git support (initialize, commit, branch, push, pull, commit history, selective staging)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
 - 🔀 **Flows**: Chain multiple requests together in sequence, passing variables between steps for complex workflows
@@ -117,6 +118,33 @@ HolyConnect/
 2. Use `{{ variableName }}` syntax in your requests
 3. Collection variables override environment variables
 4. See the [Variables Wiki](/wiki/variables) for detailed documentation
+
+#### Secret Variables
+
+HolyConnect supports secret variables for sensitive data like API keys, tokens, and passwords:
+
+1. **Marking Variables as Secret**:
+   - When editing an environment or collection, add or edit a variable
+   - Check the "Secret" checkbox (with a lock icon) to mark it as secret
+   - Secret variables are displayed as password fields with a visibility toggle
+   
+2. **How Secret Variables Work**:
+   - Secret variables are stored in a separate `secrets/` directory
+   - Each environment/collection has its own secrets file: `secrets/environment-{id}-secrets.json`
+   - The `secrets/` directory and `*secrets*.json` files are automatically excluded from git
+   - Secret variable names are tracked in the main entity file, but values are stored separately
+   - When loading an environment/collection, secrets are automatically merged with regular variables
+   
+3. **Best Practices**:
+   - Always mark sensitive data (API keys, tokens, passwords) as secret
+   - Regular variables are committed to git, secret variables are not
+   - Secret variables work the same way as regular variables in requests using `{{ variableName }}` syntax
+   - Collection secret variables override environment secret variables, just like regular variables
+   
+4. **Git Behavior**:
+   - When you commit changes, regular variables will be included in the commit
+   - Secret variables will NOT be committed to git (they're in `.gitignore`)
+   - This allows you to share your request collections without exposing sensitive credentials
 
 ### Using Git Version Control
 

@@ -8,12 +8,16 @@ namespace HolyConnect.Application.Tests.Services;
 public class CollectionServiceTests
 {
     private readonly Mock<IRepository<Collection>> _mockRepository;
+    private readonly Mock<ISecretVariablesService> _mockSecretVariablesService;
     private readonly CollectionService _service;
 
     public CollectionServiceTests()
     {
         _mockRepository = new Mock<IRepository<Collection>>();
-        _service = new CollectionService(_mockRepository.Object);
+        _mockSecretVariablesService = new Mock<ISecretVariablesService>();
+        _mockSecretVariablesService.Setup(s => s.GetCollectionSecretsAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Dictionary<string, string>());
+        _service = new CollectionService(_mockRepository.Object, _mockSecretVariablesService.Object);
     }
 
     [Fact]
