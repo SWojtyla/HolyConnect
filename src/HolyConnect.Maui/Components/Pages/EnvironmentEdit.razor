@@ -1,6 +1,7 @@
 @page "/environment/{EnvironmentId:guid}/edit"
 @using Microsoft.AspNetCore.WebUtilities
 @inject IEnvironmentService EnvironmentService
+@inject ISecretStorageService SecretStorageService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -18,14 +19,31 @@
                 @foreach (var variable in _variables)
                 {
                     <MudGrid Class="mb-2">
-                        <MudItem xs="5">
+                        <MudItem xs="4">
                             <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
                         </MudItem>
-                        <MudItem xs="5">
-                            <MudTextField @bind-Value="variable.Value" Label="Value" Variant="Variant.Outlined" />
+                        <MudItem xs="4">
+                            <MudStack Spacing="1">
+                                <MudTextField @bind-Value="variable.Value" 
+                                             Label="Value" 
+                                             Variant="Variant.Outlined"
+                                             InputType="@(variable.IsSecret ? InputType.Password : InputType.Text)" />
+                                @if (variable.IsSecret)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Warning">Secret - stored securely</MudText>
+                                }
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="2" Class="d-flex align-center justify-center">
+                            <MudTooltip Text="@(variable.IsSecret ? "Secret (stored securely, not in git)" : "Mark as secret")">
+                                <MudCheckBox @bind-Value="variable.IsSecret" 
+                                             Color="@(variable.IsSecret ? Color.Warning : Color.Default)" 
+                                             Icon="@Icons.Material.Filled.Lock"
+                                             Size="Size.Small" />
+                            </MudTooltip>
                         </MudItem>
                         <MudItem xs="2">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" Size="Size.Small" />
                         </MudItem>
                     </MudGrid>
                 }
@@ -63,6 +81,7 @@
     {
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
+        public bool IsSecret { get; set; } = false;
     }
 
     protected override async Task OnInitializedAsync()
@@ -85,7 +104,25 @@
             // Load existing variables
             foreach (var kvp in _environment.Variables)
             {
-                _variables.Add(new VariableModel { Key = kvp.Key, Value = kvp.Value });
+                var isSecret = _environment.SecretVariables.Contains(kvp.Key);
+                var value = kvp.Value;
+                
+                // Load secret value from secure storage if it's a secret
+                if (isSecret)
+                {
+                    var secretValue = await SecretStorageService.GetSecretAsync(_environment.Id, kvp.Key);
+                    if (!string.IsNullOrEmpty(secretValue))
+                    {
+                        value = secretValue;
+                    }
+                }
+                
+                _variables.Add(new VariableModel 
+                { 
+                    Key = kvp.Key, 
+                    Value = value,
+                    IsSecret = isSecret
+                });
             }
         }
     }
@@ -107,11 +144,26 @@
         _environment.Name = _name;
         _environment.Description = _description;
         
-        // Clear and rebuild variables dictionary
+        // Clear and rebuild variables dictionary and secret variables set
         _environment.Variables.Clear();
+        _environment.SecretVariables.Clear();
+        
         foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
         {
             _environment.Variables[variable.Key] = variable.Value;
+            
+            // Track secret variables and save to secure storage
+            if (variable.IsSecret)
+            {
+                _environment.SecretVariables.Add(variable.Key);
+                // Save the actual value to secure storage
+                await SecretStorageService.SetSecretAsync(_environment.Id, variable.Key, variable.Value);
+            }
+            else
+            {
+                // Remove from secure storage if it's no longer secret
+                await SecretStorageService.RemoveSecretAsync(_environment.Id, variable.Key);
+            }
         }
 
         await EnvironmentService.UpdateEnvironmentAsync(_environment);

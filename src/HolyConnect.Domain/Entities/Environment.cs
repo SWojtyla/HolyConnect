@@ -6,6 +6,7 @@ public class Environment
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Dictionary<string, string> Variables { get; set; } = new();
+    public HashSet<string> SecretVariables { get; set; } = new();
     public List<Collection> Collections { get; set; } = new();
     public List<Request> Requests { get; set; } = new();
     public DateTime CreatedAt { get; set; }

@@ -7,6 +7,7 @@
               Lines="@Lines"
               Class="@Class"
               Disabled="@Disabled"
+              InputType="@InputType"
               Adornment="@(ContainsVariables ? Adornment.End : Adornment.None)"
               AdornmentIcon="@(ContainsVariables ? Icons.Material.Filled.Code : null)"
               AdornmentColor="@(HasMissingVariables ? Color.Warning : Color.Success)"
@@ -41,6 +42,9 @@
 
     [Parameter]
     public Collection? Collection { get; set; }
+
+    [Parameter]
+    public InputType InputType { get; set; } = InputType.Text;
 
     private string? CurrentValue
     {

@@ -81,6 +81,16 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         {
             options.Converters.Add(new RequestJsonConverter());
         }
+        // Custom converter for Environment to handle secret variables
+        if (typeof(T) == typeof(HolyConnect.Domain.Entities.Environment))
+        {
+            options.Converters.Add(new EnvironmentJsonConverter());
+        }
+        // Custom converter for Collection to handle secret variables
+        if (typeof(T) == typeof(HolyConnect.Domain.Entities.Collection))
+        {
+            options.Converters.Add(new CollectionJsonConverter());
+        }
         return options;
     }
 
