@@ -62,7 +62,6 @@ public class FlowServiceTests
         Assert.NotNull(capturedFlow);
         Assert.NotEqual(Guid.Empty, capturedFlow.Id);
         Assert.True(capturedFlow.CreatedAt > DateTime.MinValue);
-        Assert.True(capturedFlow.UpdatedAt > DateTime.MinValue);
         Assert.Equal(2, capturedFlow.Steps.Count);
         Assert.All(capturedFlow.Steps, step =>
         {
@@ -160,12 +159,10 @@ public class FlowServiceTests
     public async Task UpdateFlowAsync_ShouldUpdateFlow()
     {
         // Arrange
-        var originalUpdatedAt = DateTime.UtcNow.AddDays(-1);
         var flow = new Flow
         {
             Id = Guid.NewGuid(),
-            Name = "Updated Flow",
-            UpdatedAt = originalUpdatedAt
+            Name = "Updated Flow"
         };
 
         Flow? capturedFlow = null;
@@ -173,16 +170,13 @@ public class FlowServiceTests
             .Callback<Flow>(f => capturedFlow = f)
             .ReturnsAsync((Flow f) => f);
 
-        var beforeUpdate = DateTime.UtcNow;
-
         // Act
         var result = await _service.UpdateFlowAsync(flow);
 
         // Assert
         Assert.NotNull(capturedFlow);
-        Assert.True(capturedFlow.UpdatedAt > originalUpdatedAt);
-        Assert.True(capturedFlow.UpdatedAt >= beforeUpdate);
-        Assert.True(capturedFlow.UpdatedAt <= DateTime.UtcNow.AddSeconds(1));
+        Assert.Equal(flow.Id, capturedFlow.Id);
+        Assert.Equal(flow.Name, capturedFlow.Name);
         _mockFlowRepository.Verify(r => r.UpdateAsync(It.IsAny<Flow>()), Times.Once);
     }
 

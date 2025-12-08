@@ -66,11 +66,9 @@ public class EnvironmentTests
 
         // Act
         environment.CreatedAt = now;
-        environment.UpdatedAt = now;
 
         // Assert
         Assert.Equal(now, environment.CreatedAt);
-        Assert.Equal(now, environment.UpdatedAt);
     }
 
     [Fact]

@@ -37,7 +37,6 @@ public static class RequestCloner
         target.EnvironmentId = source.EnvironmentId;
         target.Environment = source.Environment;
         target.CreatedAt = source.CreatedAt;
-        target.UpdatedAt = source.UpdatedAt;
         target.AuthType = source.AuthType;
         target.BasicAuthUsername = source.BasicAuthUsername;
         target.BasicAuthPassword = source.BasicAuthPassword;

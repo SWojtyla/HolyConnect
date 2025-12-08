@@ -53,9 +53,6 @@ public class RequestServiceTests
         Assert.NotNull(capturedRequest);
         Assert.NotEqual(Guid.Empty, capturedRequest.Id);
         Assert.True(capturedRequest.CreatedAt > DateTime.MinValue);
-        Assert.True(capturedRequest.UpdatedAt > DateTime.MinValue);
-        // CreatedAt and UpdatedAt should be close but may differ by microseconds
-        Assert.True((capturedRequest.UpdatedAt - capturedRequest.CreatedAt).TotalMilliseconds < 100);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Request>()), Times.Once);
     }
 
@@ -123,7 +120,7 @@ public class RequestServiceTests
     }
 
     [Fact]
-    public async Task UpdateRequestAsync_ShouldUpdateRequestAndTimestamp()
+    public async Task UpdateRequestAsync_ShouldUpdateRequest()
     {
         // Arrange
         var originalTime = DateTime.UtcNow.AddDays(-1);
@@ -131,8 +128,7 @@ public class RequestServiceTests
         {
             Id = Guid.NewGuid(),
             Name = "Updated Request",
-            CreatedAt = originalTime,
-            UpdatedAt = originalTime
+            CreatedAt = originalTime
         };
 
         _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Request>()))
@@ -144,7 +140,6 @@ public class RequestServiceTests
         // Assert
         Assert.Equal(request.Id, result.Id);
         Assert.Equal(request.Name, result.Name);
-        Assert.True(result.UpdatedAt > originalTime);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Request>()), Times.Once);
     }
 

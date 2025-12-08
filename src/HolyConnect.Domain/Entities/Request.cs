@@ -13,7 +13,6 @@ public abstract class Request
     public Guid EnvironmentId { get; set; }
     public Environment? Environment { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
     public abstract RequestType Type { get; }
     public AuthenticationType AuthType { get; set; } = AuthenticationType.None;
     public string? BasicAuthUsername { get; set; }

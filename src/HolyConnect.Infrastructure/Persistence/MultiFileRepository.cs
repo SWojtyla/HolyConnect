@@ -47,19 +47,42 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
 
     private string GetReadableFileName(T entity)
     {
-        var id = _idSelector(entity);
         var baseName = _nameSelector?.Invoke(entity);
         var readable = SanitizeFileName(baseName ?? string.Empty);
-        if (string.IsNullOrWhiteSpace(readable)) readable = id.ToString();
-        return $"{readable}__{id}.json";
+        if (string.IsNullOrWhiteSpace(readable))
+        {
+            var id = _idSelector(entity);
+            readable = id.ToString();
+        }
+        return $"{readable}.json";
     }
 
     private string GetFilePath(Guid id)
     {
-        // Search for readable filename pattern only
+        // Search for file by loading all entities and finding the one with matching ID
         var dir = GetDirectoryPath();
-        var match = Directory.EnumerateFiles(dir, $"*__{id}.json").FirstOrDefault();
-        return match ?? Path.Combine(dir, $"{id}.json"); // deterministic path if name unknown
+        var files = Directory.GetFiles(dir, "*.json");
+        
+        foreach (var file in files)
+        {
+            try
+            {
+                var json = File.ReadAllText(file);
+                var options = GetOptions();
+                var entity = System.Text.Json.JsonSerializer.Deserialize<T>(json, options);
+                if (entity != null && _idSelector(entity) == id)
+                {
+                    return file;
+                }
+            }
+            catch
+            {
+                // Skip files that can't be deserialized
+            }
+        }
+        
+        // If not found, return a deterministic path based on ID (for backwards compatibility)
+        return Path.Combine(dir, $"{id}.json");
     }
 
     private string GetFilePath(T entity)
@@ -147,16 +170,56 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
 
     public async Task<T> AddAsync(T entity)
     {
+        // Check for duplicate names if a name selector is provided
+        if (_nameSelector != null)
+        {
+            var newFileName = GetReadableFileName(entity);
+            var filePath = Path.Combine(GetDirectoryPath(), newFileName);
+            
+            if (File.Exists(filePath))
+            {
+                var existingJson = await File.ReadAllTextAsync(filePath);
+                var options = GetOptions();
+                var existingEntity = JsonSerializer.Deserialize<T>(existingJson, options);
+                
+                // Check if the existing file is for a different entity (same name, different ID)
+                if (existingEntity != null && !_idSelector(existingEntity).Equals(_idSelector(entity)))
+                {
+                    var entityName = _nameSelector(entity);
+                    throw new InvalidOperationException($"An entity with the name '{entityName}' already exists.");
+                }
+            }
+        }
+        
         await SaveEntityAsync(entity);
         return entity;
     }
 
     public async Task<T> UpdateAsync(T entity)
     {
-        // If the readable filename changed (e.g., entity was renamed), delete the old file to avoid duplicates
         var id = _idSelector(entity);
         var oldPath = GetFilePath(id);
         var newPath = GetFilePath(entity);
+        
+        // Check for duplicate names if the file path changed and name selector is provided
+        if (_nameSelector != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+        {
+            if (File.Exists(newPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(newPath);
+                var options = GetOptions();
+                var existingEntity = JsonSerializer.Deserialize<T>(existingJson, options);
+                
+                // Check if the existing file is for a different entity (same name, different ID)
+                if (existingEntity != null && !_idSelector(existingEntity).Equals(id))
+                {
+                    var entityName = _nameSelector(entity);
+                    throw new InvalidOperationException($"An entity with the name '{entityName}' already exists.");
+                }
+            }
+        }
+        
+        // If the readable filename changed (e.g., entity was renamed), delete the old file to avoid duplicates
         if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && File.Exists(oldPath))
         {
             try
