@@ -88,4 +88,45 @@ public class CollectionTests
         Assert.Equal("https://api.example.com", collection.Variables["API_URL"]);
         Assert.Equal("secret", collection.Variables["API_KEY"]);
     }
+
+    [Fact]
+    public void SecretVariableNames_ShouldBeInitializedAsEmptySet()
+    {
+        // Arrange & Act
+        var collection = new Collection { Name = "Test" };
+
+        // Assert
+        Assert.NotNull(collection.SecretVariableNames);
+        Assert.Empty(collection.SecretVariableNames);
+    }
+
+    [Fact]
+    public void SecretVariableNames_ShouldBeModifiable()
+    {
+        // Arrange
+        var collection = new Collection { Name = "Test" };
+
+        // Act
+        collection.SecretVariableNames.Add("API_KEY");
+        collection.SecretVariableNames.Add("PASSWORD");
+
+        // Assert
+        Assert.Equal(2, collection.SecretVariableNames.Count);
+        Assert.Contains("API_KEY", collection.SecretVariableNames);
+        Assert.Contains("PASSWORD", collection.SecretVariableNames);
+    }
+
+    [Fact]
+    public void SecretVariableNames_ShouldNotAllowDuplicates()
+    {
+        // Arrange
+        var collection = new Collection { Name = "Test" };
+
+        // Act
+        collection.SecretVariableNames.Add("API_KEY");
+        collection.SecretVariableNames.Add("API_KEY"); // Duplicate
+
+        // Assert
+        Assert.Single(collection.SecretVariableNames);
+    }
 }

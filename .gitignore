@@ -11,6 +11,10 @@
 *.sln.docstates
 *.env
 
+# Secret variables - should not be checked into git
+secrets/
+*secrets*.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

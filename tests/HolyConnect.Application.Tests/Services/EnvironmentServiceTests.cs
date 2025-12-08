@@ -9,12 +9,16 @@ namespace HolyConnect.Application.Tests.Services;
 public class EnvironmentServiceTests
 {
     private readonly Mock<IRepository<DomainEnvironment>> _mockRepository;
+    private readonly Mock<ISecretVariablesService> _mockSecretVariablesService;
     private readonly EnvironmentService _service;
 
     public EnvironmentServiceTests()
     {
         _mockRepository = new Mock<IRepository<DomainEnvironment>>();
-        _service = new EnvironmentService(_mockRepository.Object);
+        _mockSecretVariablesService = new Mock<ISecretVariablesService>();
+        _mockSecretVariablesService.Setup(s => s.GetEnvironmentSecretsAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Dictionary<string, string>());
+        _service = new EnvironmentService(_mockRepository.Object, _mockSecretVariablesService.Object);
     }
 
     [Fact]

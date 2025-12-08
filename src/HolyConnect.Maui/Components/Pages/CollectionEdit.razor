@@ -18,12 +18,26 @@
                 <MudText Typo="Typo.body2" Class="mb-4">Collection variables override environment variables for requests in this collection.</MudText>
                 @foreach (var variable in _variables)
                 {
-                    <MudGrid Class="mb-2">
-                        <MudItem xs="5">
+                    <MudGrid Class="mb-2" Style="align-items: center;">
+                        <MudItem xs="4">
                             <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
                         </MudItem>
-                        <MudItem xs="5">
-                            <MudTextField @bind-Value="variable.Value" Label="Value" Variant="Variant.Outlined" />
+                        <MudItem xs="4">
+                            <MudTextField @bind-Value="variable.Value" 
+                                          Label="Value" 
+                                          Variant="Variant.Outlined"
+                                          InputType="@(variable.IsSecret ? InputType.Password : InputType.Text)"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@(variable.IsSecret ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                          OnAdornmentClick="@(() => variable.IsSecret = !variable.IsSecret)" />
+                        </MudItem>
+                        <MudItem xs="2" Style="display: flex; align-items: center; padding-top: 8px;">
+                            <MudCheckBox @bind-Value="variable.IsSecret" 
+                                         Label="Secret" 
+                                         Color="Color.Primary"
+                                         Dense="true">
+                                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="margin-right: 4px;" />
+                            </MudCheckBox>
                         </MudItem>
                         <MudItem xs="2">
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
@@ -64,6 +78,7 @@
     {
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
+        public bool IsSecret { get; set; } = false;
     }
 
     protected override async Task OnInitializedAsync()
@@ -86,7 +101,12 @@
             // Load existing variables
             foreach (var kvp in _collection.Variables)
             {
-                _variables.Add(new VariableModel { Key = kvp.Key, Value = kvp.Value });
+                _variables.Add(new VariableModel 
+                { 
+                    Key = kvp.Key, 
+                    Value = kvp.Value,
+                    IsSecret = _collection.SecretVariableNames.Contains(kvp.Key)
+                });
             }
         }
     }
@@ -110,11 +130,16 @@
             _collection.Name = _name;
             _collection.Description = _description;
             
-            // Clear and rebuild variables dictionary
+            // Clear and rebuild variables dictionary and secret names
             _collection.Variables.Clear();
+            _collection.SecretVariableNames.Clear();
             foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
             {
                 _collection.Variables[variable.Key] = variable.Value;
+                if (variable.IsSecret)
+                {
+                    _collection.SecretVariableNames.Add(variable.Key);
+                }
             }
 
             await CollectionService.UpdateCollectionAsync(_collection);
