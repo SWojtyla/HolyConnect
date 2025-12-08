@@ -99,8 +99,7 @@ public static class MauiProgram
             return new MultiFileRepository<RequestHistoryEntry>(
                 h => h.Id,
                 GetStoragePathSafe,
-                "history",
-                h => h.RequestName);
+                "history");
         });
 
         builder.Services.AddSingleton<IRepository<Flow>>(sp =>

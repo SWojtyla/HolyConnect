@@ -280,6 +280,45 @@ public class MultiFileRepositoryTests : IDisposable
         Assert.True(File.Exists(newFilePath), "New file should exist");
     }
 
+    [Fact]
+    public async Task AddAsync_WithSameName_WithoutNameSelector_ShouldSucceed()
+    {
+        // Arrange - Repository without name selector uses ID as filename
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities"); // No name selector
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "Get List objects" };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "Get List objects" }; // Same name, different ID
+
+        // Act - Both should succeed because filenames are based on ID, not name
+        var result1 = await repository.AddAsync(entity1);
+        var result2 = await repository.AddAsync(entity2);
+
+        // Assert
+        Assert.NotNull(result1);
+        Assert.NotNull(result2);
+        Assert.Equal(entity1.Id, result1.Id);
+        Assert.Equal(entity2.Id, result2.Id);
+        Assert.Equal("Get List objects", result1.Name);
+        Assert.Equal("Get List objects", result2.Name);
+
+        // Verify both files exist with ID-based names
+        var directoryPath = Path.Combine(_testDirectory, "test-entities");
+        var file1 = Path.Combine(directoryPath, $"{entity1.Id}.json");
+        var file2 = Path.Combine(directoryPath, $"{entity2.Id}.json");
+        Assert.True(File.Exists(file1), $"Expected file {entity1.Id}.json to exist");
+        Assert.True(File.Exists(file2), $"Expected file {entity2.Id}.json to exist");
+
+        // Verify we can retrieve both entities
+        var retrieved1 = await repository.GetByIdAsync(entity1.Id);
+        var retrieved2 = await repository.GetByIdAsync(entity2.Id);
+        Assert.NotNull(retrieved1);
+        Assert.NotNull(retrieved2);
+        Assert.Equal(entity1.Id, retrieved1.Id);
+        Assert.Equal(entity2.Id, retrieved2.Id);
+    }
+
     private class TestEntity
     {
         public Guid Id { get; set; }
