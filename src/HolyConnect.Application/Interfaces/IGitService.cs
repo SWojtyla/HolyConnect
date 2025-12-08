@@ -95,6 +95,17 @@ public interface IGitService
     /// Unstages a specific file
     /// </summary>
     Task<bool> UnstageFileAsync(string filePath);
+
+    /// <summary>
+    /// Checks if the secrets folder or secrets files are being tracked by git
+    /// </summary>
+    Task<bool> IsSecretsTrackedAsync();
+
+    /// <summary>
+    /// Adds secrets folder and secrets files to .gitignore
+    /// Creates .gitignore if it doesn't exist
+    /// </summary>
+    Task<bool> AddSecretsToGitignoreAsync();
 }
 
 /// <summary>

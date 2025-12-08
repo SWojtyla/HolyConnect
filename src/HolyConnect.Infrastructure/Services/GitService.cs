@@ -9,6 +9,10 @@ namespace HolyConnect.Infrastructure.Services;
 public class GitService : IGitService
 {
     private const int SHORT_SHA_LENGTH = 7;
+    private const string SECRETS_FOLDER_PATH = "secrets/";
+    private const string SECRETS_FILE_PATTERN = "secrets.json";
+    private const string GITIGNORE_SECRETS_FOLDER = "secrets/";
+    private const string GITIGNORE_SECRETS_FILES = "*secrets*.json";
     private readonly Func<string> _getStoragePath;
 
     public GitService(Func<string> getStoragePath)
@@ -599,6 +603,146 @@ public class GitService : IGitService
 
             using var repo = new Repository(repoPath);
             Commands.Unstage(repo, filePath);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> IsSecretsTrackedAsync()
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            var status = repo.RetrieveStatus();
+            
+            // Check if any files in the secrets folder or secrets files are tracked or staged
+            foreach (var item in status)
+            {
+                if (item.FilePath.StartsWith(SECRETS_FOLDER_PATH, StringComparison.OrdinalIgnoreCase) ||
+                    item.FilePath.Contains(SECRETS_FILE_PATTERN, StringComparison.OrdinalIgnoreCase))
+                {
+                    // If file is in index (staged, modified in index, etc.), it's tracked
+                    if (item.State.HasFlag(FileStatus.NewInIndex) || 
+                        item.State.HasFlag(FileStatus.ModifiedInIndex) || 
+                        item.State.HasFlag(FileStatus.DeletedFromIndex) ||
+                        item.State.HasFlag(FileStatus.RenamedInIndex) ||
+                        // Also check if it's a new file in workdir that will be picked up
+                        item.State.HasFlag(FileStatus.NewInWorkdir))
+                    {
+                        return Task.FromResult(true);
+                    }
+                }
+            }
+            
+            // Also check the HEAD commit tree for already committed secrets files
+            if (repo.Head.Tip != null)
+            {
+                var tree = repo.Head.Tip.Tree;
+                
+                // Recursively check all entries in the tree
+                foreach (var entry in tree)
+                {
+                    if (CheckTreeEntryForSecrets(entry))
+                        return Task.FromResult(true);
+                }
+            }
+
+            return Task.FromResult(false);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    private bool CheckTreeEntryForSecrets(TreeEntry entry)
+    {
+        if (entry.Path.StartsWith(SECRETS_FOLDER_PATH, StringComparison.OrdinalIgnoreCase) ||
+            entry.Path.Contains(SECRETS_FILE_PATTERN, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (entry.TargetType == TreeEntryTargetType.Tree && entry.Target is Tree subTree)
+        {
+            foreach (var subEntry in subTree)
+            {
+                if (CheckTreeEntryForSecrets(subEntry))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public Task<bool> AddSecretsToGitignoreAsync()
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            var gitignorePath = Path.Combine(repoPath, ".gitignore");
+            const string secretsComment = "# Secret variables - should not be checked into git";
+
+            List<string> lines;
+            if (File.Exists(gitignorePath))
+            {
+                // Read existing .gitignore
+                lines = File.ReadAllLines(gitignorePath).ToList();
+                
+                // Check if entries already exist (exact match for precision)
+                bool hasSecretsFolder = lines.Any(l => l.Trim() == GITIGNORE_SECRETS_FOLDER || l.Trim() == "secrets");
+                bool hasSecretsJson = lines.Any(l => l.Trim() == GITIGNORE_SECRETS_FILES);
+                
+                // Only add missing entries
+                if (!hasSecretsFolder || !hasSecretsJson)
+                {
+                    // Add a blank line if the file doesn't end with one
+                    if (lines.Count > 0 && !string.IsNullOrWhiteSpace(lines[^1]))
+                    {
+                        lines.Add(string.Empty);
+                    }
+                    
+                    // Add comment if not already present
+                    if (!lines.Any(l => l.Contains("Secret variables")))
+                    {
+                        lines.Add(secretsComment);
+                    }
+                    
+                    // Add missing entries
+                    if (!hasSecretsFolder)
+                    {
+                        lines.Add(GITIGNORE_SECRETS_FOLDER);
+                    }
+                    if (!hasSecretsJson)
+                    {
+                        lines.Add(GITIGNORE_SECRETS_FILES);
+                    }
+                }
+            }
+            else
+            {
+                // Create new .gitignore with secrets entries
+                lines = new List<string>
+                {
+                    secretsComment,
+                    GITIGNORE_SECRETS_FOLDER,
+                    GITIGNORE_SECRETS_FILES
+                };
+            }
+
+            // Write to .gitignore
+            File.WriteAllLines(gitignorePath, lines);
+            
             return Task.FromResult(true);
         }
         catch
