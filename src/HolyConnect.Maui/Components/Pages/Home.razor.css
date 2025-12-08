@@ -1,0 +1,22 @@
+.home-logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 32px;
+    margin-top: 16px;
+}
+
+.home-logo {
+    height: 120px;
+    width: auto;
+    /* Force the logo to always display with original colors, ignoring theme */
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+/* Responsive sizing for smaller screens */
+@media (max-width: 600px) {
+    .home-logo {
+        height: 80px;
+    }
+}
