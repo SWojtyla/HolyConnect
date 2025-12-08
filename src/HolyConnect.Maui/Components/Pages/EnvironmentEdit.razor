@@ -27,16 +27,16 @@
                                           Variant="Variant.Outlined"
                                           InputType="@(variable.IsSecret ? InputType.Password : InputType.Text)"
                                           Adornment="Adornment.End"
-                                          AdornmentIcon="@(variable.IsSecret ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                          AdornmentIcon="@(variable.IsSecret ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                                           OnAdornmentClick="@(() => variable.IsSecret = !variable.IsSecret)" />
                         </MudItem>
                         <MudItem xs="2" Style="display: flex; align-items: center; padding-top: 8px;">
                             <MudCheckBox @bind-Value="variable.IsSecret" 
                                          Label="Secret" 
                                          Color="Color.Primary"
-                                         Dense="true">
-                                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="margin-right: 4px;" />
-                            </MudCheckBox>
+                                         Dense="true"
+                                         CheckedIcon="@Icons.Material.Filled.Lock"
+                                         UncheckedIcon="@Icons.Material.Filled.LockOpen" />
                         </MudItem>
                         <MudItem xs="2">
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
