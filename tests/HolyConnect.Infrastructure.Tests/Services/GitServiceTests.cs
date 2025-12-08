@@ -598,4 +598,199 @@ public class GitServiceTests : IDisposable
         Assert.Contains(changes, c => c.FilePath == "test.txt" && c.Status == "Modified");
         Assert.Contains(changes, c => c.FilePath == "new.txt" && c.Status == "Untracked");
     }
+
+    [Fact]
+    public async Task IsSecretsTrackedAsync_WithoutRepository_ShouldReturnFalse()
+    {
+        // Act
+        var isTracked = await _gitService.IsSecretsTrackedAsync();
+
+        // Assert
+        Assert.False(isTracked);
+    }
+
+    [Fact]
+    public async Task IsSecretsTrackedAsync_WithSecretsInWorkdir_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Create secrets folder with a file
+        var secretsDir = Path.Combine(_testRepoPath, "secrets");
+        Directory.CreateDirectory(secretsDir);
+        var secretFile = Path.Combine(secretsDir, "test-secrets.json");
+        File.WriteAllText(secretFile, "{\"key\": \"value\"}");
+
+        // Act
+        var isTracked = await _gitService.IsSecretsTrackedAsync();
+
+        // Assert
+        Assert.True(isTracked);
+    }
+
+    [Fact]
+    public async Task IsSecretsTrackedAsync_WithSecretsJsonInWorkdir_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Create a secrets json file
+        var secretFile = Path.Combine(_testRepoPath, "environment-123-secrets.json");
+        File.WriteAllText(secretFile, "{\"key\": \"value\"}");
+
+        // Act
+        var isTracked = await _gitService.IsSecretsTrackedAsync();
+
+        // Assert
+        Assert.True(isTracked);
+    }
+
+    [Fact]
+    public async Task IsSecretsTrackedAsync_WithSecretsAlreadyCommitted_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Create and commit secrets folder
+        var secretsDir = Path.Combine(_testRepoPath, "secrets");
+        Directory.CreateDirectory(secretsDir);
+        var secretFile = Path.Combine(secretsDir, "test-secrets.json");
+        File.WriteAllText(secretFile, "{\"key\": \"value\"}");
+
+        using (var repo = new Repository(_testRepoPath))
+        {
+            Commands.Stage(repo, "secrets/test-secrets.json");
+            var signature = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+            repo.Commit("Add secrets", signature, signature);
+        }
+
+        // Act
+        var isTracked = await _gitService.IsSecretsTrackedAsync();
+
+        // Assert
+        Assert.True(isTracked);
+    }
+
+    [Fact]
+    public async Task IsSecretsTrackedAsync_WithNoSecrets_ShouldReturnFalse()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var isTracked = await _gitService.IsSecretsTrackedAsync();
+
+        // Assert
+        Assert.False(isTracked);
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_WithoutRepository_ShouldReturnFalse()
+    {
+        // Act
+        var success = await _gitService.AddSecretsToGitignoreAsync();
+
+        // Assert
+        Assert.False(success);
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_WithoutExistingGitignore_ShouldCreateFile()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var gitignorePath = Path.Combine(_testRepoPath, ".gitignore");
+
+        // Act
+        var success = await _gitService.AddSecretsToGitignoreAsync();
+
+        // Assert
+        Assert.True(success);
+        Assert.True(File.Exists(gitignorePath));
+        
+        var content = File.ReadAllText(gitignorePath);
+        Assert.Contains("secrets/", content);
+        Assert.Contains("*secrets*.json", content);
+        Assert.Contains("Secret variables", content);
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_WithExistingGitignore_ShouldAppendEntries()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var gitignorePath = Path.Combine(_testRepoPath, ".gitignore");
+        
+        // Create existing .gitignore with some content
+        File.WriteAllText(gitignorePath, "*.log\nbin/\nobj/");
+
+        // Act
+        var success = await _gitService.AddSecretsToGitignoreAsync();
+
+        // Assert
+        Assert.True(success);
+        
+        var content = File.ReadAllText(gitignorePath);
+        Assert.Contains("*.log", content);
+        Assert.Contains("bin/", content);
+        Assert.Contains("secrets/", content);
+        Assert.Contains("*secrets*.json", content);
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_WithSecretsAlreadyInGitignore_ShouldNotDuplicate()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var gitignorePath = Path.Combine(_testRepoPath, ".gitignore");
+        
+        // Create .gitignore with secrets already present
+        File.WriteAllText(gitignorePath, "secrets/\n*secrets*.json\n*.log");
+
+        // Act
+        var success = await _gitService.AddSecretsToGitignoreAsync();
+
+        // Assert
+        Assert.True(success);
+        
+        var content = File.ReadAllText(gitignorePath);
+        var lines = content.Split('\n');
+        
+        // Count occurrences - should only be one of each
+        Assert.Equal(1, lines.Count(l => l.Trim() == "secrets/"));
+        Assert.Equal(1, lines.Count(l => l.Trim() == "*secrets*.json"));
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_ShouldPreventSecretsFromBeingTracked()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Create secrets folder
+        var secretsDir = Path.Combine(_testRepoPath, "secrets");
+        Directory.CreateDirectory(secretsDir);
+        var secretFile = Path.Combine(secretsDir, "test-secrets.json");
+        File.WriteAllText(secretFile, "{\"key\": \"value\"}");
+
+        // Add to gitignore
+        await _gitService.AddSecretsToGitignoreAsync();
+
+        // Stage all files
+        using (var repo = new Repository(_testRepoPath))
+        {
+            Commands.Stage(repo, "*");
+        }
+
+        // Act - check if secrets are tracked
+        var isTracked = await _gitService.IsSecretsTrackedAsync();
+
+        // Assert - secrets should not be tracked because they're in .gitignore
+        Assert.False(isTracked);
+    }
 }
