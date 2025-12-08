@@ -11,6 +11,9 @@
 *.sln.docstates
 *.env
 
+# Secret storage files (contains sensitive header values)
+secrets.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

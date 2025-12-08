@@ -34,6 +34,9 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ISettingsService, FileBasedSettingsService>();
 		builder.Services.AddSingleton<SettingsService>();
 
+		// Add Secret Storage service
+		builder.Services.AddSingleton<ISecretStorageService, FileBasedSecretStorageService>();
+
 		// Helper to synchronously read storage path without async blocking
 		string GetStoragePathSafe()
 		{

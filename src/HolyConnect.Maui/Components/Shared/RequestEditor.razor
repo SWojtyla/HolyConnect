@@ -2,6 +2,7 @@
 @inject IFormatterService FormatterService
 @inject ISnackbar Snackbar
 @inject SettingsService SettingsService
+@inject ISecretStorageService SecretStorageService
 
 @if (_layout == Domain.Entities.RequestLayout.Vertical)
 {
@@ -105,7 +106,7 @@ else
                                 <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
-                                <MudItem xs="5">
+                                <MudItem xs="4">
                                     <MudStack Spacing="1">
                                         <VariableTextField @bind-Value="header.Key" 
                                                            Label="Header Name" 
@@ -124,17 +125,30 @@ else
                                         <VariableTextField @bind-Value="header.Value" 
                                                            Label="Header Value" 
                                                            Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
+                                                           Disabled="@(!header.Enabled)"
+                                                           InputType="@(header.IsSecret ? InputType.Password : InputType.Text)"
                                                            Environment="@Environment" 
                                                            Collection="@Collection" />
                                         @if (header.IsDefault)
                                         {
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
                                         }
+                                        @if (header.IsSecret)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Warning">Secret - stored securely</MudText>
+                                        }
                                     </MudStack>
                                 </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                                <MudItem xs="2" Class="d-flex align-center justify-center">
+                                    <MudTooltip Text="@(header.IsSecret ? "Secret (stored securely, not in git)" : "Mark as secret")">
+                                        <MudCheckBox @bind-Value="header.IsSecret" 
+                                                     Color="@(header.IsSecret ? Color.Warning : Color.Default)" 
+                                                     Icon="@Icons.Material.Filled.Lock"
+                                                     Size="Size.Small" />
+                                    </MudTooltip>
+                                </MudItem>
+                                <MudItem xs="1" Class="d-flex align-center">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" Size="Size.Small" />
                                 </MudItem>
                             </MudGrid>
                         }
@@ -253,7 +267,7 @@ else
                                 <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
-                                <MudItem xs="5">
+                                <MudItem xs="4">
                                     <MudStack Spacing="1">
                                         <VariableTextField @bind-Value="header.Key" 
                                                            Label="Header Name" 
@@ -272,17 +286,30 @@ else
                                         <VariableTextField @bind-Value="header.Value" 
                                                            Label="Header Value" 
                                                            Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
+                                                           Disabled="@(!header.Enabled)"
+                                                           InputType="@(header.IsSecret ? InputType.Password : InputType.Text)"
                                                            Environment="@Environment" 
                                                            Collection="@Collection" />
                                         @if (header.IsDefault)
                                         {
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
                                         }
+                                        @if (header.IsSecret)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Warning">Secret - stored securely</MudText>
+                                        }
                                     </MudStack>
                                 </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                                <MudItem xs="2" Class="d-flex align-center justify-center">
+                                    <MudTooltip Text="@(header.IsSecret ? "Secret (stored securely, not in git)" : "Mark as secret")">
+                                        <MudCheckBox @bind-Value="header.IsSecret" 
+                                                     Color="@(header.IsSecret ? Color.Warning : Color.Default)" 
+                                                     Icon="@Icons.Material.Filled.Lock"
+                                                     Size="Size.Small" />
+                                    </MudTooltip>
+                                </MudItem>
+                                <MudItem xs="1" Class="d-flex align-center">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" Size="Size.Small" />
                                 </MudItem>
                             </MudGrid>
                         }
@@ -352,7 +379,7 @@ else
                                 <MudItem xs="1" Class="d-flex align-center">
                                     <MudCheckBox @bind-Value="header.Enabled" Color="Color.Primary" />
                                 </MudItem>
-                                <MudItem xs="5">
+                                <MudItem xs="4">
                                     <MudStack Spacing="1">
                                         <VariableTextField @bind-Value="header.Key" 
                                                            Label="Header Name" 
@@ -371,17 +398,30 @@ else
                                         <VariableTextField @bind-Value="header.Value" 
                                                            Label="Header Value" 
                                                            Variant="Variant.Outlined" 
-                                                           Disabled="@(!header.Enabled)" 
+                                                           Disabled="@(!header.Enabled)"
+                                                           InputType="@(header.IsSecret ? InputType.Password : InputType.Text)"
                                                            Environment="@Environment" 
                                                            Collection="@Collection" />
                                         @if (header.IsDefault)
                                         {
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
                                         }
+                                        @if (header.IsSecret)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Warning">Secret - stored securely</MudText>
+                                        }
                                     </MudStack>
                                 </MudItem>
-                                <MudItem xs="2" Class="d-flex align-center">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                                <MudItem xs="2" Class="d-flex align-center justify-center">
+                                    <MudTooltip Text="@(header.IsSecret ? "Secret (stored securely, not in git)" : "Mark as secret")">
+                                        <MudCheckBox @bind-Value="header.IsSecret" 
+                                                     Color="@(header.IsSecret ? Color.Warning : Color.Default)" 
+                                                     Icon="@Icons.Material.Filled.Lock"
+                                                     Size="Size.Small" />
+                                    </MudTooltip>
+                                </MudItem>
+                                <MudItem xs="1" Class="d-flex align-center">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" Size="Size.Small" />
                                 </MudItem>
                             </MudGrid>
                         }
@@ -541,7 +581,7 @@ else
         _layout = settings.Layout;
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (Request != null)
         {
@@ -552,6 +592,16 @@ else
                 Enabled = !Request.DisabledHeaders.Contains(h.Key),
                 IsSecret = Request.SecretHeaders.Contains(h.Key)
             }).ToList();
+
+            // Load secret values from secure storage
+            foreach (var header in _headers.Where(h => h.IsSecret))
+            {
+                var secretValue = await SecretStorageService.GetSecretAsync(Request.Id, header.Key);
+                if (!string.IsNullOrEmpty(secretValue))
+                {
+                    header.Value = secretValue;
+                }
+            }
             
             // Add default User-Agent header if not already present
             if (!_headers.Any(h => h.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase)))
@@ -735,7 +785,7 @@ else
 
         try
         {
-            SyncHeaders();
+            await SyncHeadersAsync();
             SyncQueryParams();
             SyncProtocols();
             _response = await RequestService.ExecuteRequestAsync(Request);
@@ -756,13 +806,13 @@ else
     {
         if (Request == null) return;
 
-        SyncHeaders();
+        await SyncHeadersAsync();
         SyncQueryParams();
         SyncProtocols();
         await OnSave.InvokeAsync();
     }
 
-    private void SyncHeaders()
+    private async Task SyncHeadersAsync()
     {
         if (Request != null)
         {
@@ -783,10 +833,17 @@ else
                     
                     Request.Headers[header.Key] = header.Value;
                     
-                    // Track secret headers
+                    // Track secret headers and save to secure storage
                     if (header.IsSecret)
                     {
                         Request.SecretHeaders.Add(header.Key);
+                        // Save the actual value to secure storage
+                        await SecretStorageService.SetSecretAsync(Request.Id, header.Key, header.Value);
+                    }
+                    else
+                    {
+                        // Remove from secure storage if it's no longer secret
+                        await SecretStorageService.RemoveSecretAsync(Request.Id, header.Key);
                     }
                 }
                 else
@@ -875,7 +932,7 @@ else
         try
         {
             // Sync current state
-            SyncHeaders();
+            await SyncHeadersAsync();
             SyncQueryParams();
             SyncProtocols();
 

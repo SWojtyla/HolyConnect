@@ -97,10 +97,10 @@
             </MudText>
 
             <MudTextField @bind-Value="_storagePath" 
-                         Label="Storage Path" 
+                         Label="Data Storage Path" 
                          Variant="Variant.Outlined" 
                          Class="mb-2"
-                         HelperText="Path where data will be stored on disk" />
+                         HelperText="Path where environments, collections, and requests will be stored" />
 
             <MudButton Variant="Variant.Filled" 
                       Color="Color.Primary" 
@@ -110,8 +110,28 @@
                 Browse
             </MudButton>
 
+            <MudText Typo="Typo.caption" Class="mb-4">
+                Current data path: @_storagePath
+            </MudText>
+
+            <MudDivider Class="my-4" />
+
+            <MudTextField @bind-Value="_secretsStoragePath" 
+                         Label="Secrets Storage Path (Optional)" 
+                         Variant="Variant.Outlined" 
+                         Class="mb-2"
+                         HelperText="Path where secret header values will be stored. Leave empty to use data storage path." />
+
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      OnClick="BrowseSecretsPath"
+                      StartIcon="@Icons.Material.Filled.FolderOpen"
+                      Class="mb-3">
+                Browse
+            </MudButton>
+
             <MudText Typo="Typo.caption" Class="mb-3">
-                Current path: @_storagePath
+                Current secrets path: @(string.IsNullOrWhiteSpace(_secretsStoragePath) ? _storagePath : _secretsStoragePath)
             </MudText>
 
             <MudButton Variant="Variant.Filled" 
@@ -126,6 +146,7 @@
 
 @code {
     private string _storagePath = string.Empty;
+    private string _secretsStoragePath = string.Empty;
     private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
     private Domain.Entities.ThemePreset _themePreset = Domain.Entities.ThemePreset.Default;
 
@@ -141,6 +162,7 @@
     {
         var settings = await SettingsService.GetSettingsAsync();
         _storagePath = settings.StoragePath;
+        _secretsStoragePath = settings.SecretsStoragePath;
         _requestLayout = settings.Layout;
         _themePreset = settings.Theme;
     }
@@ -214,6 +236,52 @@
         }
     }
 
+    private async Task BrowseSecretsPath()
+    {
+        try
+        {
+#if WINDOWS
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker();
+            var window = Microsoft.Maui.Controls.Application.Current?.Windows?.FirstOrDefault();
+            if (window?.Handler?.PlatformView != null)
+            {
+                var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window.Handler.PlatformView);
+                WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, windowHandle);
+                
+                folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                folderPicker.FileTypeFilter.Add("*");
+
+                var folder = await folderPicker.PickSingleFolderAsync();
+                if (folder != null)
+                {
+                    _secretsStoragePath = folder.Path;
+                }
+            }
+            else
+            {
+                Snackbar.Add("Cannot access window for folder picker", Severity.Warning);
+            }
+#elif ANDROID
+            var context = Android.App.Application.Context;
+            var externalFilesDir = context.GetExternalFilesDir(null)?.AbsolutePath;
+            if (!string.IsNullOrEmpty(externalFilesDir))
+            {
+                _secretsStoragePath = Path.Combine(externalFilesDir, "HolyConnect", "secrets");
+                Snackbar.Add("Using app's storage directory on Android", Severity.Info);
+            }
+#elif IOS || MACCATALYST
+            _secretsStoragePath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments), "HolyConnect", "secrets");
+            Snackbar.Add("Using documents directory", Severity.Info);
+#else
+            Snackbar.Add("File picker not available on this platform", Severity.Warning);
+#endif
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error selecting folder: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task SaveSettings()
     {
         try
@@ -222,6 +290,7 @@
             {
                 IsDarkMode = ThemeProvider.IsThemeDark(_themePreset),
                 StoragePath = _storagePath,
+                SecretsStoragePath = _secretsStoragePath,
                 Layout = _requestLayout,
                 Theme = _themePreset
             };
