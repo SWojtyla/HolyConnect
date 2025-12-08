@@ -23,7 +23,6 @@ public class FlowTests
         var environmentId = Guid.NewGuid();
         var collectionId = Guid.NewGuid();
         var createdAt = DateTime.UtcNow;
-        var updatedAt = DateTime.UtcNow;
 
         // Act
         var flow = new Flow
@@ -33,8 +32,7 @@ public class FlowTests
             Description = "Test Description",
             EnvironmentId = environmentId,
             CollectionId = collectionId,
-            CreatedAt = createdAt,
-            UpdatedAt = updatedAt
+            CreatedAt = createdAt
         };
 
         // Assert
@@ -44,7 +42,6 @@ public class FlowTests
         Assert.Equal(environmentId, flow.EnvironmentId);
         Assert.Equal(collectionId, flow.CollectionId);
         Assert.Equal(createdAt, flow.CreatedAt);
-        Assert.Equal(updatedAt, flow.UpdatedAt);
     }
 
     [Fact]

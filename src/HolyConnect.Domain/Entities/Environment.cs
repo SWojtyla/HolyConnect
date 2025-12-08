@@ -9,5 +9,4 @@ public class Environment
     public List<Collection> Collections { get; set; } = new();
     public List<Request> Requests { get; set; } = new();
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 }

@@ -13,5 +13,4 @@ public class Collection
     public Guid EnvironmentId { get; set; }
     public Environment? Environment { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 }

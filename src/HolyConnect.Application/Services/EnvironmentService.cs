@@ -19,8 +19,7 @@ public class EnvironmentService : IEnvironmentService
             Id = Guid.NewGuid(),
             Name = name,
             Description = description,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow
         };
 
         return await _environmentRepository.AddAsync(environment);
@@ -38,7 +37,6 @@ public class EnvironmentService : IEnvironmentService
 
     public async Task<Domain.Entities.Environment> UpdateEnvironmentAsync(Domain.Entities.Environment environment)
     {
-        environment.UpdatedAt = DateTime.UtcNow;
         return await _environmentRepository.UpdateAsync(environment);
     }
 

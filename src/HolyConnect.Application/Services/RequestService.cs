@@ -36,7 +36,6 @@ public class RequestService : IRequestService
     {
         request.Id = Guid.NewGuid();
         request.CreatedAt = DateTime.UtcNow;
-        request.UpdatedAt = DateTime.UtcNow;
         return await _requestRepository.AddAsync(request);
     }
 
@@ -64,7 +63,6 @@ public class RequestService : IRequestService
 
     public async Task<Request> UpdateRequestAsync(Request request)
     {
-        request.UpdatedAt = DateTime.UtcNow;
         return await _requestRepository.UpdateAsync(request);
     }
 

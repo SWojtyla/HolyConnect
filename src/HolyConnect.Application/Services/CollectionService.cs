@@ -21,8 +21,7 @@ public class CollectionService : ICollectionService
             Description = description,
             EnvironmentId = environmentId,
             ParentCollectionId = parentCollectionId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow
         };
 
         return await _collectionRepository.AddAsync(collection);
@@ -40,7 +39,6 @@ public class CollectionService : ICollectionService
 
     public async Task<Collection> UpdateCollectionAsync(Collection collection)
     {
-        collection.UpdatedAt = DateTime.UtcNow;
         return await _collectionRepository.UpdateAsync(collection);
     }
 

@@ -208,7 +208,6 @@ public static class RequestConverter
         target.EnvironmentId = source.EnvironmentId;
         target.Environment = source.Environment;
         target.CreatedAt = DateTime.UtcNow;
-        target.UpdatedAt = DateTime.UtcNow;
         target.AuthType = source.AuthType;
         target.BasicAuthUsername = source.BasicAuthUsername;
         target.BasicAuthPassword = source.BasicAuthPassword;
