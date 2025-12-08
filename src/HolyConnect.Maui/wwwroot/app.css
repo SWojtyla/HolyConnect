@@ -66,3 +66,52 @@ html, body {
     height: 100%;
     width: auto;
 }
+
+/* Responsive improvements for better UI scaling */
+@media (max-width: 1920px) {
+    /* Optimize for standard desktop resolutions */
+    .mud-tabs .mud-tab {
+        padding: 8px 12px;
+        min-height: 40px;
+    }
+}
+
+@media (max-width: 1440px) {
+    /* Compact mode for medium screens */
+    .mud-tabs .mud-tab {
+        padding: 6px 10px;
+        min-height: 36px;
+    }
+}
+
+@media (max-width: 1024px) {
+    /* Tablet mode - more compact */
+    .mud-card-content {
+        padding: 12px !important;
+    }
+    
+    .mud-tabs .mud-tab {
+        padding: 6px 8px;
+        min-height: 32px;
+        font-size: 0.875rem;
+    }
+}
+
+/* Ensure text fields don't overflow on small screens */
+.mud-input-control {
+    max-width: 100%;
+}
+
+/* Make code editors responsive */
+.monaco-editor {
+    min-height: 300px;
+}
+
+/* Improve form field spacing in tight layouts */
+.mud-grid-item-xs-1,
+.mud-grid-item-xs-2,
+.mud-grid-item-xs-4,
+.mud-grid-item-xs-5,
+.mud-grid-item-xs-10 {
+    padding: 4px !important;
+}
