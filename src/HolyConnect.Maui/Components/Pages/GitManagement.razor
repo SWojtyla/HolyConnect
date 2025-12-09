@@ -305,24 +305,33 @@
                                                 @file.FilePath
                                             </MudText>
                                         </div>
-                                        @if (!file.IsStaged)
-                                        {
+                                        <MudStack Row="true" Spacing="1">
+                                            @if (!file.IsStaged)
+                                            {
+                                                <MudButton Size="Size.Small" 
+                                                          Variant="Variant.Text" 
+                                                          OnClick="@(() => StageFile(file.FilePath))"
+                                                          StartIcon="@Icons.Material.Filled.Add">
+                                                    Stage
+                                                </MudButton>
+                                            }
+                                            else
+                                            {
+                                                <MudButton Size="Size.Small" 
+                                                          Variant="Variant.Text" 
+                                                          OnClick="@(() => UnstageFile(file.FilePath))"
+                                                          StartIcon="@Icons.Material.Filled.Remove">
+                                                    Unstage
+                                                </MudButton>
+                                            }
                                             <MudButton Size="Size.Small" 
                                                       Variant="Variant.Text" 
-                                                      OnClick="@(() => StageFile(file.FilePath))"
-                                                      StartIcon="@Icons.Material.Filled.Add">
-                                                Stage
+                                                      Color="Color.Error"
+                                                      OnClick="@(() => RevertFile(file.FilePath))"
+                                                      StartIcon="@Icons.Material.Filled.Undo">
+                                                Revert
                                             </MudButton>
-                                        }
-                                        else
-                                        {
-                                            <MudButton Size="Size.Small" 
-                                                      Variant="Variant.Text" 
-                                                      OnClick="@(() => UnstageFile(file.FilePath))"
-                                                      StartIcon="@Icons.Material.Filled.Remove">
-                                                Unstage
-                                            </MudButton>
-                                        }
+                                        </MudStack>
                                     </MudStack>
                                 </MudListItem>
                             }
@@ -339,9 +348,9 @@
                 <MudButton Variant="Variant.Filled" 
                           Color="Color.Primary" 
                           OnClick="CommitChanges"
-                          Disabled="@(string.IsNullOrWhiteSpace(_commitMessage) || _status?.HasChanges != true)"
+                          Disabled="@(string.IsNullOrWhiteSpace(_commitMessage) || !_fileChanges.Any(f => f.IsStaged))"
                           StartIcon="@Icons.Material.Filled.Save">
-                    Commit All Changes
+                    Commit Staged Changes
                 </MudButton>
             </MudCardContent>
         </MudCard>
@@ -630,7 +639,7 @@
 
         try
         {
-            var success = await GitService.CommitAllAsync(_commitMessage);
+            var success = await GitService.CommitStagedAsync(_commitMessage);
             
             if (success)
             {
@@ -640,7 +649,7 @@
             }
             else
             {
-                Snackbar.Add("Failed to commit changes. There may be no changes to commit.", Severity.Warning);
+                Snackbar.Add("Failed to commit changes. There may be no staged changes to commit.", Severity.Warning);
             }
         }
         catch (Exception ex)
@@ -846,6 +855,30 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error staging files: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RevertFile(string filePath)
+    {
+        try
+        {
+            var success = await GitService.RevertFileAsync(filePath);
+            
+            if (success)
+            {
+                Snackbar.Add($"Reverted {filePath}", Severity.Success);
+                _fileChanges = await GitService.GetFileChangesAsync();
+                _status = await GitService.GetStatusAsync();
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to revert {filePath}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error reverting file: {ex.Message}", Severity.Error);
         }
     }
 

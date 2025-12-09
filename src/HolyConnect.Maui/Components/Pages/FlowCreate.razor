@@ -41,7 +41,8 @@
                                          AdornmentIcon="@Icons.Material.Filled.Description"
                                          Placeholder="Describe what this flow does" />
 
-                            <MudSelect @bind-Value="_selectedEnvironmentId" 
+                            <MudSelect Value="_selectedEnvironmentId"
+                                      ValueChanged="OnEnvironmentChanged"
                                       Label="Environment" 
                                       Required="true"
                                       RequiredError="Environment is required"
@@ -224,6 +225,22 @@
         {
             await LoadEnvironmentData();
         }
+    }
+
+    private async Task OnEnvironmentChanged(Guid? environmentId)
+    {
+        _selectedEnvironmentId = environmentId;
+        _selectedCollectionId = null; // Reset collection selection
+        if (_selectedEnvironmentId.HasValue)
+        {
+            await LoadEnvironmentData();
+        }
+        else
+        {
+            _collections = null;
+            _availableRequests = null;
+        }
+        StateHasChanged();
     }
 
     private async Task LoadEnvironmentData()
