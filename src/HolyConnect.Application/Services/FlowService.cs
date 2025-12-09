@@ -1,3 +1,4 @@
+using System.Net.Http;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 
@@ -244,12 +245,12 @@ public class FlowService : IFlowService
                 {
                     // Status code 0 indicates an error (network error, exception, etc.)
                     // This should be handled as a failure
-                    throw new InvalidOperationException($"Request failed: {response.StatusMessage}");
+                    throw new HttpRequestException($"Request failed: {response.StatusMessage}");
                 }
                 else
                 {
                     // Non-success HTTP status codes (4xx, 5xx, etc.) should be treated as failures
-                    throw new InvalidOperationException($"Request failed with status code {response.StatusCode}: {response.StatusMessage}");
+                    throw new HttpRequestException($"Request failed with status code {response.StatusCode}: {response.StatusMessage}");
                 }
             }
             finally
