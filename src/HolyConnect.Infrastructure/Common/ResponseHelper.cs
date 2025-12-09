@@ -84,4 +84,14 @@ public static class ResponseHelper
         response.Body = BuildStreamEventBody(response.StreamEvents);
         response.Size = response.Body.Length;
     }
+
+    /// <summary>
+    /// Checks if an HTTP status code indicates success (2xx range)
+    /// </summary>
+    /// <param name="statusCode">The HTTP status code to check</param>
+    /// <returns>True if the status code is in the success range (200-299), false otherwise</returns>
+    public static bool IsSuccessStatusCode(int statusCode)
+    {
+        return statusCode >= 200 && statusCode <= 299;
+    }
 }

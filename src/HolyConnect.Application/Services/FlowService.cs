@@ -232,7 +232,23 @@ public class FlowService : IFlowService
                     }
                 }
 
-                stepResult.Status = FlowStepStatus.Success;
+                // Check if the response status code indicates success
+                // Status codes in the 2xx range are considered successful
+                if (response.StatusCode >= 200 && response.StatusCode <= 299)
+                {
+                    stepResult.Status = FlowStepStatus.Success;
+                }
+                else if (response.StatusCode == 0)
+                {
+                    // Status code 0 indicates an error (network error, exception, etc.)
+                    // This should be handled as a failure
+                    throw new InvalidOperationException($"Request failed: {response.StatusMessage}");
+                }
+                else
+                {
+                    // Non-success HTTP status codes (4xx, 5xx, etc.) should be treated as failures
+                    throw new InvalidOperationException($"Request failed with status code {response.StatusCode}: {response.StatusMessage}");
+                }
             }
             finally
             {
