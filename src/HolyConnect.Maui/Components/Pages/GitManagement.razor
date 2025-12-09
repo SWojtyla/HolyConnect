@@ -168,24 +168,35 @@
             </MudCardContent>
         </MudCard>
 
-        <!-- Secrets Warning -->
-        @if (_isSecretsTracked)
+        <!-- Secrets and History Warning -->
+        @if (_isSecretsTracked || _isHistoryTracked)
         {
             <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Filled">
                 <MudStack Spacing="2">
                     <MudText Typo="Typo.body1">
-                        <strong>Warning:</strong> Your secrets folder is being tracked by Git!
+                        <strong>Warning:</strong> Sensitive data is being tracked by Git!
                     </MudText>
+                    @if (_isSecretsTracked)
+                    {
+                        <MudText Typo="Typo.body2">
+                            • The <code>secrets/</code> folder contains sensitive data (API keys, tokens, passwords) that should not be committed to version control.
+                        </MudText>
+                    }
+                    @if (_isHistoryTracked)
+                    {
+                        <MudText Typo="Typo.body2">
+                            • The <code>history/</code> folder contains request execution history that changes frequently and may contain sensitive data from requests and responses.
+                        </MudText>
+                    }
                     <MudText Typo="Typo.body2">
-                        The <code>secrets/</code> folder contains sensitive data (API keys, tokens, passwords) that should not be committed to version control.
-                        This could expose your credentials if you push to a remote repository.
+                        This could expose your credentials or sensitive information if you push to a remote repository.
                     </MudText>
                     <MudButton Variant="Variant.Filled" 
                               Color="Color.Dark" 
                               OnClick="AddSecretsToGitignore"
                               StartIcon="@Icons.Material.Filled.Security"
                               Disabled="_isLoading">
-                        Add Secrets to .gitignore
+                        Add to .gitignore
                     </MudButton>
                 </MudStack>
             </MudAlert>
@@ -480,6 +491,7 @@
     private bool _isPushing;
     private bool _commitHistoryExpanded = false;
     private bool _isSecretsTracked = false;
+    private bool _isHistoryTracked = false;
 
     private const int COMMIT_HISTORY_MAX_COUNT = 50;
 
@@ -508,6 +520,7 @@
         _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
         _fileChanges = await GitService.GetFileChangesAsync();
         _isSecretsTracked = await GitService.IsSecretsTrackedAsync();
+        _isHistoryTracked = await GitService.IsHistoryTrackedAsync();
         
         StateHasChanged();
     }
@@ -903,17 +916,17 @@
             
             if (success)
             {
-                Snackbar.Add("Successfully added secrets to .gitignore", Severity.Success);
+                Snackbar.Add("Successfully added secrets and history to .gitignore", Severity.Success);
                 await LoadRepositoryInfo();
             }
             else
             {
-                Snackbar.Add("Failed to add secrets to .gitignore", Severity.Error);
+                Snackbar.Add("Failed to add to .gitignore", Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error adding secrets to .gitignore: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error adding to .gitignore: {ex.Message}", Severity.Error);
         }
     }
 }

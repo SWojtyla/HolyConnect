@@ -919,4 +919,138 @@ public class GitServiceTests : IDisposable
         var content = File.ReadAllText(testFilePath);
         Assert.Equal("initial content", content);
     }
+
+    [Fact]
+    public async Task IsHistoryTrackedAsync_WithoutRepository_ShouldReturnFalse()
+    {
+        // Act
+        var isTracked = await _gitService.IsHistoryTrackedAsync();
+
+        // Assert
+        Assert.False(isTracked);
+    }
+
+    [Fact]
+    public async Task IsHistoryTrackedAsync_WithHistoryInWorkdir_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Create history folder with a file
+        var historyDir = Path.Combine(_testRepoPath, "history");
+        Directory.CreateDirectory(historyDir);
+        var historyFile = Path.Combine(historyDir, "test-history.json");
+        File.WriteAllText(historyFile, "{\"timestamp\": \"2024-01-01\"}");
+
+        // Act
+        var isTracked = await _gitService.IsHistoryTrackedAsync();
+
+        // Assert
+        Assert.True(isTracked);
+    }
+
+    [Fact]
+    public async Task IsHistoryTrackedAsync_WithHistoryAlreadyCommitted_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Create and commit history folder
+        var historyDir = Path.Combine(_testRepoPath, "history");
+        Directory.CreateDirectory(historyDir);
+        var historyFile = Path.Combine(historyDir, "test-history.json");
+        File.WriteAllText(historyFile, "{\"timestamp\": \"2024-01-01\"}");
+        
+        await _gitService.CommitAllAsync("Add history");
+
+        // Act
+        var isTracked = await _gitService.IsHistoryTrackedAsync();
+
+        // Assert
+        Assert.True(isTracked);
+    }
+
+    [Fact]
+    public async Task IsHistoryTrackedAsync_WithNoHistory_ShouldReturnFalse()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var isTracked = await _gitService.IsHistoryTrackedAsync();
+
+        // Assert
+        Assert.False(isTracked);
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_ShouldAlsoAddHistory()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var gitignorePath = Path.Combine(_testRepoPath, ".gitignore");
+
+        // Act
+        var success = await _gitService.AddSecretsToGitignoreAsync();
+
+        // Assert
+        Assert.True(success);
+        Assert.True(File.Exists(gitignorePath));
+        
+        var content = File.ReadAllText(gitignorePath);
+        Assert.Contains("secrets/", content);
+        Assert.Contains("*secrets*.json", content);
+        Assert.Contains("history/", content);
+        Assert.Contains("Secret variables", content);
+        Assert.Contains("Request history", content);
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_WithHistoryAlreadyInGitignore_ShouldNotDuplicate()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var gitignorePath = Path.Combine(_testRepoPath, ".gitignore");
+        
+        // Create .gitignore with history already present
+        File.WriteAllText(gitignorePath, "history/\n*.log");
+
+        // Act
+        var success = await _gitService.AddSecretsToGitignoreAsync();
+
+        // Assert
+        Assert.True(success);
+        
+        var content = File.ReadAllText(gitignorePath);
+        var historyCount = System.Text.RegularExpressions.Regex.Matches(content, @"\bhistory/").Count;
+        Assert.Equal(1, historyCount); // Should only appear once
+    }
+
+    [Fact]
+    public async Task AddSecretsToGitignoreAsync_ShouldPreventHistoryFromBeingTracked()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        
+        // Create history folder with a file
+        var historyDir = Path.Combine(_testRepoPath, "history");
+        Directory.CreateDirectory(historyDir);
+        var historyFile = Path.Combine(historyDir, "test-history.json");
+        File.WriteAllText(historyFile, "{\"timestamp\": \"2024-01-01\"}");
+
+        // Add to gitignore
+        await _gitService.AddSecretsToGitignoreAsync();
+
+        // Try to commit all
+        await _gitService.CommitAllAsync("Test commit");
+
+        // Act - check if history is tracked
+        var isTracked = await _gitService.IsHistoryTrackedAsync();
+
+        // Assert - history should not be tracked because it's in .gitignore
+        Assert.False(isTracked);
+    }
 }
