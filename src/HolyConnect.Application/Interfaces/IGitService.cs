@@ -112,7 +112,12 @@ public interface IGitService
     Task<bool> IsSecretsTrackedAsync();
 
     /// <summary>
-    /// Adds secrets folder and secrets files to .gitignore
+    /// Checks if the history folder is being tracked by git
+    /// </summary>
+    Task<bool> IsHistoryTrackedAsync();
+
+    /// <summary>
+    /// Adds secrets folder, secrets files, and history folder to .gitignore
     /// Creates .gitignore if it doesn't exist
     /// </summary>
     Task<bool> AddSecretsToGitignoreAsync();

@@ -15,6 +15,9 @@
 secrets/
 *secrets*.json
 
+# Request history - changes frequently and may contain sensitive data
+history/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
