@@ -162,9 +162,16 @@
 
     private void AddDynamicVariable()
     {
+        // Find next available variable name
+        var counter = 1;
+        while (DynamicVariables.Any(v => v.Name == $"variable{counter}"))
+        {
+            counter++;
+        }
+        
         DynamicVariables.Add(new DynamicVariable
         {
-            Name = $"variable{DynamicVariables.Count + 1}",
+            Name = $"variable{counter}",
             GeneratorType = DataGeneratorType.FirstName
         });
     }

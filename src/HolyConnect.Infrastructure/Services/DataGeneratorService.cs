@@ -227,11 +227,13 @@ public class DataGeneratorService : IDataGeneratorService
             var today = DateTime.Today;
             if (maxAge.HasValue)
             {
-                minDate = today.AddYears(-maxAge.Value - 1).AddDays(1);
+                // Person with maxAge should have birthdate no earlier than maxAge years ago
+                minDate = today.AddYears(-maxAge.Value);
             }
             if (minAge.HasValue)
             {
-                maxDate = today.AddYears(-minAge.Value);
+                // Person with minAge should have birthdate no later than minAge years ago (minus 1 day to ensure they've reached that age)
+                maxDate = today.AddYears(-minAge.Value).AddDays(-1);
             }
         }
 

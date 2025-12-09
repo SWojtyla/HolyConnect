@@ -125,7 +125,7 @@ public class DataGeneratorServiceTests
 
         // Assert
         Assert.True(DateTime.TryParse(result, out var date));
-        var age = (DateTime.Today - date).Days / 365;
+        var age = DateTime.Today.Year - date.Year - (DateTime.Today.DayOfYear < date.DayOfYear ? 1 : 0);
         Assert.True(age >= 18);
     }
 
@@ -148,7 +148,7 @@ public class DataGeneratorServiceTests
 
         // Assert
         Assert.True(DateTime.TryParse(result, out var date));
-        var age = (DateTime.Today - date).Days / 365;
+        var age = DateTime.Today.Year - date.Year - (DateTime.Today.DayOfYear < date.DayOfYear ? 1 : 0);
         Assert.True(age <= 65);
     }
 
@@ -172,7 +172,7 @@ public class DataGeneratorServiceTests
 
         // Assert
         Assert.True(DateTime.TryParse(result, out var date));
-        var age = (DateTime.Today - date).Days / 365;
+        var age = DateTime.Today.Year - date.Year - (DateTime.Today.DayOfYear < date.DayOfYear ? 1 : 0);
         Assert.InRange(age, 18, 65);
     }
 
