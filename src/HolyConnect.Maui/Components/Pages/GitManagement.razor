@@ -317,6 +317,13 @@
                                             </MudText>
                                         </div>
                                         <MudStack Row="true" Spacing="1">
+                                            <MudButton Size="Size.Small" 
+                                                      Variant="Variant.Text" 
+                                                      Color="Color.Info"
+                                                      OnClick="@(() => ShowFileDiff(file.FilePath))"
+                                                      StartIcon="@Icons.Material.Filled.Difference">
+                                                Diff
+                                            </MudButton>
                                             @if (!file.IsStaged)
                                             {
                                                 <MudButton Size="Size.Small" 
@@ -472,6 +479,37 @@
     }
 </MudContainer>
 
+<!-- Diff Viewer Dialog -->
+<MudDialog @bind-IsVisible="_diffDialogVisible" Options="_diffDialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Difference" Class="mr-2" />
+            File Diff: @_selectedFilePath
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoadingDiff)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_currentDiff != null)
+        {
+            <DiffViewer OriginalContent="@_currentDiff.OriginalContent"
+                       ModifiedContent="@_currentDiff.ModifiedContent"
+                       Language="@GetLanguageFromPath(_currentDiff.FilePath)"
+                       Status="@_currentDiff.Status"
+                       Height="50rem" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning">Unable to load diff for this file.</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDiffDialog" Color="Color.Default">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     private bool _isRepository;
     private string? _currentBranch;
@@ -492,8 +530,20 @@
     private bool _commitHistoryExpanded = false;
     private bool _isSecretsTracked = false;
     private bool _isHistoryTracked = false;
+    private bool _diffDialogVisible = false;
+    private bool _isLoadingDiff = false;
+    private string _selectedFilePath = string.Empty;
+    private GitFileDiff? _currentDiff;
 
     private const int COMMIT_HISTORY_MAX_COUNT = 50;
+
+    private readonly DialogOptions _diffDialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Large,
+        FullWidth = true,
+        CloseButton = true,
+        Position = DialogPosition.Center
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -928,5 +978,57 @@
         {
             Snackbar.Add($"Error adding to .gitignore: {ex.Message}", Severity.Error);
         }
+    }
+
+    private async Task ShowFileDiff(string filePath)
+    {
+        try
+        {
+            _selectedFilePath = filePath;
+            _diffDialogVisible = true;
+            _isLoadingDiff = true;
+            _currentDiff = null;
+            StateHasChanged();
+
+            _currentDiff = await GitService.GetFileDiffAsync(filePath);
+            
+            if (_currentDiff == null)
+            {
+                Snackbar.Add($"Unable to load diff for {filePath}", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading diff: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoadingDiff = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseDiffDialog()
+    {
+        _diffDialogVisible = false;
+        _currentDiff = null;
+        _selectedFilePath = string.Empty;
+    }
+
+    private string GetLanguageFromPath(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".json" => "json",
+            ".xml" => "xml",
+            ".html" or ".htm" => "html",
+            ".js" => "javascript",
+            ".cs" => "csharp",
+            ".css" => "css",
+            ".md" => "markdown",
+            ".yaml" or ".yml" => "yaml",
+            _ => "plaintext"
+        };
     }
 }

@@ -627,12 +627,26 @@ public class GitService : IGitService
                 return Task.FromResult(Enumerable.Empty<GitFileChange>());
 
             using var repo = new Repository(repoPath);
-            var status = repo.RetrieveStatus();
+            
+            // Use StatusOptions to exclude ignored files
+            var statusOptions = new StatusOptions
+            {
+                Show = StatusShowOption.IndexAndWorkDir,
+                DetectRenamesInIndex = true,
+                DetectRenamesInWorkDir = true,
+                ExcludeSubmodules = true
+            };
+            
+            var status = repo.RetrieveStatus(statusOptions);
             
             var fileChanges = new List<GitFileChange>();
 
             foreach (var item in status)
             {
+                // Skip ignored files (they should already be filtered by StatusOptions, but double-check)
+                if (item.State == FileStatus.Ignored)
+                    continue;
+                    
                 fileChanges.Add(new GitFileChange
                 {
                     FilePath = item.FilePath,
@@ -921,6 +935,106 @@ public class GitService : IGitService
         catch
         {
             return Task.FromResult(false);
+        }
+    }
+
+    public Task<GitFileDiff?> GetFileDiffAsync(string filePath)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult<GitFileDiff?>(null);
+
+            using var repo = new Repository(repoPath);
+            var status = repo.RetrieveStatus(new StatusOptions { PathSpec = new[] { filePath } });
+            var fileStatus = status.FirstOrDefault(s => s.FilePath == filePath);
+            
+            if (fileStatus == null)
+                return Task.FromResult<GitFileDiff?>(null);
+
+            var fullPath = Path.Combine(repoPath, filePath);
+            string modifiedContent = string.Empty;
+            string originalContent = string.Empty;
+            
+            // Get modified content from working directory
+            if (File.Exists(fullPath))
+            {
+                modifiedContent = File.ReadAllText(fullPath);
+            }
+            
+            // Get original content based on file state
+            if (fileStatus.State == FileStatus.NewInWorkdir || fileStatus.State == FileStatus.NewInIndex)
+            {
+                // New file - original is empty
+                originalContent = string.Empty;
+            }
+            else if (fileStatus.State.HasFlag(FileStatus.DeletedFromWorkdir) || 
+                     fileStatus.State.HasFlag(FileStatus.DeletedFromIndex))
+            {
+                // Deleted file - get from HEAD, modified is empty
+                try
+                {
+                    var headEntry = repo.Head.Tip?[filePath];
+                    if (headEntry?.Target is Blob blob)
+                    {
+                        originalContent = blob.GetContentText();
+                        modifiedContent = string.Empty;
+                    }
+                }
+                catch
+                {
+                    // If file doesn't exist in HEAD, it was never committed
+                }
+            }
+            else
+            {
+                // Modified file - get from staged (index) or HEAD
+                try
+                {
+                    if (fileStatus.State.HasFlag(FileStatus.ModifiedInIndex) || 
+                        fileStatus.State.HasFlag(FileStatus.NewInIndex))
+                    {
+                        // Get from index (staged version)
+                        var indexEntry = repo.Index[filePath];
+                        if (indexEntry != null)
+                        {
+                            var blob = repo.Lookup<Blob>(indexEntry.Id);
+                            originalContent = blob?.GetContentText() ?? string.Empty;
+                        }
+                    }
+                    else
+                    {
+                        // Get from HEAD
+                        var headEntry = repo.Head.Tip?[filePath];
+                        if (headEntry?.Target is Blob blob)
+                        {
+                            originalContent = blob.GetContentText();
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fallback to empty if can't retrieve
+                    originalContent = string.Empty;
+                }
+            }
+
+            return Task.FromResult<GitFileDiff?>(new GitFileDiff
+            {
+                FilePath = filePath,
+                OriginalContent = originalContent,
+                ModifiedContent = modifiedContent,
+                Status = GetChangeType(fileStatus.State),
+                IsStaged = fileStatus.State.HasFlag(FileStatus.NewInIndex) || 
+                          fileStatus.State.HasFlag(FileStatus.ModifiedInIndex) || 
+                          fileStatus.State.HasFlag(FileStatus.DeletedFromIndex) ||
+                          fileStatus.State.HasFlag(FileStatus.RenamedInIndex)
+            });
+        }
+        catch
+        {
+            return Task.FromResult<GitFileDiff?>(null);
         }
     }
 }

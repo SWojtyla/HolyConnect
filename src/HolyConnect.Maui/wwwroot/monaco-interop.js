@@ -288,5 +288,98 @@ window.monacoEditorInterop = {
         if (editor) {
             editor.getAction('editor.action.formatDocument').run();
         }
+    },
+
+    // Initialize Monaco Diff Editor
+    initializeDiffEditor: function (editorId, originalContent, modifiedContent, language, theme, readOnly) {
+        try {
+            const container = document.getElementById(editorId);
+            if (!container) {
+                console.error('Container not found:', editorId);
+                return false;
+            }
+
+            // Dispose existing editor if any
+            if (this.editors[editorId]) {
+                this.editors[editorId].dispose();
+            }
+
+            // Create diff editor
+            const diffEditor = monaco.editor.createDiffEditor(container, {
+                theme: theme || 'vs-dark',
+                readOnly: readOnly || true,
+                automaticLayout: true,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                lineNumbers: 'on',
+                renderLineHighlight: 'all',
+                contextmenu: true,
+                padding: { top: 8, bottom: 8 },
+                lineDecorationsWidth: 10,
+                lineNumbersMinChars: 3,
+                glyphMargin: false,
+                folding: true,
+                renderWhitespace: 'selection',
+                cursorBlinking: 'smooth',
+                smoothScrolling: true,
+                scrollbar: {
+                    useShadows: false,
+                    verticalScrollbarSize: 10,
+                    horizontalScrollbarSize: 10
+                },
+                renderSideBySide: true,
+                ignoreTrimWhitespace: false,
+                enableSplitViewResizing: true
+            });
+
+            // Set models
+            const originalModel = monaco.editor.createModel(originalContent || '', language || 'plaintext');
+            const modifiedModel = monaco.editor.createModel(modifiedContent || '', language || 'plaintext');
+
+            diffEditor.setModel({
+                original: originalModel,
+                modified: modifiedModel
+            });
+
+            this.editors[editorId] = diffEditor;
+
+            return true;
+        } catch (error) {
+            console.error('Error initializing Monaco Diff Editor:', error);
+            return false;
+        }
+    },
+
+    // Update diff editor content
+    updateDiffEditor: function (editorId, originalContent, modifiedContent, language) {
+        try {
+            const diffEditor = this.editors[editorId];
+            if (!diffEditor || !diffEditor.getOriginalEditor) {
+                return false;
+            }
+
+            const originalModel = diffEditor.getOriginalEditor().getModel();
+            const modifiedModel = diffEditor.getModifiedEditor().getModel();
+
+            if (originalModel && modifiedModel) {
+                // Update content
+                originalModel.setValue(originalContent || '');
+                modifiedModel.setValue(modifiedContent || '');
+
+                // Update language if provided
+                if (language) {
+                    monaco.editor.setModelLanguage(originalModel, language);
+                    monaco.editor.setModelLanguage(modifiedModel, language);
+                }
+
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Error updating Monaco Diff Editor:', error);
+            return false;
+        }
     }
 };

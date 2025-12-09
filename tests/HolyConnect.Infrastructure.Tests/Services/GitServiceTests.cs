@@ -1053,4 +1053,162 @@ public class GitServiceTests : IDisposable
         // Assert - history should not be tracked because it's in .gitignore
         Assert.False(isTracked);
     }
+
+    [Fact]
+    public async Task GetFileChangesAsync_WithIgnoredFiles_ShouldNotIncludeIgnoredFiles()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+
+        // Create .gitignore with secrets/ and history/
+        var gitignorePath = Path.Combine(_testRepoPath, ".gitignore");
+        await File.WriteAllTextAsync(gitignorePath, "secrets/\nhistory/\n");
+
+        // Create files in regular directory
+        var regularFile = Path.Combine(_testRepoPath, "test.json");
+        await File.WriteAllTextAsync(regularFile, "{}");
+
+        // Create files in ignored directories
+        var secretsDir = Path.Combine(_testRepoPath, "secrets");
+        Directory.CreateDirectory(secretsDir);
+        var secretsFile = Path.Combine(secretsDir, "api-keys.json");
+        await File.WriteAllTextAsync(secretsFile, "{\"key\": \"secret\"}");
+
+        var historyDir = Path.Combine(_testRepoPath, "history");
+        Directory.CreateDirectory(historyDir);
+        var historyFile = Path.Combine(historyDir, "request.json");
+        await File.WriteAllTextAsync(historyFile, "{\"request\": \"data\"}");
+
+        // Act
+        var fileChanges = await _gitService.GetFileChangesAsync();
+
+        // Assert
+        Assert.NotEmpty(fileChanges);
+        Assert.Contains(fileChanges, f => f.FilePath == "test.json");
+        Assert.Contains(fileChanges, f => f.FilePath == ".gitignore");
+        Assert.DoesNotContain(fileChanges, f => f.FilePath.StartsWith("secrets/"));
+        Assert.DoesNotContain(fileChanges, f => f.FilePath.StartsWith("history/"));
+    }
+
+    [Fact]
+    public async Task GetFileDiffAsync_WithNewFile_ShouldReturnDiffWithEmptyOriginal()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var testFile = Path.Combine(_testRepoPath, "newfile.txt");
+        var content = "This is a new file";
+        await File.WriteAllTextAsync(testFile, content);
+
+        // Act
+        var diff = await _gitService.GetFileDiffAsync("newfile.txt");
+
+        // Assert
+        Assert.NotNull(diff);
+        Assert.Equal("newfile.txt", diff.FilePath);
+        Assert.Equal(string.Empty, diff.OriginalContent);
+        Assert.Equal(content, diff.ModifiedContent);
+        Assert.Equal("Untracked", diff.Status);
+        Assert.False(diff.IsStaged);
+    }
+
+    [Fact]
+    public async Task GetFileDiffAsync_WithModifiedFile_ShouldReturnDiff()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var testFile = Path.Combine(_testRepoPath, "test.txt");
+        var originalContent = "Original content";
+        await File.WriteAllTextAsync(testFile, originalContent);
+
+        // Commit the file
+        await _gitService.CommitAllAsync("Initial commit");
+
+        // Modify the file
+        var modifiedContent = "Modified content";
+        await File.WriteAllTextAsync(testFile, modifiedContent);
+
+        // Act
+        var diff = await _gitService.GetFileDiffAsync("test.txt");
+
+        // Assert
+        Assert.NotNull(diff);
+        Assert.Equal("test.txt", diff.FilePath);
+        Assert.Equal(originalContent, diff.OriginalContent);
+        Assert.Equal(modifiedContent, diff.ModifiedContent);
+        Assert.Equal("Modified", diff.Status);
+        Assert.False(diff.IsStaged);
+    }
+
+    [Fact]
+    public async Task GetFileDiffAsync_WithDeletedFile_ShouldReturnDiffWithEmptyModified()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var testFile = Path.Combine(_testRepoPath, "delete-me.txt");
+        var content = "This file will be deleted";
+        await File.WriteAllTextAsync(testFile, content);
+
+        // Commit the file
+        await _gitService.CommitAllAsync("Add file to delete");
+
+        // Delete the file
+        File.Delete(testFile);
+
+        // Act
+        var diff = await _gitService.GetFileDiffAsync("delete-me.txt");
+
+        // Assert
+        Assert.NotNull(diff);
+        Assert.Equal("delete-me.txt", diff.FilePath);
+        Assert.Equal(content, diff.OriginalContent);
+        Assert.Equal(string.Empty, diff.ModifiedContent);
+        Assert.Equal("Deleted", diff.Status);
+        Assert.False(diff.IsStaged);
+    }
+
+    [Fact]
+    public async Task GetFileDiffAsync_WithStagedFile_ShouldReturnDiffFromIndex()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        var testFile = Path.Combine(_testRepoPath, "staged.txt");
+        var originalContent = "Original content";
+        await File.WriteAllTextAsync(testFile, originalContent);
+
+        // Commit the file
+        await _gitService.CommitAllAsync("Initial commit");
+
+        // Modify and stage the file
+        var stagedContent = "Staged content";
+        await File.WriteAllTextAsync(testFile, stagedContent);
+        await _gitService.StageFileAsync("staged.txt");
+
+        // Modify again in working directory
+        var workingContent = "Working directory content";
+        await File.WriteAllTextAsync(testFile, workingContent);
+
+        // Act
+        var diff = await _gitService.GetFileDiffAsync("staged.txt");
+
+        // Assert
+        Assert.NotNull(diff);
+        Assert.Equal("staged.txt", diff.FilePath);
+        Assert.Equal(stagedContent, diff.OriginalContent); // Should show staged version
+        Assert.Equal(workingContent, diff.ModifiedContent);
+        Assert.Equal("Modified", diff.Status);
+        Assert.True(diff.IsStaged);
+    }
+
+    [Fact]
+    public async Task GetFileDiffAsync_WithNonExistentFile_ShouldReturnNull()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+
+        // Act
+        var diff = await _gitService.GetFileDiffAsync("nonexistent.txt");
+
+        // Assert
+        Assert.Null(diff);
+    }
 }

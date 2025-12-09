@@ -121,6 +121,13 @@ public interface IGitService
     /// Creates .gitignore if it doesn't exist
     /// </summary>
     Task<bool> AddSecretsToGitignoreAsync();
+
+    /// <summary>
+    /// Gets the diff for a specific file (comparing working directory to HEAD or staged to HEAD)
+    /// </summary>
+    /// <param name="filePath">Path to the file relative to repository root</param>
+    /// <returns>Diff information including original and modified content</returns>
+    Task<GitFileDiff?> GetFileDiffAsync(string filePath);
 }
 
 /// <summary>
@@ -154,6 +161,18 @@ public class GitCommitInfo
 public class GitFileChange
 {
     public string FilePath { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public bool IsStaged { get; set; }
+}
+
+/// <summary>
+/// Represents a file diff in the git repository
+/// </summary>
+public class GitFileDiff
+{
+    public string FilePath { get; set; } = string.Empty;
+    public string OriginalContent { get; set; } = string.Empty;
+    public string ModifiedContent { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public bool IsStaged { get; set; }
 }
