@@ -1,0 +1,292 @@
+@using HolyConnect.Domain.Entities
+
+<MudCard Class="mb-4">
+    <MudCardContent>
+        <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Class="mr-2" />
+            Dynamic Test Data Variables
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Dynamic variables generate fake test data on each request execution. They are useful for creating realistic test scenarios with randomized data.
+        </MudText>
+
+        @foreach (var dynamicVar in DynamicVariables)
+        {
+            <MudPaper Elevation="1" Class="pa-3 mb-3">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="dynamicVar.Name" 
+                                      Label="Variable Name" 
+                                      Variant="Variant.Outlined"
+                                      Dense="true"
+                                      HelperText="Use in requests with {{ variableName }}" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSelect @bind-Value="dynamicVar.GeneratorType" 
+                                   Label="Data Type" 
+                                   Variant="Variant.Outlined"
+                                   Dense="true">
+                            <MudSelectItem Value="DataGeneratorType.FirstName">First Name</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.LastName">Last Name</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.FullName">Full Name</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Email">Email</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.PhoneNumber">Phone Number</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Username">Username</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Integer">Integer</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Decimal">Decimal</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Date">Date</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.DatePast">Date (Past)</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.DateFuture">Date (Future)</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.DateTime">Date Time</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Boolean">Boolean</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Guid">GUID/UUID</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Url">URL</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.IpAddress">IP Address</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.StreetAddress">Street Address</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.City">City</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Country">Country</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.ZipCode">Zip Code</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.CreditCardNumber">Credit Card Number</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Word">Word</MudSelectItem>
+                            <MudSelectItem Value="DataGeneratorType.Sentence">Sentence</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudCheckBox @bind-Value="dynamicVar.IsSecret" 
+                                         Label="Secret" 
+                                         Color="Color.Primary"
+                                         Dense="true" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Settings" 
+                                          Size="Size.Small"
+                                          Color="Color.Primary"
+                                          OnClick="@(() => EditConstraints(dynamicVar))"
+                                          Title="Configure Constraints" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                          Size="Size.Small"
+                                          Color="Color.Error"
+                                          OnClick="@(() => RemoveDynamicVariable(dynamicVar))" />
+                        </MudStack>
+                    </MudItem>
+                    
+                    @if (dynamicVar.Constraints.Any())
+                    {
+                        <MudItem xs="12">
+                            <MudChipSet>
+                                @foreach (var constraint in dynamicVar.Constraints)
+                                {
+                                    <MudChip Size="Size.Small" Color="Color.Info">
+                                        @GetConstraintDisplay(constraint)
+                                    </MudChip>
+                                }
+                            </MudChipSet>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        }
+
+        <MudButton Variant="Variant.Outlined" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddDynamicVariable">
+            Add Dynamic Variable
+        </MudButton>
+    </MudCardContent>
+</MudCard>
+
+<MudDialog @bind-Visible="_showConstraintDialog" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />
+            Configure Constraints for @_selectedVariable?.Name
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedVariable != null)
+        {
+            @if (IsNumericType(_selectedVariable.GeneratorType))
+            {
+                <MudTextField @bind-Value="_minValue" 
+                              Label="Minimum Value" 
+                              Variant="Variant.Outlined"
+                              Class="mb-3" />
+                <MudTextField @bind-Value="_maxValue" 
+                              Label="Maximum Value" 
+                              Variant="Variant.Outlined"
+                              Class="mb-3" />
+            }
+            else if (IsDateType(_selectedVariable.GeneratorType))
+            {
+                <MudTextField @bind-Value="_minAge" 
+                              Label="Minimum Age (years)" 
+                              Variant="Variant.Outlined"
+                              Class="mb-3"
+                              HelperText="For generating birthdates" />
+                <MudTextField @bind-Value="_maxAge" 
+                              Label="Maximum Age (years)" 
+                              Variant="Variant.Outlined"
+                              Class="mb-3" 
+                              HelperText="For generating birthdates" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">
+                    No constraints available for this data type.
+                </MudText>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseConstraintDialog">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveConstraints">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public List<DynamicVariable> DynamicVariables { get; set; } = new();
+
+    private bool _showConstraintDialog = false;
+    private DynamicVariable? _selectedVariable;
+    private string _minValue = string.Empty;
+    private string _maxValue = string.Empty;
+    private string _minAge = string.Empty;
+    private string _maxAge = string.Empty;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true
+    };
+
+    private void AddDynamicVariable()
+    {
+        // Find next available variable name
+        var counter = 1;
+        while (DynamicVariables.Any(v => v.Name == $"variable{counter}"))
+        {
+            counter++;
+        }
+        
+        DynamicVariables.Add(new DynamicVariable
+        {
+            Name = $"variable{counter}",
+            GeneratorType = DataGeneratorType.FirstName
+        });
+    }
+
+    private void RemoveDynamicVariable(DynamicVariable dynamicVar)
+    {
+        DynamicVariables.Remove(dynamicVar);
+    }
+
+    private void EditConstraints(DynamicVariable dynamicVar)
+    {
+        _selectedVariable = dynamicVar;
+        _minValue = string.Empty;
+        _maxValue = string.Empty;
+        _minAge = string.Empty;
+        _maxAge = string.Empty;
+
+        // Load existing constraints
+        foreach (var constraint in dynamicVar.Constraints)
+        {
+            switch (constraint.Type)
+            {
+                case ConstraintType.Minimum:
+                    _minValue = constraint.Value;
+                    break;
+                case ConstraintType.Maximum:
+                    _maxValue = constraint.Value;
+                    break;
+                case ConstraintType.MinimumAge:
+                    _minAge = constraint.Value;
+                    break;
+                case ConstraintType.MaximumAge:
+                    _maxAge = constraint.Value;
+                    break;
+            }
+        }
+
+        _showConstraintDialog = true;
+    }
+
+    private void CloseConstraintDialog()
+    {
+        _showConstraintDialog = false;
+        _selectedVariable = null;
+    }
+
+    private void SaveConstraints()
+    {
+        if (_selectedVariable == null) return;
+
+        _selectedVariable.Constraints.Clear();
+
+        if (IsNumericType(_selectedVariable.GeneratorType))
+        {
+            if (!string.IsNullOrWhiteSpace(_minValue))
+            {
+                _selectedVariable.Constraints.Add(new ConstraintRule
+                {
+                    Type = ConstraintType.Minimum,
+                    Value = _minValue
+                });
+            }
+            if (!string.IsNullOrWhiteSpace(_maxValue))
+            {
+                _selectedVariable.Constraints.Add(new ConstraintRule
+                {
+                    Type = ConstraintType.Maximum,
+                    Value = _maxValue
+                });
+            }
+        }
+        else if (IsDateType(_selectedVariable.GeneratorType))
+        {
+            if (!string.IsNullOrWhiteSpace(_minAge))
+            {
+                _selectedVariable.Constraints.Add(new ConstraintRule
+                {
+                    Type = ConstraintType.MinimumAge,
+                    Value = _minAge
+                });
+            }
+            if (!string.IsNullOrWhiteSpace(_maxAge))
+            {
+                _selectedVariable.Constraints.Add(new ConstraintRule
+                {
+                    Type = ConstraintType.MaximumAge,
+                    Value = _maxAge
+                });
+            }
+        }
+
+        _showConstraintDialog = false;
+    }
+
+    private string GetConstraintDisplay(ConstraintRule constraint)
+    {
+        return constraint.Type switch
+        {
+            ConstraintType.Minimum => $"Min: {constraint.Value}",
+            ConstraintType.Maximum => $"Max: {constraint.Value}",
+            ConstraintType.MinimumAge => $"Min Age: {constraint.Value} years",
+            ConstraintType.MaximumAge => $"Max Age: {constraint.Value} years",
+            _ => $"{constraint.Type}: {constraint.Value}"
+        };
+    }
+
+    private bool IsNumericType(DataGeneratorType type)
+    {
+        return type == DataGeneratorType.Integer || type == DataGeneratorType.Decimal;
+    }
+
+    private bool IsDateType(DataGeneratorType type)
+    {
+        return type == DataGeneratorType.Date || 
+               type == DataGeneratorType.DatePast || 
+               type == DataGeneratorType.DateFuture;
+    }
+}

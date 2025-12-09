@@ -70,6 +70,9 @@ The innermost layer containing:
   - `RequestResponse`: Response data from executed requests, including streaming support
   - `ResponseExtraction`: Rules for extracting values from response bodies
   - `StreamEvent`: Individual events in streaming responses (WebSocket, SSE)
+  - `DynamicVariable`: Defines dynamic test data generation with constraints
+  - `DataGeneratorType`: Enumeration of available data types (FirstName, Email, Date, etc.)
+  - `ConstraintRule`: Rules for constraining generated data (min/max, age ranges, etc.)
 
 - **Business Rules**: Domain logic independent of external concerns
 - **No Framework Dependencies**: Pure C# classes
@@ -83,6 +86,7 @@ Contains business logic and orchestration:
   - `IRequestExecutor`: Interface for executing different request types
   - `IResponseValueExtractor`: Interface for extracting values from response bodies
   - `IClipboardService`: Interface for clipboard operations
+  - `IDataGeneratorService`: Interface for generating dynamic test data
 
 - **Application Services**:
   - `EnvironmentService`: Manages environment CRUD operations
@@ -97,9 +101,20 @@ Contains business logic and orchestration:
 
 - **Variable Resolution**:
   - Variables use the `{{ variableName }}` syntax (like Postman and Bruno)
+  - Supports both static and dynamic variables
+  - Static variables have fixed values set manually
+  - Dynamic variables generate fake test data on each request execution
   - Resolved before request execution in `RequestService`
-  - Collection variables take precedence over environment variables
+  - Precedence: Request static > Collection static > Environment static > Request dynamic > Collection dynamic > Environment dynamic
   - Supports URL, headers, query parameters, and request body
+
+- **Dynamic Test Data Generation**:
+  - Uses Bogus library for realistic fake data generation
+  - Supports 25+ data types including names, emails, dates, numbers, addresses, etc.
+  - Configurable constraints (min/max values, age ranges, date ranges)
+  - Variables defined at environment, collection, or request level
+  - Generated fresh on each request execution for realistic testing
+  - Useful for load testing, data variety, and automated test scenarios
 
 - **Response Value Extraction**:
   - Supports JSONPath for JSON/GraphQL responses (e.g., `$.data.user.id`)
@@ -123,13 +138,17 @@ Implements external concerns:
   - `GraphQLSubscriptionSSEExecutor`: Executes GraphQL subscriptions via Server-Sent Events (SSE)
   - `WebSocketRequestExecutor`: Executes general WebSocket connections for bidirectional communication
 
+- **Data Generation**:
+  - `DataGeneratorService`: Generates realistic fake test data using Bogus library
+  - Supports 25+ data types with configurable constraints
+  - Generates fresh data on each invocation for realistic testing
+
 - **Version Control**:
   - `GitService`: Provides git operations using LibGit2Sharp
   - Supports initialize, commit, branch, fetch, pull, push operations
 
-- **External Services**: HTTP clients, file systems, databases, git repositories
 - **External Services**: 
-  - HTTP clients, file systems, databases
+  - HTTP clients, file systems, databases, git repositories
   - `ClipboardService`: Platform-specific clipboard operations using MAUI Essentials
 
 ### 4. Presentation Layer (HolyConnect.Maui)
@@ -137,9 +156,15 @@ Implements external concerns:
 
 The UI layer built with .NET MAUI and Blazor:
 - **Components**:
-  - **Pages**: Home, EnvironmentView, RequestCreate, etc.
-  - **Shared**: CollectionTreeItem, RequestEditor
+  - **Pages**: Home, EnvironmentView, EnvironmentEdit, CollectionEdit, RequestCreate, etc.
+  - **Shared**: CollectionTreeItem, RequestEditor, DynamicVariableEditor
   - **Layout**: MainLayout, NavMenu
+
+- **Dynamic Variable Management**:
+  - `DynamicVariableEditor`: Reusable component for configuring dynamic test data variables
+  - Integrated into EnvironmentEdit and CollectionEdit pages
+  - Supports data type selection, constraint configuration, and secret masking
+  - Visual distinction between static and dynamic variables
 
 - **Dependency Injection**: Configured in `MauiProgram.cs`
 - **Navigation**: Blazor routing and NavigationManager

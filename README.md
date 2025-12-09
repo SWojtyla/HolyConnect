@@ -12,6 +12,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests
 - 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
+- ✨ **Dynamic Test Data Generation**: Generate realistic fake data for testing with constraints (names, emails, dates, numbers, etc.)
 - 🔒 **Secret Variables**: Mark sensitive variables as secret to exclude them from git commits
 - 🔄 **Git Integration**: Full version control with git support (initialize, commit, branch, push, pull, commit history, selective staging)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
@@ -114,10 +115,48 @@ HolyConnect/
 
 ### Using Variables
 
+HolyConnect supports two types of variables: **static variables** with fixed values and **dynamic variables** that generate realistic fake test data.
+
+#### Static Variables
+
 1. Define variables in environments or collections
 2. Use `{{ variableName }}` syntax in your requests
 3. Collection variables override environment variables
 4. See the [Variables Wiki](/wiki/variables) for detailed documentation
+
+#### Dynamic Test Data Variables
+
+Dynamic variables automatically generate realistic fake data for testing:
+
+1. **Creating Dynamic Variables**:
+   - In the Environment or Collection edit page, scroll to the "Dynamic Test Data Variables" section
+   - Click "Add Dynamic Variable"
+   - Set a variable name (e.g., `firstName`, `email`, `birthdate`)
+   - Select a data type from 25+ options including:
+     - **Person data**: FirstName, LastName, FullName, Email, PhoneNumber, Username
+     - **Numbers**: Integer, Decimal (with min/max constraints)
+     - **Dates**: Date, DatePast, DateFuture, DateTime (with age constraints)
+     - **Internet**: URL, IPAddress, MacAddress
+     - **Identifiers**: GUID/UUID
+     - **Address**: StreetAddress, City, Country, ZipCode
+     - **Text**: Word, Sentence, Paragraph
+     - And more...
+
+2. **Configuring Constraints**:
+   - Click the settings icon next to a dynamic variable
+   - For **numbers**: Set minimum and maximum values (e.g., number between 1-100)
+   - For **dates**: Set minimum/maximum age (e.g., birthdate of someone 18-65 years old)
+   - Constraints ensure generated data meets your testing requirements
+
+3. **Using Dynamic Variables**:
+   - Use dynamic variables just like static variables: `{{ variableName }}`
+   - Each request execution generates fresh data
+   - Perfect for load testing, data variety, and automated scenarios
+   - Example: `{ "name": "{{ firstName }} {{ lastName }}", "email": "{{ email }}", "age": {{ randomAge }} }`
+
+4. **Variable Precedence**:
+   - Static variables always take precedence over dynamic variables
+   - Priority: Request static > Collection static > Environment static > Request dynamic > Collection dynamic > Environment dynamic
 
 #### Secret Variables
 

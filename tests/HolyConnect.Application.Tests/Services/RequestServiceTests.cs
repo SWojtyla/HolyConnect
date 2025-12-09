@@ -185,8 +185,8 @@ public class RequestServiceTests
 
         _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
             .ReturnsAsync(environment);
-        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
-            .Returns<string, Domain.Entities.Environment, Collection>((input, env, coll) => input);
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
+            .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
         _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
             .Returns(true);
         _mockExecutor.Setup(e => e.ExecuteAsync(It.IsAny<Request>()))
@@ -222,8 +222,8 @@ public class RequestServiceTests
 
         _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
             .ReturnsAsync(environment);
-        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
-            .Returns<string, Domain.Entities.Environment, Collection>((input, env, coll) => input);
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
+            .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
         _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
             .Returns(false);
 
@@ -331,8 +331,8 @@ public class RequestServiceTests
                 StatusMessage = "OK"
             });
 
-        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
-            .Returns((string input, Domain.Entities.Environment env, Collection col) => 
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
+            .Returns((string input, Domain.Entities.Environment env, Collection col, Request req) => 
                 input.Replace("{{ token }}", "resolved-token-123"));
 
         // Act
@@ -384,8 +384,8 @@ public class RequestServiceTests
                 StatusMessage = "OK"
             });
 
-        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
-            .Returns((string input, Domain.Entities.Environment env, Collection col) => input);
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
+            .Returns((string input, Domain.Entities.Environment env, Collection col, Request req) => input);
 
         // Act
         await _service.ExecuteRequestAsync(request);
@@ -455,8 +455,8 @@ public class RequestServiceTests
         
         _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
             .ReturnsAsync(environment);
-        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
-            .Returns<string, Domain.Entities.Environment, Collection>((input, env, coll) => input);
+        _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
+            .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
         _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
             .Returns(true);
         _mockExecutor.Setup(e => e.ExecuteAsync(It.IsAny<Request>()))

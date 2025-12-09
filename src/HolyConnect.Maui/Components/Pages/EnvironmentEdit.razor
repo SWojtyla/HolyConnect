@@ -4,17 +4,20 @@
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Edit Environment</MudText>
 
     @if (_environment != null)
     {
-        <MudCard>
+        <MudCard Class="mb-4">
             <MudCardContent>
                 <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
                 <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
                 
-                <MudText Typo="Typo.h6" Class="mt-6 mb-2">Environment Variables</MudText>
+                <MudText Typo="Typo.h6" Class="mt-6 mb-2">Static Variables</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+                    Static variables have fixed values that you set manually.
+                </MudText>
                 @foreach (var variable in _variables)
                 {
                     <MudGrid Class="mb-2" Style="align-items: center;">
@@ -44,9 +47,14 @@
                     </MudGrid>
                 }
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddVariable" StartIcon="@Icons.Material.Filled.Add">
-                    Add Variable
+                    Add Static Variable
                 </MudButton>
             </MudCardContent>
+        </MudCard>
+
+        <DynamicVariableEditor DynamicVariables="_environment.DynamicVariables" />
+
+        <MudCard>
             <MudCardActions>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEnvironment" Disabled="@(string.IsNullOrWhiteSpace(_name))">
                     Save

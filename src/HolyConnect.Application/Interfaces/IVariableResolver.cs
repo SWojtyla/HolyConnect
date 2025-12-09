@@ -11,12 +11,14 @@ public interface IVariableResolver
     /// <summary>
     /// Resolves all variables in the input text using environment and collection variables.
     /// Collection variables take precedence over environment variables.
+    /// Dynamic variables are generated on-the-fly if defined.
     /// </summary>
     /// <param name="input">The input text containing variable placeholders</param>
     /// <param name="environment">The environment containing variables</param>
     /// <param name="collection">Optional collection containing variables</param>
+    /// <param name="request">Optional request containing variables</param>
     /// <returns>The input text with all variables resolved</returns>
-    string ResolveVariables(string input, Domain.Entities.Environment environment, Collection? collection = null);
+    string ResolveVariables(string input, Domain.Entities.Environment environment, Collection? collection = null, Request? request = null);
 
     /// <summary>
     /// Checks if the input contains any variable patterns.
@@ -35,12 +37,14 @@ public interface IVariableResolver
     /// <summary>
     /// Gets the value of a specific variable from environment and collection.
     /// Collection variables take precedence over environment variables.
+    /// Dynamic variables are generated on-the-fly if defined.
     /// </summary>
     /// <param name="variableName">The name of the variable</param>
     /// <param name="environment">The environment containing variables</param>
     /// <param name="collection">Optional collection containing variables</param>
+    /// <param name="request">Optional request containing variables</param>
     /// <returns>The variable value if found, null otherwise</returns>
-    string? GetVariableValue(string variableName, Domain.Entities.Environment environment, Collection? collection = null);
+    string? GetVariableValue(string variableName, Domain.Entities.Environment environment, Collection? collection = null, Request? request = null);
 
     /// <summary>
     /// Sets a variable value in the environment or collection.
