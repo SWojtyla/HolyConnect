@@ -41,6 +41,16 @@ public interface IGitService
     Task<bool> CommitAllAsync(string message);
 
     /// <summary>
+    /// Commits only staged changes with the specified message
+    /// </summary>
+    Task<bool> CommitStagedAsync(string message);
+
+    /// <summary>
+    /// Reverts changes to a specific file (discards unstaged changes)
+    /// </summary>
+    Task<bool> RevertFileAsync(string filePath);
+
+    /// <summary>
     /// Pushes current branch to remote
     /// </summary>
     Task<bool> PushAsync();

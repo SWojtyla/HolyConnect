@@ -214,6 +214,81 @@ public class GitService : IGitService
         }
     }
 
+    public Task<bool> CommitStagedAsync(string message)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            
+            var signature = GetSignature(repo);
+            
+            // Check if there are staged changes to commit
+            var status = repo.RetrieveStatus();
+            var hasStagedChanges = status.Any(s => 
+                s.State.HasFlag(FileStatus.NewInIndex) || 
+                s.State.HasFlag(FileStatus.ModifiedInIndex) || 
+                s.State.HasFlag(FileStatus.DeletedFromIndex) ||
+                s.State.HasFlag(FileStatus.RenamedInIndex));
+                
+            if (!hasStagedChanges)
+                return Task.FromResult(false);
+
+            repo.Commit(message, signature, signature);
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> RevertFileAsync(string filePath)
+    {
+        try
+        {
+            var repoPath = GetRepositoryPath();
+            if (!Repository.IsValid(repoPath))
+                return Task.FromResult(false);
+
+            using var repo = new Repository(repoPath);
+            
+            // Get the file status
+            var status = repo.RetrieveStatus(new StatusOptions { PathSpec = new[] { filePath } });
+            var fileStatus = status.FirstOrDefault(s => s.FilePath == filePath);
+            
+            if (fileStatus == null)
+                return Task.FromResult(false);
+
+            // If file is untracked (new file not in git), just delete it
+            if (fileStatus.State == FileStatus.NewInWorkdir)
+            {
+                var fullPath = Path.Combine(repoPath, filePath);
+                if (File.Exists(fullPath))
+                {
+                    File.Delete(fullPath);
+                }
+                return Task.FromResult(true);
+            }
+
+            // For tracked files, checkout the HEAD version to discard changes
+            var checkoutOptions = new CheckoutOptions
+            {
+                CheckoutModifiers = CheckoutModifiers.Force
+            };
+            repo.CheckoutPaths("HEAD", new[] { filePath }, checkoutOptions);
+            
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
     public Task<bool> PushAsync()
     {
         var repoPath = GetRepositoryPath();

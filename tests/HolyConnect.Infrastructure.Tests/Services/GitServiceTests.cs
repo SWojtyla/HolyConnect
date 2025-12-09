@@ -793,4 +793,130 @@ public class GitServiceTests : IDisposable
         // Assert - secrets should not be tracked because they're in .gitignore
         Assert.False(isTracked);
     }
+
+    [Fact]
+    public async Task CommitStagedAsync_WithStagedChanges_ShouldCommitSuccessfully()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        File.WriteAllText(Path.Combine(_testRepoPath, "test.txt"), "modified content");
+        
+        // Stage the file manually
+        using (var repo = new Repository(_testRepoPath))
+        {
+            Commands.Stage(repo, "test.txt");
+        }
+
+        // Act
+        var success = await _gitService.CommitStagedAsync("Test commit staged changes");
+
+        // Assert
+        Assert.True(success);
+        
+        var status = await _gitService.GetStatusAsync();
+        Assert.False(status.HasChanges);
+    }
+
+    [Fact]
+    public async Task CommitStagedAsync_WithOnlyStagedFiles_ShouldNotCommitUnstagedFiles()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        // Create two files - stage only one
+        File.WriteAllText(Path.Combine(_testRepoPath, "staged.txt"), "staged content");
+        File.WriteAllText(Path.Combine(_testRepoPath, "unstaged.txt"), "unstaged content");
+        
+        using (var repo = new Repository(_testRepoPath))
+        {
+            Commands.Stage(repo, "staged.txt");
+        }
+
+        // Act
+        var success = await _gitService.CommitStagedAsync("Commit only staged file");
+
+        // Assert
+        Assert.True(success);
+        
+        // Check that unstaged file is still in working directory
+        var status = await _gitService.GetStatusAsync();
+        Assert.True(status.HasChanges);
+        Assert.Equal(1, status.UntrackedFiles);
+    }
+
+    [Fact]
+    public async Task CommitStagedAsync_WithNoStagedChanges_ShouldReturnFalse()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        // Create a file but don't stage it
+        File.WriteAllText(Path.Combine(_testRepoPath, "unstaged.txt"), "unstaged content");
+
+        // Act
+        var success = await _gitService.CommitStagedAsync("Try to commit with no staged changes");
+
+        // Assert
+        Assert.False(success);
+    }
+
+    [Fact]
+    public async Task RevertFileAsync_WithModifiedFile_ShouldRevertChanges()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        var testFilePath = Path.Combine(_testRepoPath, "test.txt");
+        File.WriteAllText(testFilePath, "modified content");
+
+        // Act
+        var success = await _gitService.RevertFileAsync("test.txt");
+
+        // Assert
+        Assert.True(success);
+        var content = File.ReadAllText(testFilePath);
+        Assert.Equal("initial content", content);
+    }
+
+    [Fact]
+    public async Task RevertFileAsync_WithUntrackedFile_ShouldDeleteFile()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        var untrackedFilePath = Path.Combine(_testRepoPath, "untracked.txt");
+        File.WriteAllText(untrackedFilePath, "new file content");
+
+        // Act
+        var success = await _gitService.RevertFileAsync("untracked.txt");
+
+        // Assert
+        Assert.True(success);
+        Assert.False(File.Exists(untrackedFilePath));
+    }
+
+    [Fact]
+    public async Task RevertFileAsync_WithDeletedFile_ShouldRestoreFile()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        var testFilePath = Path.Combine(_testRepoPath, "test.txt");
+        File.Delete(testFilePath);
+
+        // Act
+        var success = await _gitService.RevertFileAsync("test.txt");
+
+        // Assert
+        Assert.True(success);
+        Assert.True(File.Exists(testFilePath));
+        var content = File.ReadAllText(testFilePath);
+        Assert.Equal("initial content", content);
+    }
 }
