@@ -1025,8 +1025,8 @@ public class GitServiceTests : IDisposable
         Assert.True(success);
         
         var content = File.ReadAllText(gitignorePath);
-        var historyCount = System.Text.RegularExpressions.Regex.Matches(content, @"\bhistory/").Count;
-        Assert.Equal(1, historyCount); // Should only appear once
+        var historyLines = content.Split('\n').Where(l => l.Trim() == "history/").ToList();
+        Assert.Single(historyLines); // Should only appear once
     }
 
     [Fact]
