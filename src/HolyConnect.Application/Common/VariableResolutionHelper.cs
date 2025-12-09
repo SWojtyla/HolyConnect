@@ -34,14 +34,14 @@ public static class VariableResolutionHelper
     private static void ResolveCommonProperties(Request request, IVariableResolver variableResolver, Domain.Entities.Environment environment, Collection? collection)
     {
         // Resolve URL
-        request.Url = variableResolver.ResolveVariables(request.Url, environment, collection);
+        request.Url = variableResolver.ResolveVariables(request.Url, environment, collection, request);
 
         // Resolve headers
         var resolvedHeaders = new Dictionary<string, string>();
         foreach (var header in request.Headers)
         {
-            var resolvedKey = variableResolver.ResolveVariables(header.Key, environment, collection);
-            var resolvedValue = variableResolver.ResolveVariables(header.Value, environment, collection);
+            var resolvedKey = variableResolver.ResolveVariables(header.Key, environment, collection, request);
+            var resolvedValue = variableResolver.ResolveVariables(header.Value, environment, collection, request);
             resolvedHeaders[resolvedKey] = resolvedValue;
         }
         request.Headers = resolvedHeaders;
@@ -49,15 +49,15 @@ public static class VariableResolutionHelper
         // Resolve authentication fields
         if (!string.IsNullOrEmpty(request.BasicAuthUsername))
         {
-            request.BasicAuthUsername = variableResolver.ResolveVariables(request.BasicAuthUsername, environment, collection);
+            request.BasicAuthUsername = variableResolver.ResolveVariables(request.BasicAuthUsername, environment, collection, request);
         }
         if (!string.IsNullOrEmpty(request.BasicAuthPassword))
         {
-            request.BasicAuthPassword = variableResolver.ResolveVariables(request.BasicAuthPassword, environment, collection);
+            request.BasicAuthPassword = variableResolver.ResolveVariables(request.BasicAuthPassword, environment, collection, request);
         }
         if (!string.IsNullOrEmpty(request.BearerToken))
         {
-            request.BearerToken = variableResolver.ResolveVariables(request.BearerToken, environment, collection);
+            request.BearerToken = variableResolver.ResolveVariables(request.BearerToken, environment, collection, request);
         }
     }
 
@@ -66,15 +66,15 @@ public static class VariableResolutionHelper
         // Resolve body
         if (!string.IsNullOrEmpty(request.Body))
         {
-            request.Body = variableResolver.ResolveVariables(request.Body, environment, collection);
+            request.Body = variableResolver.ResolveVariables(request.Body, environment, collection, request);
         }
 
         // Resolve query parameters
         var resolvedQueryParams = new Dictionary<string, string>();
         foreach (var param in request.QueryParameters)
         {
-            var resolvedKey = variableResolver.ResolveVariables(param.Key, environment, collection);
-            var resolvedValue = variableResolver.ResolveVariables(param.Value, environment, collection);
+            var resolvedKey = variableResolver.ResolveVariables(param.Key, environment, collection, request);
+            var resolvedValue = variableResolver.ResolveVariables(param.Value, environment, collection, request);
             resolvedQueryParams[resolvedKey] = resolvedValue;
         }
         request.QueryParameters = resolvedQueryParams;
@@ -85,19 +85,19 @@ public static class VariableResolutionHelper
         // Resolve query
         if (!string.IsNullOrEmpty(request.Query))
         {
-            request.Query = variableResolver.ResolveVariables(request.Query, environment, collection);
+            request.Query = variableResolver.ResolveVariables(request.Query, environment, collection, request);
         }
 
         // Resolve variables
         if (!string.IsNullOrEmpty(request.Variables))
         {
-            request.Variables = variableResolver.ResolveVariables(request.Variables, environment, collection);
+            request.Variables = variableResolver.ResolveVariables(request.Variables, environment, collection, request);
         }
 
         // Resolve operation name
         if (!string.IsNullOrEmpty(request.OperationName))
         {
-            request.OperationName = variableResolver.ResolveVariables(request.OperationName, environment, collection);
+            request.OperationName = variableResolver.ResolveVariables(request.OperationName, environment, collection, request);
         }
     }
 
@@ -106,14 +106,14 @@ public static class VariableResolutionHelper
         // Resolve message
         if (!string.IsNullOrEmpty(request.Message))
         {
-            request.Message = variableResolver.ResolveVariables(request.Message, environment, collection);
+            request.Message = variableResolver.ResolveVariables(request.Message, environment, collection, request);
         }
 
         // Resolve protocols
         var resolvedProtocols = new List<string>();
         foreach (var protocol in request.Protocols)
         {
-            resolvedProtocols.Add(variableResolver.ResolveVariables(protocol, environment, collection));
+            resolvedProtocols.Add(variableResolver.ResolveVariables(protocol, environment, collection, request));
         }
         request.Protocols = resolvedProtocols;
     }
