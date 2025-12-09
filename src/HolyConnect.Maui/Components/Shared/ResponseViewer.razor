@@ -3,10 +3,17 @@
 @inject IClipboardService ClipboardService
 @inject ISnackbar Snackbar
 
-@if (Response != null)
-{
-    <MudCard Style="height: 100%; display: flex; flex-direction: column;">
-        <MudCardContent Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+<MudCard Style="height: 100%; display: flex; flex-direction: column;">
+    <MudCardContent Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        @if (Response == null)
+        {
+            <div class="d-flex flex-column align-center justify-center" style="height: 100%; opacity: 0.5;">
+                <MudIcon Icon="@Icons.Material.Filled.Bolt" Size="Size.Large" Style="width: 4rem; height: 4rem;" />
+                <MudText Typo="Typo.h6" Class="mt-2">Enter the URL and click Send to get a response</MudText>
+            </div>
+        }
+        else
+        {
             <div style="flex: 0 0 auto;">
                 <MudText Typo="Typo.h6">Response</MudText>
                 <MudText Typo="Typo.body2">Status: @Response.StatusCode - @Response.StatusMessage</MudText>
@@ -14,22 +21,22 @@
                 <MudText Typo="Typo.body2">Size: @Response.Size bytes</MudText>
             </div>
             
-            <MudTabs Class="mt-2" Elevation="2" Rounded="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                <MudTabPanel Text="Body" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="pa-4" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
+                <MudTabPanel Text="Body" Style="height: 100%;">
+                    <div class="pa-4 d-flex flex-column" style="height: 100%;">
                         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" Style="flex: 0 0 auto;">
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="PrettifyResponseBody">
                                 Prettify
                             </MudButton>
                         </MudStack>
                         <div style="flex: 1; min-height: 0; overflow-y: auto;">
-                            <MudTextField Value="@_responseBodyDisplay" Lines="20" Variant="Variant.Outlined" ReadOnly="true" />
+                            <MudTextField Value="@_responseBodyDisplay" Lines="20" Variant="Variant.Outlined" ReadOnly="true" Style="height: 100%;" />
                         </div>
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Headers" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="pa-4" style="flex: 1; overflow-y: auto;">
+                <MudTabPanel Text="Headers" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         @foreach (var header in Response.Headers)
                         {
                             <MudText Typo="Typo.body2" Style="word-break: break-word; overflow-wrap: break-word; white-space: normal; max-width: 100%;"><strong>@header.Key:</strong> @header.Value</MudText>
@@ -39,8 +46,8 @@
                 
                 @if (Response.SentRequest != null)
                 {
-                    <MudTabPanel Text="Request" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                        <div class="pa-4" style="flex: 1; overflow-y: auto;">
+                    <MudTabPanel Text="Request" Style="height: 100%;">
+                        <div class="pa-4" style="height: 100%; overflow-y: auto;">
                             <MudText Typo="Typo.subtitle1" Class="mb-2"><strong>What was sent:</strong></MudText>
                             <MudText Typo="Typo.body2" Class="mb-1"><strong>Method:</strong> @Response.SentRequest.Method</MudText>
                             <MudText Typo="Typo.body2" Class="mb-2"><strong>URL:</strong> @Response.SentRequest.Url</MudText>
@@ -69,8 +76,8 @@
                     </MudTabPanel>
                 }
                 
-                <MudTabPanel Text="Extract" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="pa-4" style="flex: 1; overflow-y: auto;">
+                <MudTabPanel Text="Extract" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle1" Class="mb-3"><strong>Extract Values from Response</strong></MudText>
                         <MudText Typo="Typo.body2" Class="mb-3">
                             Use JSONPath (e.g., <code>$.data.user.id</code>) for JSON/GraphQL or XPath (e.g., <code>//user/id</code>) for XML.
@@ -121,9 +128,9 @@
                     </div>
                 </MudTabPanel>
             </MudTabs>
-        </MudCardContent>
-    </MudCard>
-}
+        }
+    </MudCardContent>
+</MudCard>
 
 @code {
     [Parameter]
