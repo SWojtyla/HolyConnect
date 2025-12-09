@@ -1,3 +1,4 @@
+using System.Net.Http;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 
@@ -232,7 +233,25 @@ public class FlowService : IFlowService
                     }
                 }
 
-                stepResult.Status = FlowStepStatus.Success;
+                // Check if the response status code indicates success
+                // Status codes in the 2xx range (200-299) are considered successful
+                // Note: This logic is also implemented in ResponseHelper.IsSuccessStatusCode()
+                // but we don't use it here to avoid a dependency from Application to Infrastructure layer
+                if (response.StatusCode >= 200 && response.StatusCode <= 299)
+                {
+                    stepResult.Status = FlowStepStatus.Success;
+                }
+                else if (response.StatusCode == 0)
+                {
+                    // Status code 0 indicates an error (network error, exception, etc.)
+                    // This should be handled as a failure
+                    throw new HttpRequestException($"Request failed: {response.StatusMessage}");
+                }
+                else
+                {
+                    // Non-success HTTP status codes (4xx, 5xx, etc.) should be treated as failures
+                    throw new HttpRequestException($"Request failed with status code {response.StatusCode}: {response.StatusMessage}");
+                }
             }
             finally
             {

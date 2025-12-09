@@ -574,4 +574,246 @@ public class FlowServiceTests
         Assert.Contains("already exists", exception.Message);
         _mockFlowRepository.Verify(r => r.UpdateAsync(It.IsAny<Flow>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ExecuteFlowAsync_WithHttpErrorStatusCode_ShouldFailStep()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var flowId = Guid.NewGuid();
+
+        var request = new RestRequest
+        {
+            Id = requestId,
+            Name = "Failing Request",
+            Url = "https://api.example.com/notfound",
+            EnvironmentId = environmentId
+        };
+
+        var flow = new Flow
+        {
+            Id = flowId,
+            Name = "Flow with 404",
+            EnvironmentId = environmentId,
+            Steps = new List<FlowStep>
+            {
+                new FlowStep
+                {
+                    Id = Guid.NewGuid(),
+                    Order = 1,
+                    RequestId = requestId,
+                    IsEnabled = true,
+                    ContinueOnError = false
+                }
+            }
+        };
+
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Variables = new Dictionary<string, string>()
+        };
+
+        var response = new RequestResponse
+        {
+            StatusCode = 404,
+            StatusMessage = "Not Found",
+            Body = "{\"error\": \"Resource not found\"}"
+        };
+
+        _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId))
+            .ReturnsAsync(flow);
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId))
+            .ReturnsAsync(request);
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _service.ExecuteFlowAsync(flowId);
+
+        // Assert
+        Assert.Equal(FlowExecutionStatus.Failed, result.Status);
+        Assert.Single(result.StepResults);
+        Assert.Equal(FlowStepStatus.Failed, result.StepResults[0].Status);
+        Assert.Contains("404", result.StepResults[0].ErrorMessage);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ExecuteFlowAsync_With500StatusCode_ShouldFailStep()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var flowId = Guid.NewGuid();
+
+        var request = new RestRequest
+        {
+            Id = requestId,
+            Name = "Server Error Request",
+            EnvironmentId = environmentId
+        };
+
+        var flow = new Flow
+        {
+            Id = flowId,
+            Name = "Flow with 500",
+            EnvironmentId = environmentId,
+            Steps = new List<FlowStep>
+            {
+                new FlowStep
+                {
+                    Id = Guid.NewGuid(),
+                    Order = 1,
+                    RequestId = requestId,
+                    IsEnabled = true
+                }
+            }
+        };
+
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Variables = new Dictionary<string, string>()
+        };
+
+        var response = new RequestResponse
+        {
+            StatusCode = 500,
+            StatusMessage = "Internal Server Error",
+            Body = "Server error occurred"
+        };
+
+        _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId)).ReturnsAsync(request);
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _service.ExecuteFlowAsync(flowId);
+
+        // Assert
+        Assert.Equal(FlowExecutionStatus.Failed, result.Status);
+        Assert.Single(result.StepResults);
+        Assert.Equal(FlowStepStatus.Failed, result.StepResults[0].Status);
+        Assert.Contains("500", result.StepResults[0].ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ExecuteFlowAsync_WithErrorStatusCodeAndContinueOnError_ShouldContinue()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var request1Id = Guid.NewGuid();
+        var request2Id = Guid.NewGuid();
+        var flowId = Guid.NewGuid();
+
+        var request1 = new RestRequest { Id = request1Id, Name = "Failing Request", EnvironmentId = environmentId };
+        var request2 = new RestRequest { Id = request2Id, Name = "Success Request", EnvironmentId = environmentId };
+
+        var flow = new Flow
+        {
+            Id = flowId,
+            Name = "Flow with Error and Continue",
+            EnvironmentId = environmentId,
+            Steps = new List<FlowStep>
+            {
+                new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true, ContinueOnError = true },
+                new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
+            }
+        };
+
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Variables = new Dictionary<string, string>()
+        };
+
+        _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id)).ReturnsAsync(request2);
+
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request1Id)))
+            .ReturnsAsync(new RequestResponse { StatusCode = 404, StatusMessage = "Not Found" });
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request2Id)))
+            .ReturnsAsync(new RequestResponse { StatusCode = 200, Body = "{}" });
+
+        // Act
+        var result = await _service.ExecuteFlowAsync(flowId);
+
+        // Assert
+        Assert.Equal(FlowExecutionStatus.Completed, result.Status);
+        Assert.Equal(2, result.StepResults.Count);
+        Assert.Equal(FlowStepStatus.FailedContinued, result.StepResults[0].Status);
+        Assert.Equal(FlowStepStatus.Success, result.StepResults[1].Status);
+        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>()), Times.Exactly(2));
+    }
+
+    [Theory]
+    [InlineData(200)]
+    [InlineData(201)]
+    [InlineData(204)]
+    [InlineData(299)]
+    public async Task ExecuteFlowAsync_WithSuccessStatusCodes_ShouldSucceed(int statusCode)
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var flowId = Guid.NewGuid();
+
+        var request = new RestRequest
+        {
+            Id = requestId,
+            Name = "Test Request",
+            EnvironmentId = environmentId
+        };
+
+        var flow = new Flow
+        {
+            Id = flowId,
+            Name = "Success Flow",
+            EnvironmentId = environmentId,
+            Steps = new List<FlowStep>
+            {
+                new FlowStep
+                {
+                    Id = Guid.NewGuid(),
+                    Order = 1,
+                    RequestId = requestId,
+                    IsEnabled = true
+                }
+            }
+        };
+
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Variables = new Dictionary<string, string>()
+        };
+
+        var response = new RequestResponse
+        {
+            StatusCode = statusCode,
+            StatusMessage = "OK"
+        };
+
+        _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId)).ReturnsAsync(request);
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _service.ExecuteFlowAsync(flowId);
+
+        // Assert
+        Assert.Equal(FlowExecutionStatus.Completed, result.Status);
+        Assert.Single(result.StepResults);
+        Assert.Equal(FlowStepStatus.Success, result.StepResults[0].Status);
+    }
 }
