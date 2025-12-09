@@ -29,8 +29,12 @@
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <div style="flex: 1; min-height: 0; overflow-y: auto;">
-                            <MudTextField Value="@_responseBodyDisplay" Lines="20" Variant="Variant.Outlined" ReadOnly="true" Style="height: 100%;" />
+                        <div style="flex: 1; min-height: 0; overflow: hidden;">
+                             <CodeEditor @ref="_codeEditor"
+                                         @bind-Value="_responseBodyDisplay"
+                                         Language="@_responseLanguage" 
+                                         ReadOnly="true" 
+                                         Height="100%" />
                         </div>
                     </div>
                 </MudTabPanel>
@@ -141,6 +145,8 @@
     private string _extractionPattern = string.Empty;
     private string? _extractedValue;
     private bool _extractionError = false;
+    private CodeEditor? _codeEditor;
+    private string _responseLanguage = "json";
 
     protected override void OnParametersSet()
     {
@@ -153,67 +159,37 @@
             _extractionPattern = string.Empty;
             _extractedValue = null;
             _extractionError = false;
+            
+            // Determine language
+            var contentType = Response.Headers.FirstOrDefault(h => 
+                h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
+                
+            if (contentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+            {
+                _responseLanguage = "xml";
+            }
+            else if (contentType.Contains("html", StringComparison.OrdinalIgnoreCase))
+            {
+                _responseLanguage = "html";
+            }
+            else
+            {
+                _responseLanguage = "json";
+            }
         }
     }
 
-    private void PrettifyResponseBody()
+    private async Task PrettifyResponseBody()
     {
-        if (Response == null || string.IsNullOrWhiteSpace(Response.Body))
+        if (Response == null || string.IsNullOrWhiteSpace(Response.Body) || _codeEditor == null)
         {
             return;
         }
 
         try
         {
-            // Try to detect content type from headers
-            var contentType = Response.Headers.FirstOrDefault(h => 
-                h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
-
-            if (contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
-            {
-                _responseBodyDisplay = FormatterService.FormatJson(Response.Body);
-            }
-            else if (contentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
-            {
-                _responseBodyDisplay = FormatterService.FormatXml(Response.Body);
-            }
-            else
-            {
-                // Try to detect format by looking at content
-                var trimmedBody = Response.Body.TrimStart();
-                if (trimmedBody.StartsWith("{") || trimmedBody.StartsWith("["))
-                {
-                    var formatted = FormatterService.FormatJson(Response.Body);
-                    if (!string.IsNullOrEmpty(formatted))
-                    {
-                        _responseBodyDisplay = formatted;
-                    }
-                    else
-                    {
-                        Snackbar.Add("Could not format as JSON. Body appears to be plain text.", Severity.Info);
-                        return;
-                    }
-                }
-                else if (trimmedBody.StartsWith("<"))
-                {
-                    var formatted = FormatterService.FormatXml(Response.Body);
-                    if (!string.IsNullOrEmpty(formatted))
-                    {
-                        _responseBodyDisplay = formatted;
-                    }
-                    else
-                    {
-                        Snackbar.Add("Could not format as XML. Body appears to be plain text.", Severity.Info);
-                        return;
-                    }
-                }
-                else
-                {
-                    Snackbar.Add("Could not detect format. Body appears to be plain text.", Severity.Info);
-                    return;
-                }
-            }
-            StateHasChanged();
+            await _codeEditor.FormatDocumentAsync();
+            Snackbar.Add("Response formatted", Severity.Success);
         }
         catch (Exception ex)
         {

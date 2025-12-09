@@ -32,13 +32,10 @@ else
             @RequestConfigurationSection
         </div>
         
-        @if (_response != null)
-        {
-            <MudDivider Class="my-4" />
-            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
-                @ResponseSection
-            </div>
-        }
+        <MudDivider Class="my-4" />
+        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
+            @ResponseSection
+        </div>
     </div>
 }
 
