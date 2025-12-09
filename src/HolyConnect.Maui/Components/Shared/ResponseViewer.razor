@@ -24,9 +24,14 @@
             <MudTabs Class="mt-2" Elevation="2" Rounded="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
                 <MudTabPanel Text="Body" Style="height: 100%;">
                     <div class="pa-4 d-flex flex-column" style="height: 100%;">
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" Style="flex: 0 0 auto;">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="PrettifyResponseBody">
-                                Prettify
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Language: @_responseLanguage</MudText>
+                            <MudButton Variant="Variant.Outlined" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Small" 
+                                       StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                       OnClick="PrettifyResponseBody">
+                                Format
                             </MudButton>
                         </MudStack>
                         <div style="flex: 1; min-height: 0; overflow: hidden;">
@@ -179,17 +184,64 @@
         }
     }
 
-    private async Task PrettifyResponseBody()
+    private void PrettifyResponseBody()
     {
-        if (Response == null || string.IsNullOrWhiteSpace(Response.Body) || _codeEditor == null)
+        if (Response == null || string.IsNullOrWhiteSpace(Response.Body))
         {
             return;
         }
 
         try
         {
-            await _codeEditor.FormatDocumentAsync();
-            Snackbar.Add("Response formatted", Severity.Success);
+            // Try to detect content type from headers
+            var contentType = Response.Headers.FirstOrDefault(h => 
+                h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
+
+            if (contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+            {
+                _responseBodyDisplay = FormatterService.FormatJson(Response.Body);
+            }
+            else if (contentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+            {
+                _responseBodyDisplay = FormatterService.FormatXml(Response.Body);
+            }
+            else
+            {
+                // Try to detect format by looking at content
+                var trimmedBody = Response.Body.TrimStart();
+                if (trimmedBody.StartsWith("{") || trimmedBody.StartsWith("["))
+                {
+                    var formatted = FormatterService.FormatJson(Response.Body);
+                    if (!string.IsNullOrEmpty(formatted))
+                    {
+                        _responseBodyDisplay = formatted;
+                    }
+                    else
+                    {
+                        Snackbar.Add("Could not format as JSON. Body appears to be plain text.", Severity.Info);
+                        return;
+                    }
+                }
+                else if (trimmedBody.StartsWith("<"))
+                {
+                    var formatted = FormatterService.FormatXml(Response.Body);
+                    if (!string.IsNullOrEmpty(formatted))
+                    {
+                        _responseBodyDisplay = formatted;
+                    }
+                    else
+                    {
+                        Snackbar.Add("Could not format as XML. Body appears to be plain text.", Severity.Info);
+                        return;
+                    }
+                }
+                else
+                {
+                    Snackbar.Add("Could not detect format. Body appears to be plain text.", Severity.Info);
+                    return;
+                }
+            }
+            StateHasChanged();
         }
         catch (Exception ex)
         {
