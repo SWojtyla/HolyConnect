@@ -13,12 +13,12 @@
                  Height="calc(100vh - 11.25rem)"
                  Bordered="true">
         <StartContent>
-            <div style="height: 100%; overflow-y: auto; padding-right: 0.5rem;">
+            <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden; padding-right: 0.5rem;">
                 @RequestConfigurationSection
             </div>
         </StartContent>
         <EndContent>
-            <div style="height: 100%; overflow-y: auto; padding-left: 0.5rem;">
+            <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden; padding-left: 0.5rem;">
                 @ResponseSection
             </div>
         </EndContent>
@@ -28,40 +28,42 @@ else
 {
     <!-- Horizontal Layout: Request on top, Response on bottom -->
     <div Style="height: calc(100vh - 11.25rem); display: flex; flex-direction: column; overflow: hidden;">
-        <div style="flex: 0 0 auto; overflow-y: auto; max-height: 60%;">
+        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
             @RequestConfigurationSection
         </div>
         
-        @if (_response != null)
-        {
-            <MudDivider Class="my-4" />
-            <div style="flex: 1; overflow-y: auto; min-height: 0;">
-                @ResponseSection
-            </div>
-        }
+        <MudDivider Class="my-4" />
+        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
+            @ResponseSection
+        </div>
     </div>
 }
 
 @code {
     private RenderFragment RequestConfigurationSection => __builder =>
     {
-<MudCard>
-    <MudCardContent>      
-        
-        <VariableTextField @bind-Value="Request!.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-1" Environment="@Environment" Collection="@Collection" />
+<MudCard Style="height: 100%; display: flex; flex-direction: column;">
+    <MudCardContent Style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">      
         
         @if (Request is RestRequest restRequest)
         {
-            <MudSelect @bind-Value="restRequest.Method" Label="Method" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-1">
-                @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
-                {
-                    <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
-                }
-            </MudSelect>
+            <MudGrid Class="mb-2" Spacing="2">
+                <MudItem xs="3" sm="2">
+                    <MudSelect @bind-Value="restRequest.Method" Label="Method" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        @foreach (var method in Enum.GetValues<Domain.Entities.HttpMethod>())
+                        {
+                            <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="9" sm="10">
+                    <VariableTextField @bind-Value="Request!.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Environment="@Environment" Collection="@Collection" />
+                </MudItem>
+            </MudGrid>
             
-            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
-                <MudTabPanel Text="Body">
-                    <div class="pa-4">
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
+                <MudTabPanel Text="Body" Style="height: 100%;">
+                    <div class="pa-4 d-flex flex-column" style="height: 100%;">
                         <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
                             <MudSelect @bind-Value="restRequest.BodyType" Label="Body Type" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width: 10rem;">
                                 @foreach (var bodyType in Enum.GetValues<Domain.Entities.BodyType>())
@@ -77,15 +79,17 @@ else
                                 Format
                             </MudButton>
                         </MudStack>
-                        <CodeEditor @ref="_restBodyEditor" 
-                                    @bind-Value="restRequest.Body" 
-                                    Language="@restRequest.BodyType.ToString()" 
-                                    Height="28rem" />
+                        <div style="flex: 1; overflow: hidden;">
+                            <CodeEditor @ref="_restBodyEditor" 
+                                        @bind-Value="restRequest.Body" 
+                                        Language="@restRequest.BodyType.ToString()" 
+                                        Height="100%" />
+                        </div>
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Headers">
-                    <div class="pa-4">
+                <MudTabPanel Text="Headers" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
                         <MudStack Row="true" Spacing="2" Class="mb-4">
                             <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
@@ -147,8 +151,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Query Params">
-                    <div class="pa-4">
+                <MudTabPanel Text="Query Params" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         @foreach (var param in _queryParams)
                         {
                             <MudGrid Class="mb-2">
@@ -172,8 +176,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Auth">
-                    <div class="pa-4">
+                <MudTabPanel Text="Auth" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
                             @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
                             {
@@ -197,8 +201,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Extractions">
-                    <div class="pa-4">
+                <MudTabPanel Text="Extractions" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
                     </div>
                 </MudTabPanel>
@@ -206,9 +210,15 @@ else
         }
         else if (Request is GraphQLRequest graphQLRequest)
         {
-            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
-                <MudTabPanel Text="Query">
-                    <div class="pa-4">
+            <MudGrid Class="mb-2" Spacing="2">
+                <MudItem xs="12">
+                     <VariableTextField @bind-Value="Request!.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Environment="@Environment" Collection="@Collection" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
+                <MudTabPanel Text="Query" Style="height: 100%;">
+                    <div class="pa-4 d-flex flex-column" style="height: 100%;">
                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
                             <MudText Typo="Typo.body2" Color="Color.Secondary">Press <strong>Ctrl+Space</strong> for autocomplete suggestions</MudText>
                             <MudButton Variant="Variant.Outlined" 
@@ -219,12 +229,14 @@ else
                                 Prettify
                             </MudButton>
                         </MudStack>
-                        <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="28rem" />
+                        <div style="flex: 1; overflow: hidden;">
+                            <GraphQLCodeEditor @bind-Value="graphQLRequest.Query" Request="@graphQLRequest" Height="100%" />
+                        </div>
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Variables">
-                    <div class="pa-4">
+                <MudTabPanel Text="Variables" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" AlignItems="AlignItems.Center">
                             <MudButton Variant="Variant.Outlined" 
                                        Color="Color.Primary" 
@@ -238,8 +250,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Headers">
-                    <div class="pa-4">
+                <MudTabPanel Text="Headers" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
                         <MudStack Row="true" Spacing="2" Class="mb-4">
                             <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
@@ -295,8 +307,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Auth">
-                    <div class="pa-4">
+                <MudTabPanel Text="Auth" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
                             @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
                             {
@@ -320,8 +332,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Extractions">
-                    <div class="pa-4">
+                <MudTabPanel Text="Extractions" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
                     </div>
                 </MudTabPanel>
@@ -329,9 +341,15 @@ else
         }
         else if (Request is WebSocketRequest webSocketRequest)
         {
-            <MudTabs Class="mt-4" Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
-                <MudTabPanel Text="Message">
-                    <div class="pa-4">
+            <MudGrid Class="mb-2" Spacing="2">
+                <MudItem xs="12">
+                     <VariableTextField @bind-Value="Request!.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Environment="@Environment" Collection="@Collection" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
+                <MudTabPanel Text="Message" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudTextField @bind-Value="webSocketRequest.Message" 
                                       Label="Message to Send" 
                                       Lines="10" 
@@ -340,8 +358,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Headers">
-                    <div class="pa-4">
+                <MudTabPanel Text="Headers" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
                         <MudStack Row="true" Spacing="2" Class="mb-4">
                             <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
@@ -394,8 +412,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Protocols">
-                    <div class="pa-4">
+                <MudTabPanel Text="Protocols" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudText Typo="Typo.body2" Class="mb-2">Sub-protocols (optional)</MudText>
                         @foreach (var protocol in _protocols)
                         {
@@ -414,8 +432,8 @@ else
                     </div>
                 </MudTabPanel>
                 
-                <MudTabPanel Text="Auth">
-                    <div class="pa-4">
+                <MudTabPanel Text="Auth" Style="height: 100%;">
+                    <div class="pa-4" style="height: 100%; overflow-y: auto;">
                         <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
                             @foreach (var authType in Enum.GetValues<Domain.Entities.AuthenticationType>())
                             {
