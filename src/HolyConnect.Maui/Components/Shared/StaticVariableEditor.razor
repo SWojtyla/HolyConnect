@@ -1,0 +1,81 @@
+@using HolyConnect.Maui.Components.Shared
+
+<MudTable Items="@Variables" Dense="true" Hover="true" Elevation="1" Class="mb-4">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">
+            Static Variables
+        </MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mr-4">
+            Static variables have fixed values that you set manually.
+        </MudText>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Key</MudTh>
+        <MudTh>Value</MudTh>
+        <MudTh Style="text-align:center">Secret</MudTh>
+        <MudTh Style="text-align:center">Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Key">
+            <MudTextField @bind-Value="@context.Key" 
+                          Variant="Variant.Outlined" 
+                          Margin="Margin.Dense" 
+                          Dense="true"
+                          Placeholder="Key" />
+        </MudTd>
+        <MudTd DataLabel="Value">
+            <MudTextField @bind-Value="@context.Value" 
+                          Variant="Variant.Outlined" 
+                          Margin="Margin.Dense" 
+                          Dense="true"
+                          InputType="@(context.IsSecret ? InputType.Password : InputType.Text)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(context.IsSecret ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="@(() => context.IsSecret = !context.IsSecret)"
+                          Placeholder="Value" />
+        </MudTd>
+        <MudTd DataLabel="Secret" Style="text-align: center;">
+            <MudCheckBox @bind-Value="@context.IsSecret" Color="Color.Primary" Dense="true" Size="Size.Small" />
+        </MudTd>
+        <MudTd DataLabel="Actions" Style="text-align: center;">
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                           Size="Size.Small"
+                           Color="Color.Error"
+                           OnClick="@(() => RemoveVariable(context))" />
+        </MudTd>
+    </RowTemplate>
+    <FooterContent>
+        <MudTd ColSpan="4" Class="pa-2">
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddVariable"
+                       FullWidth="true"
+                       Class="dashed-border">
+                Add Static Variable
+            </MudButton>
+        </MudTd>
+    </FooterContent>
+</MudTable>
+
+<style>
+    .dashed-border {
+        border-style: dashed !important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public List<VariableModel> Variables { get; set; } = new();
+
+    private void AddVariable()
+    {
+        Variables.Add(new VariableModel());
+    }
+
+    private void RemoveVariable(VariableModel variable)
+    {
+        Variables.Remove(variable);
+    }
+}

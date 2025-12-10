@@ -14,39 +14,7 @@
                 <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" />
                 <MudTextField @bind-Value="_description" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mt-4" />
                 
-                <MudText Typo="Typo.h6" Class="mt-6 mb-2">Static Variables</MudText>
-                <MudText Typo="Typo.body2" Class="mb-3">Collection variables override environment variables for requests in this collection.</MudText>
-                @foreach (var variable in _variables)
-                {
-                    <MudGrid Class="mb-2" Style="align-items: center;">
-                        <MudItem xs="4">
-                            <MudTextField @bind-Value="variable.Key" Label="Key" Variant="Variant.Outlined" />
-                        </MudItem>
-                        <MudItem xs="4">
-                            <MudTextField @bind-Value="variable.Value" 
-                                          Label="Value" 
-                                          Variant="Variant.Outlined"
-                                          InputType="@(variable.IsSecret ? InputType.Password : InputType.Text)"
-                                          Adornment="Adornment.End"
-                                          AdornmentIcon="@(variable.IsSecret ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                          OnAdornmentClick="@(() => variable.IsSecret = !variable.IsSecret)" />
-                        </MudItem>
-                        <MudItem xs="2" Style="display: flex; align-items: center; padding-top: 0.5rem;">
-                            <MudCheckBox @bind-Value="variable.IsSecret" 
-                                         Label="Secret" 
-                                         Color="Color.Primary"
-                                         Dense="true"
-                                         CheckedIcon="@Icons.Material.Filled.Lock"
-                                         UncheckedIcon="@Icons.Material.Filled.LockOpen" />
-                        </MudItem>
-                        <MudItem xs="2">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveVariable(variable))" />
-                        </MudItem>
-                    </MudGrid>
-                }
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddVariable" StartIcon="@Icons.Material.Filled.Add">
-                    Add Static Variable
-                </MudButton>
+                <StaticVariableEditor Variables="_variables" />
             </MudCardContent>
         </MudCard>
 
@@ -79,13 +47,6 @@
     private List<VariableModel> _variables = new();
     private Guid? _requestIdToPreserve;
 
-    private class VariableModel
-    {
-        public string Key { get; set; } = string.Empty;
-        public string Value { get; set; } = string.Empty;
-        public bool IsSecret { get; set; } = false;
-    }
-
     protected override async Task OnInitializedAsync()
     {
         // Extract requestId from query parameters
@@ -116,19 +77,10 @@
         }
     }
 
-    private void AddVariable()
-    {
-        _variables.Add(new VariableModel());
-    }
-
-    private void RemoveVariable(VariableModel variable)
-    {
-        _variables.Remove(variable);
-    }
-
     private async Task SaveCollection()
     {
         if (_collection == null) return;
+
 
         try
         {
