@@ -5,7 +5,12 @@ namespace HolyConnect.Infrastructure.Persistence;
 
 /// <summary>
 /// A repository implementation that stores each entity in a separate file for better performance with large collections.
-/// File names are readable: "<sanitized-name>__<id>.json" (no legacy support).
+/// File naming strategy:
+/// - When parentIdSelector is provided: Uses "{id}.json" format (ID-based) to support hierarchical uniqueness
+/// - When parentIdSelector is NOT provided: Uses "{name}.json" format (name-based) for readable filenames
+/// Uniqueness checking:
+/// - When parentIdSelector is provided: Uniqueness is enforced only within the same parent scope
+/// - When parentIdSelector is NOT provided: Uniqueness is enforced globally
 /// </summary>
 public class MultiFileRepository<T> : IRepository<T> where T : class
 {
@@ -191,6 +196,9 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
             // If parentIdSelector is provided, check uniqueness only within the same parent scope
             if (_parentIdSelector != null)
             {
+                // NOTE: Loading all entities for uniqueness check has O(n) complexity.
+                // This is acceptable for typical use cases (hundreds of entities),
+                // but could be optimized with an in-memory index if needed for larger datasets.
                 var allEntities = await GetAllAsync();
                 var entityName = _nameSelector(entity);
                 var entityParentId = _parentIdSelector(entity);
@@ -244,6 +252,9 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
             // If parentIdSelector is provided, check uniqueness only within the same parent scope
             if (_parentIdSelector != null)
             {
+                // NOTE: Loading all entities for uniqueness check has O(n) complexity.
+                // This is acceptable for typical use cases (hundreds of entities),
+                // but could be optimized with an in-memory index if needed for larger datasets.
                 var allEntities = await GetAllAsync();
                 var entityName = _nameSelector(entity);
                 var entityParentId = _parentIdSelector(entity);
