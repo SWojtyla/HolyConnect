@@ -17,6 +17,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 🔄 **Git Integration**: Full version control with git support (initialize, commit, branch, push, pull, commit history, selective staging)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
 - 🔀 **Flows**: Chain multiple requests together in sequence, passing variables between steps for complex workflows
+- 📥 **Import Support**: Import requests from curl commands (Bruno files support coming soon)
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
 - 🏗️ **Extensible Architecture**: Built with clean architecture principles for easy extension
 
@@ -254,6 +255,45 @@ Flows allow you to execute multiple requests in sequence, where variables extrac
 - Multi-step data creation (create user → create profile → link accounts)
 - Testing data dependencies (create order → add items → process payment)
 - End-to-end workflow testing with variable passing
+
+### Importing Requests
+
+HolyConnect supports importing requests from various formats to help you migrate from other tools or quickly set up requests from documentation.
+
+1. **Importing from curl**:
+   - Navigate to the Import page from the main menu
+   - Select the target environment where you want to import the request
+   - (Optional) Select a collection to organize the imported request
+   - Paste your curl command in the text area
+   - Click "Import" to create the request
+
+2. **Supported curl features**:
+   - HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+   - URL with query parameters
+   - Request headers (-H or --header)
+   - Request body (-d, --data, --data-raw, --data-binary)
+   - Basic authentication (-u or --user)
+   - Bearer token authentication (Authorization header)
+   - Multi-line curl commands with backslash continuation
+
+3. **Example curl commands**:
+   ```bash
+   # Simple GET request
+   curl 'https://api.github.com/users/octocat'
+   
+   # POST with JSON body
+   curl -X POST 'https://api.example.com/users' \
+     -H 'Content-Type: application/json' \
+     -d '{"name":"John","email":"john@example.com"}'
+   
+   # Request with authentication
+   curl -H 'Authorization: Bearer token123' 'https://api.example.com/protected'
+   ```
+
+4. **Coming soon**:
+   - Bruno file format import
+   - Postman collection import
+   - OpenAPI/Swagger import
 
 ## Extending the Application
 

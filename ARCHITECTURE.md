@@ -73,6 +73,8 @@ The innermost layer containing:
   - `DynamicVariable`: Defines dynamic test data generation with constraints
   - `DataGeneratorType`: Enumeration of available data types (FirstName, Email, Date, etc.)
   - `ConstraintRule`: Rules for constraining generated data (min/max, age ranges, etc.)
+  - `ImportResult`: Result of an import operation with success status, errors, and warnings
+  - `ImportSource`: Enumeration of supported import formats (Curl, Bruno, etc.)
 
 - **Business Rules**: Domain logic independent of external concerns
 - **No Framework Dependencies**: Pure C# classes
@@ -87,6 +89,7 @@ Contains business logic and orchestration:
   - `IResponseValueExtractor`: Interface for extracting values from response bodies
   - `IClipboardService`: Interface for clipboard operations
   - `IDataGeneratorService`: Interface for generating dynamic test data
+  - `IImportService`: Interface for importing requests from various formats (curl, Bruno, etc.)
 
 - **Application Services**:
   - `EnvironmentService`: Manages environment CRUD operations
@@ -146,6 +149,12 @@ Implements external concerns:
 - **Version Control**:
   - `GitService`: Provides git operations using LibGit2Sharp
   - Supports initialize, commit, branch, fetch, pull, push operations
+
+- **Import Services**:
+  - `ImportService`: Imports requests from various formats
+  - Supports curl command parsing with full feature detection
+  - Extensible architecture for adding new import formats (Bruno, Postman, etc.)
+  - Automatically detects HTTP method, headers, body, authentication
 
 - **External Services**: 
   - HTTP clients, file systems, databases, git repositories
