@@ -2,7 +2,11 @@
 @inject SettingsService SettingsService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IGitFolderService GitFolderService
+@inject IGitService GitService
 @using HolyConnect.Maui.Services
+@using HolyConnect.Application.Interfaces
+@using HolyConnect.Domain.Entities
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-6">
     <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
@@ -88,6 +92,93 @@
         </MudCardContent>
     </MudCard>
 
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Git Repositories</MudText>
+            
+            <MudText Typo="Typo.body2" Class="mb-3">
+                Manage multiple git repositories. Set one as active to determine where requests are saved.
+            </MudText>
+
+            @if (_gitFolders.Any())
+            {
+                <MudTable Items="_gitFolders" Hover="true" Dense="true" Class="mb-3">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Path</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                @if (context.IsActive)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                }
+                                <MudText>@context.Name</MudText>
+                            </MudStack>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.caption">@context.Path</MudText>
+                        </MudTd>
+                        <MudTd>
+                            @if (context.IsActive)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                            }
+                            else
+                            {
+                                <MudButton Size="Size.Small" 
+                                          Variant="Variant.Text" 
+                                          OnClick="@(() => SetActiveGitFolder(context.Id))">
+                                    Set Active
+                                </MudButton>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                         Size="Size.Small" 
+                                         OnClick="@(() => EditGitFolder(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                         Size="Size.Small" 
+                                         Color="Color.Error"
+                                         OnClick="@(() => DeleteGitFolder(context.Id))" 
+                                         Disabled="@context.IsActive" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    No git repositories configured. Add one below to enable version control.
+                </MudAlert>
+            }
+
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Add New Repository</MudText>
+            <MudTextField @bind-Value="_newGitFolderName" 
+                         Label="Repository Name" 
+                         Variant="Variant.Outlined" 
+                         Class="mb-2"
+                         HelperText="A friendly name for this repository" />
+            <MudTextField @bind-Value="_newGitFolderPath" 
+                         Label="Repository Path" 
+                         Variant="Variant.Outlined" 
+                         Class="mb-2"
+                         HelperText="Path to the git repository folder" />
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      OnClick="AddGitFolder"
+                      StartIcon="@Icons.Material.Filled.Add"
+                      Disabled="@(string.IsNullOrWhiteSpace(_newGitFolderName) || string.IsNullOrWhiteSpace(_newGitFolderPath))">
+                Add Repository
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+
     <MudCard>
         <MudCardContent>
             <MudText Typo="Typo.h6" Class="mb-3">Data Storage</MudText>
@@ -128,6 +219,9 @@
     private string _storagePath = string.Empty;
     private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
     private Domain.Entities.ThemePreset _themePreset = Domain.Entities.ThemePreset.Default;
+    private List<GitFolder> _gitFolders = new();
+    private string _newGitFolderName = string.Empty;
+    private string _newGitFolderPath = string.Empty;
 
     [CascadingParameter]
     public EventCallback<bool> OnDarkModeToggle { get; set; }
@@ -135,6 +229,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadSettings();
+        await LoadGitFolders();
     }
 
     private async Task LoadSettings()
@@ -143,6 +238,94 @@
         _storagePath = settings.StoragePath;
         _requestLayout = settings.Layout;
         _themePreset = settings.Theme;
+    }
+
+    private async Task LoadGitFolders()
+    {
+        _gitFolders = (await GitFolderService.GetAllAsync()).ToList();
+    }
+
+    private async Task AddGitFolder()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_newGitFolderName) || string.IsNullOrWhiteSpace(_newGitFolderPath))
+            {
+                Snackbar.Add("Please provide both name and path", Severity.Warning);
+                return;
+            }
+
+            // Check if path is a valid git repository
+            var isRepo = await GitService.IsRepositoryAsync(_newGitFolderPath);
+            if (!isRepo)
+            {
+                Snackbar.Add("The specified path is not a git repository", Severity.Warning);
+                return;
+            }
+
+            await GitFolderService.AddAsync(_newGitFolderName, _newGitFolderPath);
+            await LoadGitFolders();
+            
+            _newGitFolderName = string.Empty;
+            _newGitFolderPath = string.Empty;
+            
+            Snackbar.Add("Repository added successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding repository: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SetActiveGitFolder(Guid id)
+    {
+        try
+        {
+            await GitFolderService.SetActiveAsync(id);
+            await LoadGitFolders();
+            Snackbar.Add("Active repository changed", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error setting active repository: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteGitFolder(Guid id)
+    {
+        try
+        {
+            var folder = _gitFolders.FirstOrDefault(f => f.Id == id);
+            if (folder == null)
+                return;
+
+            var confirm = await Snackbar.Add(
+                $"Are you sure you want to remove '{folder.Name}'? This won't delete any files.",
+                Severity.Warning,
+                config =>
+                {
+                    config.Action = "Delete";
+                    config.ActionColor = MudBlazor.Color.Error;
+                });
+
+            if (confirm == SnackbarResult.Clicked)
+            {
+                await GitFolderService.DeleteAsync(id);
+                await LoadGitFolders();
+                Snackbar.Add("Repository removed", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting repository: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void EditGitFolder(GitFolder folder)
+    {
+        _newGitFolderName = folder.Name;
+        _newGitFolderPath = folder.Path;
+        Snackbar.Add("Edit the name/path below and click 'Add Repository' to update", Severity.Info);
     }
 
     private async Task OnThemeChanged(Domain.Entities.ThemePreset preset)

@@ -8,7 +8,8 @@ public interface IGitService
     /// <summary>
     /// Gets the current branch name
     /// </summary>
-    Task<string?> GetCurrentBranchAsync();
+    /// <param name="repositoryPath">Optional repository path. If null, uses the active git folder</param>
+    Task<string?> GetCurrentBranchAsync(string? repositoryPath = null);
 
     /// <summary>
     /// Gets all local branches
@@ -68,7 +69,14 @@ public interface IGitService
     /// <summary>
     /// Checks if the storage path is a git repository
     /// </summary>
-    Task<bool> IsRepositoryAsync();
+    /// <param name="repositoryPath">Optional repository path. If null, uses the active git folder</param>
+    Task<bool> IsRepositoryAsync(string? repositoryPath = null);
+
+    /// <summary>
+    /// Gets the repository name from the path or remote URL
+    /// </summary>
+    /// <param name="repositoryPath">Optional repository path. If null, uses the active git folder</param>
+    Task<string?> GetRepositoryNameAsync(string? repositoryPath = null);
 
     /// <summary>
     /// Deletes the specified branch

@@ -6,6 +6,8 @@ public class AppSettings
     public bool IsDarkMode { get; set; } = false;
     public RequestLayout Layout { get; set; } = RequestLayout.Horizontal;
     public ThemePreset Theme { get; set; } = ThemePreset.Default;
+    public List<GitFolder> GitFolders { get; set; } = new();
+    public Guid? ActiveGitFolderId { get; set; }
 }
 
 public enum RequestLayout
