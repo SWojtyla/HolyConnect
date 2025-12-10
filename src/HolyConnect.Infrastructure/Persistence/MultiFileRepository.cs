@@ -13,13 +13,20 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     private readonly Func<string> _storagePathProvider;
     private readonly string _directoryName;
     private readonly Func<T, string>? _nameSelector;
+    private readonly Func<T, Guid?>? _parentIdSelector;
 
-    public MultiFileRepository(Func<T, Guid> idSelector, Func<string> storagePathProvider, string directoryName, Func<T, string>? nameSelector = null)
+    public MultiFileRepository(
+        Func<T, Guid> idSelector, 
+        Func<string> storagePathProvider, 
+        string directoryName, 
+        Func<T, string>? nameSelector = null,
+        Func<T, Guid?>? parentIdSelector = null)
     {
         _idSelector = idSelector;
         _storagePathProvider = storagePathProvider;
         _directoryName = directoryName;
         _nameSelector = nameSelector;
+        _parentIdSelector = parentIdSelector;
     }
 
     private string GetDirectoryPath()
@@ -47,6 +54,14 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
 
     private string GetReadableFileName(T entity)
     {
+        // If parentIdSelector is provided, use ID-based naming to avoid conflicts
+        // when multiple entities have the same name in different parent scopes
+        if (_parentIdSelector != null)
+        {
+            var id = _idSelector(entity);
+            return $"{id}.json";
+        }
+        
         var baseName = _nameSelector?.Invoke(entity);
         var readable = SanitizeFileName(baseName ?? string.Empty);
         if (string.IsNullOrWhiteSpace(readable))
@@ -173,20 +188,42 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         // Check for duplicate names if a name selector is provided
         if (_nameSelector != null)
         {
-            var newFileName = GetReadableFileName(entity);
-            var filePath = Path.Combine(GetDirectoryPath(), newFileName);
-            
-            if (File.Exists(filePath))
+            // If parentIdSelector is provided, check uniqueness only within the same parent scope
+            if (_parentIdSelector != null)
             {
-                var existingJson = await File.ReadAllTextAsync(filePath);
-                var options = GetOptions();
-                var existingEntity = JsonSerializer.Deserialize<T>(existingJson, options);
+                var allEntities = await GetAllAsync();
+                var entityName = _nameSelector(entity);
+                var entityParentId = _parentIdSelector(entity);
                 
-                // Check if the existing file is for a different entity (same name, different ID)
-                if (existingEntity != null && !_idSelector(existingEntity).Equals(_idSelector(entity)))
+                // Check if another entity with the same name exists in the same parent scope
+                var duplicate = allEntities.FirstOrDefault(e => 
+                    !_idSelector(e).Equals(_idSelector(entity)) &&
+                    _nameSelector(e).Equals(entityName, StringComparison.OrdinalIgnoreCase) &&
+                    Equals(_parentIdSelector(e), entityParentId));
+                
+                if (duplicate != null)
                 {
-                    var entityName = _nameSelector(entity);
-                    throw new InvalidOperationException($"An entity with the name '{entityName}' already exists.");
+                    throw new InvalidOperationException($"An entity with the name '{entityName}' already exists in this scope.");
+                }
+            }
+            else
+            {
+                // Original behavior: global uniqueness check
+                var newFileName = GetReadableFileName(entity);
+                var filePath = Path.Combine(GetDirectoryPath(), newFileName);
+                
+                if (File.Exists(filePath))
+                {
+                    var existingJson = await File.ReadAllTextAsync(filePath);
+                    var options = GetOptions();
+                    var existingEntity = JsonSerializer.Deserialize<T>(existingJson, options);
+                    
+                    // Check if the existing file is for a different entity (same name, different ID)
+                    if (existingEntity != null && !_idSelector(existingEntity).Equals(_idSelector(entity)))
+                    {
+                        var entityName = _nameSelector(entity);
+                        throw new InvalidOperationException($"An entity with the name '{entityName}' already exists.");
+                    }
                 }
             }
         }
@@ -201,20 +238,45 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         var oldPath = GetFilePath(id);
         var newPath = GetFilePath(entity);
         
-        // Check for duplicate names if the file path changed and name selector is provided
-        if (_nameSelector != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+        // Check for duplicate names if name selector is provided
+        if (_nameSelector != null)
         {
-            if (File.Exists(newPath))
+            // If parentIdSelector is provided, check uniqueness only within the same parent scope
+            if (_parentIdSelector != null)
             {
-                var existingJson = await File.ReadAllTextAsync(newPath);
-                var options = GetOptions();
-                var existingEntity = JsonSerializer.Deserialize<T>(existingJson, options);
+                var allEntities = await GetAllAsync();
+                var entityName = _nameSelector(entity);
+                var entityParentId = _parentIdSelector(entity);
                 
-                // Check if the existing file is for a different entity (same name, different ID)
-                if (existingEntity != null && !_idSelector(existingEntity).Equals(id))
+                // Check if another entity with the same name exists in the same parent scope
+                var duplicate = allEntities.FirstOrDefault(e => 
+                    !_idSelector(e).Equals(id) &&
+                    _nameSelector(e).Equals(entityName, StringComparison.OrdinalIgnoreCase) &&
+                    Equals(_parentIdSelector(e), entityParentId));
+                
+                if (duplicate != null)
                 {
-                    var entityName = _nameSelector(entity);
-                    throw new InvalidOperationException($"An entity with the name '{entityName}' already exists.");
+                    throw new InvalidOperationException($"An entity with the name '{entityName}' already exists in this scope.");
+                }
+            }
+            else
+            {
+                // Original behavior: global uniqueness check
+                if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (File.Exists(newPath))
+                    {
+                        var existingJson = await File.ReadAllTextAsync(newPath);
+                        var options = GetOptions();
+                        var existingEntity = JsonSerializer.Deserialize<T>(existingJson, options);
+                        
+                        // Check if the existing file is for a different entity (same name, different ID)
+                        if (existingEntity != null && !_idSelector(existingEntity).Equals(id))
+                        {
+                            var entityName = _nameSelector(entity);
+                            throw new InvalidOperationException($"An entity with the name '{entityName}' already exists.");
+                        }
+                    }
                 }
             }
         }

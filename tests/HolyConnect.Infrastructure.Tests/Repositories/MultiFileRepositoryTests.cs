@@ -319,9 +319,164 @@ public class MultiFileRepositoryTests : IDisposable
         Assert.Equal(entity2.Id, retrieved2.Id);
     }
 
+    [Fact]
+    public async Task AddAsync_WithDuplicateNameInDifferentParent_ShouldSucceed()
+    {
+        // Arrange - Repository with both name and parent selectors
+        var parent1Id = Guid.NewGuid();
+        var parent2Id = Guid.NewGuid();
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            e => e.ParentId);
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parent1Id };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parent2Id }; // Same name, different parent
+
+        // Act - Both should succeed because they're in different parent scopes
+        var result1 = await repository.AddAsync(entity1);
+        var result2 = await repository.AddAsync(entity2);
+
+        // Assert
+        Assert.NotNull(result1);
+        Assert.NotNull(result2);
+        Assert.Equal(entity1.Id, result1.Id);
+        Assert.Equal(entity2.Id, result2.Id);
+
+        // Verify both entities can be retrieved
+        var retrieved1 = await repository.GetByIdAsync(entity1.Id);
+        var retrieved2 = await repository.GetByIdAsync(entity2.Id);
+        Assert.NotNull(retrieved1);
+        Assert.NotNull(retrieved2);
+        Assert.Equal("GetUser", retrieved1.Name);
+        Assert.Equal("GetUser", retrieved2.Name);
+    }
+
+    [Fact]
+    public async Task AddAsync_WithDuplicateNameInSameParent_ShouldThrowException()
+    {
+        // Arrange - Repository with both name and parent selectors
+        var parentId = Guid.NewGuid();
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            e => e.ParentId);
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parentId };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parentId }; // Same name, same parent
+        await repository.AddAsync(entity1);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.AddAsync(entity2));
+        Assert.Contains("An entity with the name 'GetUser' already exists in this scope", exception.Message);
+    }
+
+    [Fact]
+    public async Task AddAsync_WithDuplicateNameInNullParent_ShouldThrowException()
+    {
+        // Arrange - Repository with both name and parent selectors
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            e => e.ParentId);
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = null };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = null }; // Same name, both have null parent
+        await repository.AddAsync(entity1);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.AddAsync(entity2));
+        Assert.Contains("An entity with the name 'GetUser' already exists in this scope", exception.Message);
+    }
+
+    [Fact]
+    public async Task AddAsync_WithSameNameOneNullParentOneDifferent_ShouldSucceed()
+    {
+        // Arrange - Repository with both name and parent selectors
+        var parentId = Guid.NewGuid();
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            e => e.ParentId);
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = null };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parentId }; // Same name, different parent (null vs specific)
+
+        // Act - Both should succeed because they're in different parent scopes
+        var result1 = await repository.AddAsync(entity1);
+        var result2 = await repository.AddAsync(entity2);
+
+        // Assert
+        Assert.NotNull(result1);
+        Assert.NotNull(result2);
+        Assert.Null(result1.ParentId);
+        Assert.Equal(parentId, result2.ParentId);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithDuplicateNameInDifferentParent_ShouldSucceed()
+    {
+        // Arrange - Repository with both name and parent selectors
+        var parent1Id = Guid.NewGuid();
+        var parent2Id = Guid.NewGuid();
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            e => e.ParentId);
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parent1Id };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "CreateUser", ParentId = parent2Id };
+        await repository.AddAsync(entity1);
+        await repository.AddAsync(entity2);
+
+        // Act - Rename entity2 to same name as entity1, but they're in different parents (should succeed)
+        entity2.Name = "GetUser";
+        await repository.UpdateAsync(entity2);
+
+        // Assert
+        var retrieved1 = await repository.GetByIdAsync(entity1.Id);
+        var retrieved2 = await repository.GetByIdAsync(entity2.Id);
+        Assert.NotNull(retrieved1);
+        Assert.NotNull(retrieved2);
+        Assert.Equal("GetUser", retrieved1.Name);
+        Assert.Equal("GetUser", retrieved2.Name);
+        Assert.Equal(parent1Id, retrieved1.ParentId);
+        Assert.Equal(parent2Id, retrieved2.ParentId);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithDuplicateNameInSameParent_ShouldThrowException()
+    {
+        // Arrange - Repository with both name and parent selectors
+        var parentId = Guid.NewGuid();
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            e => e.ParentId);
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parentId };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "CreateUser", ParentId = parentId };
+        await repository.AddAsync(entity1);
+        await repository.AddAsync(entity2);
+
+        // Act - Try to rename entity2 to same name as entity1 in the same parent
+        entity2.Name = "GetUser";
+
+        // Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.UpdateAsync(entity2));
+        Assert.Contains("An entity with the name 'GetUser' already exists in this scope", exception.Message);
+    }
+
     private class TestEntity
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public Guid? ParentId { get; set; }
     }
 }

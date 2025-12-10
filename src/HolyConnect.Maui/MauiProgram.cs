@@ -82,7 +82,8 @@ public static class MauiProgram
                 c => c.Id,
                 GetStoragePathSafe,
                 "collections",
-                c => c.Name);
+                c => c.Name,
+                c => c.ParentCollectionId);
         });
 
         builder.Services.AddSingleton<IRepository<Request>>(sp =>
@@ -91,7 +92,8 @@ public static class MauiProgram
                 r => r.Id,
                 GetStoragePathSafe,
                 "requests",
-                r => r.Name);
+                r => r.Name,
+                r => r.CollectionId);
         });
 
         builder.Services.AddSingleton<IRepository<RequestHistoryEntry>>(sp =>
