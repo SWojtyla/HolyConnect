@@ -1,0 +1,306 @@
+@page "/import"
+@inject IImportService ImportService
+@inject IEnvironmentService EnvironmentService
+@inject ICollectionService CollectionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Import Request</MudText>
+    <MudText Typo="Typo.body1" Class="mb-6" Color="Color.Secondary">
+        Import requests from curl commands. Support for Bruno files coming soon!
+    </MudText>
+
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudForm @ref="_form">
+            <MudStack Spacing="4">
+                <!-- Import Source Selection -->
+                <MudSelect T="ImportSource" 
+                          Label="Import Source" 
+                          @bind-Value="_selectedSource"
+                          Variant="Variant.Outlined">
+                    <MudSelectItem Value="ImportSource.Curl">curl Command</MudSelectItem>
+                    <MudSelectItem Value="ImportSource.Bruno" Disabled="true">Bruno File (Coming Soon)</MudSelectItem>
+                </MudSelect>
+
+                <!-- Environment Selection -->
+                <MudSelect T="Guid?" 
+                          Label="Target Environment" 
+                          Value="_selectedEnvironmentId"
+                          ValueChanged="OnEnvironmentChanged"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Please select an environment">
+                    @if (_environments != null)
+                    {
+                        @foreach (var env in _environments)
+                        {
+                            <MudSelectItem Value="@((Guid?)env.Id)">@env.Name</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+
+                <!-- Collection Selection (Optional) -->
+                @if (_selectedEnvironmentId.HasValue)
+                {
+                    <MudSelect T="Guid?" 
+                              Label="Target Collection (Optional)" 
+                              @bind-Value="_selectedCollectionId"
+                              Variant="Variant.Outlined"
+                              Clearable="true">
+                        @if (_collections != null && _collections.Any())
+                        {
+                            @foreach (var collection in _collections)
+                            {
+                                <MudSelectItem Value="@((Guid?)collection.Id)">@collection.Name</MudSelectItem>
+                            }
+                        }
+                        else
+                        {
+                            <MudSelectItem Value="@((Guid?)null)" Disabled="true">No collections available</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                <!-- curl Command Input -->
+                @if (_selectedSource == ImportSource.Curl)
+                {
+                    <MudTextField T="string" 
+                                 Label="curl Command" 
+                                 @bind-Value="_curlCommand"
+                                 Variant="Variant.Outlined"
+                                 Lines="10"
+                                 Required="true"
+                                 RequiredError="Please enter a curl command"
+                                 Placeholder="curl 'https://api.example.com/users' -H 'Authorization: Bearer token123'"
+                                 HelperText="Paste your curl command here. Multi-line commands are supported." />
+                    
+                    <!-- Request Name Input -->
+                    <MudTextField T="string" 
+                                 Label="Request Name (Optional)" 
+                                 @bind-Value="_requestName"
+                                 Variant="Variant.Outlined"
+                                 Placeholder="Leave empty to auto-generate from URL"
+                                 HelperText="Specify a custom name for the imported request, or leave empty to auto-generate." />
+                }
+
+                <!-- Import Button -->
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Outlined" 
+                              OnClick="Cancel">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              OnClick="ImportRequest"
+                              Disabled="@_isImporting">
+                        @if (_isImporting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                            <MudText Class="ml-2">Importing...</MudText>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Upload" Class="mr-2" />
+                            <span>Import</span>
+                        }
+                    </MudButton>
+                </MudStack>
+
+                <!-- Result Message -->
+                @if (!string.IsNullOrEmpty(_resultMessage))
+                {
+                    <MudAlert Severity="@(_importSuccess ? Severity.Success : Severity.Error)" 
+                             Variant="Variant.Filled"
+                             Class="mt-4">
+                        @_resultMessage
+                    </MudAlert>
+                }
+
+                <!-- Warnings -->
+                @if (_warnings.Any())
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-2">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Warnings:</MudText>
+                        <MudList T="string" Dense="true">
+                            @foreach (var warning in _warnings)
+                            {
+                                <MudListItem T="string">@warning</MudListItem>
+                            }
+                        </MudList>
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudForm>
+    </MudPaper>
+
+    <!-- Example Section -->
+    <MudPaper Class="pa-6 mt-6" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+            Example curl Commands
+        </MudText>
+        <MudStack Spacing="3">
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Simple GET request:</MudText>
+                <MudPaper Class="pa-3" Outlined="true">
+                    <code class="code-example">curl 'https://api.github.com/users/octocat'</code>
+                </MudPaper>
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">POST request with JSON body:</MudText>
+                <MudPaper Class="pa-3" Outlined="true">
+                    <code class="code-example">curl -X POST 'https://api.example.com/users' -H 'Content-Type: application/json' -d '{"name":"John","email":"john@example.com"}'</code>
+                </MudPaper>
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Request with Bearer token:</MudText>
+                <MudPaper Class="pa-3" Outlined="true">
+                    <code class="code-example">curl 'https://api.example.com/protected' -H 'Authorization: Bearer your-token-here'</code>
+                </MudPaper>
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Request with Basic authentication:</MudText>
+                <MudPaper Class="pa-3" Outlined="true">
+                    <code class="code-example">curl -u username:password 'https://api.example.com/protected'</code>
+                </MudPaper>
+            </div>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private MudForm? _form;
+    private IEnumerable<Domain.Entities.Environment>? _environments;
+    private IEnumerable<Collection>? _collections;
+    
+    private ImportSource _selectedSource = ImportSource.Curl;
+    private Guid? _selectedEnvironmentId;
+    private Guid? _selectedCollectionId;
+    private string _curlCommand = string.Empty;
+    private string? _requestName;
+    
+    private bool _isImporting;
+    private bool _importSuccess;
+    private string? _resultMessage;
+    private List<string> _warnings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEnvironments();
+    }
+
+    private async Task OnEnvironmentChanged(Guid? environmentId)
+    {
+        _selectedEnvironmentId = environmentId;
+        _selectedCollectionId = null; // Reset collection selection
+        
+        if (environmentId.HasValue)
+        {
+            await LoadCollections(environmentId.Value);
+        }
+        else
+        {
+            _collections = null;
+        }
+    }
+
+    private async Task LoadEnvironments()
+    {
+        _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+        
+        // Auto-select first environment if only one exists
+        if (_environments != null && _environments.Count() == 1)
+        {
+            _selectedEnvironmentId = _environments.First().Id;
+            await LoadCollections(_selectedEnvironmentId.Value);
+        }
+    }
+
+    private async Task LoadCollections(Guid environmentId)
+    {
+        var allCollections = await CollectionService.GetAllCollectionsAsync();
+        _collections = allCollections.Where(c => c.EnvironmentId == environmentId);
+        
+        StateHasChanged();
+    }
+
+    private async Task ImportRequest()
+    {
+        if (_form == null)
+            return;
+
+        await _form.Validate();
+        if (!_form.IsValid)
+            return;
+
+        if (!_selectedEnvironmentId.HasValue)
+        {
+            Snackbar.Add("Please select an environment", Severity.Error);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_curlCommand))
+        {
+            Snackbar.Add("Please enter a curl command", Severity.Error);
+            return;
+        }
+
+        _isImporting = true;
+        _resultMessage = null;
+        _warnings.Clear();
+        StateHasChanged();
+
+        try
+        {
+            ImportResult result;
+
+            if (_selectedSource == ImportSource.Curl)
+            {
+                result = await ImportService.ImportFromCurlAsync(_curlCommand, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
+            }
+            else
+            {
+                result = new ImportResult
+                {
+                    Success = false,
+                    ErrorMessage = "This import source is not yet supported"
+                };
+            }
+
+            _importSuccess = result.Success;
+            _warnings = result.Warnings;
+
+            if (result.Success && result.ImportedRequest != null)
+            {
+                _resultMessage = $"Successfully imported request: {result.ImportedRequest.Name}";
+                Snackbar.Add(_resultMessage, Severity.Success);
+                
+                // Navigate to the imported request after a short delay
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}?requestId={result.ImportedRequest.Id}");
+            }
+            else
+            {
+                _resultMessage = result.ErrorMessage ?? "Failed to import request";
+                Snackbar.Add(_resultMessage, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _importSuccess = false;
+            _resultMessage = $"Error: {ex.Message}";
+            Snackbar.Add(_resultMessage, Severity.Error);
+        }
+        finally
+        {
+            _isImporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}

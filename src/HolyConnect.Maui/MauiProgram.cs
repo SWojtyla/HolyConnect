@@ -125,6 +125,7 @@ public static class MauiProgram
         builder.Services.AddScoped<IResponseValueExtractor, ResponseValueExtractor>();
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IGraphQLSchemaService, GraphQLSchemaService>();
+        builder.Services.AddScoped<IImportService, ImportService>();
 
         // Add request executors
         builder.Services.AddScoped<IRequestExecutor, RestRequestExecutor>();
