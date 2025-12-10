@@ -52,6 +52,18 @@ public static class MauiProgram
                 {
                     var json = File.ReadAllText(settingsFile);
                     var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                    
+                    // First try to use active git folder path if configured
+                    if (settings?.ActiveGitFolderId != null && settings.GitFolders != null)
+                    {
+                        var activeFolder = settings.GitFolders.FirstOrDefault(f => f.Id == settings.ActiveGitFolderId);
+                        if (activeFolder != null && !string.IsNullOrWhiteSpace(activeFolder.Path))
+                        {
+                            return activeFolder.Path;
+                        }
+                    }
+                    
+                    // Fallback to legacy storage path
                     if (!string.IsNullOrWhiteSpace(settings?.StoragePath))
                     {
                         return settings!.StoragePath!;
