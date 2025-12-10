@@ -137,9 +137,6 @@
                             }
                         </MudTd>
                         <MudTd>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                         Size="Size.Small" 
-                                         OnClick="@(() => EditGitFolder(context))" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" 
                                          Size="Size.Small" 
                                          Color="Color.Error"
@@ -319,13 +316,6 @@
         {
             Snackbar.Add($"Error deleting repository: {ex.Message}", Severity.Error);
         }
-    }
-
-    private void EditGitFolder(GitFolder folder)
-    {
-        _newGitFolderName = folder.Name;
-        _newGitFolderPath = folder.Path;
-        Snackbar.Add("Edit the name/path below and click 'Add Repository' to update", Severity.Info);
     }
 
     private async Task OnThemeChanged(Domain.Entities.ThemePreset preset)

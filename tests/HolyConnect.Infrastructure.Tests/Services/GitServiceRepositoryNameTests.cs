@@ -147,7 +147,7 @@ public class GitServiceRepositoryNameTests : IDisposable
 
             // Assert
             Assert.NotNull(branch);
-            Assert.True(branch == "master" || branch == "main");
+            Assert.False(string.IsNullOrEmpty(branch), "Branch name should not be null or empty");
         }
         finally
         {

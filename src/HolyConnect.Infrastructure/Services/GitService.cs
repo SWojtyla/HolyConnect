@@ -59,10 +59,10 @@ public class GitService : IGitService
                 var lastSlashIndex = url.TrimEnd('/').LastIndexOf('/');
                 if (lastSlashIndex >= 0)
                 {
-                    var name = url.Substring(lastSlashIndex + 1).TrimEnd('/');
+                    var name = url[(lastSlashIndex + 1)..].TrimEnd('/');
                     // Remove .git extension if present
                     if (name.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
-                        name = name.Substring(0, name.Length - 4);
+                        name = name[..^4];
                     return Task.FromResult<string?>(name);
                 }
             }
