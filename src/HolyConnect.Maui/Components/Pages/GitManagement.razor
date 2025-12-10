@@ -2,6 +2,7 @@
 @inject IGitService GitService
 @inject SettingsService SettingsService
 @inject ISnackbar Snackbar
+@inject MudBlazor.IDialogService DialogService
 @using HolyConnect.Application.Interfaces
 @using LibGit2Sharp
 
@@ -317,6 +318,13 @@
                                             </MudText>
                                         </div>
                                         <MudStack Row="true" Spacing="1">
+                                            <MudButton Size="Size.Small" 
+                                                      Variant="Variant.Text" 
+                                                      Color="Color.Info"
+                                                      OnClick="@(() => ShowFileDiff(file.FilePath))"
+                                                      StartIcon="@Icons.Material.Filled.Difference">
+                                                Diff
+                                            </MudButton>
                                             @if (!file.IsStaged)
                                             {
                                                 <MudButton Size="Size.Small" 
@@ -927,6 +935,53 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error adding to .gitignore: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ShowFileDiff(string filePath)
+    {
+        try
+        {
+            var parameters = new MudBlazor.DialogParameters
+            {
+                ["FilePath"] = filePath,
+                ["IsLoading"] = true,
+                ["Diff"] = null
+            };
+
+            var dialogRef = DialogService.Show<DiffViewerDialog>("File Diff", parameters, new MudBlazor.DialogOptions
+            {
+                MaxWidth = MudBlazor.MaxWidth.Large,
+                FullWidth = true,
+                CloseButton = true,
+                Position = MudBlazor.DialogPosition.Center
+            });
+
+            var diff = await GitService.GetFileDiffAsync(filePath);
+            // Instead of UpdateParameters, close and reopen dialog with diff
+            var diffParams = new MudBlazor.DialogParameters
+            {
+                ["FilePath"] = filePath,
+                ["IsLoading"] = false,
+                ["Diff"] = diff
+            };
+            dialogRef.Close();
+            DialogService.Show<DiffViewerDialog>("File Diff", diffParams, new MudBlazor.DialogOptions
+            {
+                MaxWidth = MudBlazor.MaxWidth.Large,
+                FullWidth = true,
+                CloseButton = true,
+                Position = MudBlazor.DialogPosition.Center
+            });
+
+            if (diff == null)
+            {
+                Snackbar.Add($"Unable to load diff for {filePath}", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading diff: {ex.Message}", Severity.Error);
         }
     }
 }

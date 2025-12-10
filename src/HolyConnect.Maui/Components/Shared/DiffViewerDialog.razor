@@ -1,0 +1,59 @@
+@using MudBlazor
+@using HolyConnect.Application.Interfaces
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Difference" Class="mr-2" />
+            File Diff: @FilePath
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (IsLoading)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (Diff != null)
+        {
+            <DiffViewer OriginalContent="@Diff.OriginalContent"
+                        ModifiedContent="@Diff.ModifiedContent"
+                        Language="@GetLanguageFromPath(Diff.FilePath)"
+                        Status="@Diff.Status"
+                        Height="50rem" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning">Unable to load diff for this file.</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Default">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance? MudDialog { get; set; }
+    [Parameter] public string FilePath { get; set; } = string.Empty;
+    [Parameter] public GitFileDiff? Diff { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+
+    private void Close() => MudDialog?.Close();
+
+    private string GetLanguageFromPath(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".json" => "json",
+            ".xml" => "xml",
+            ".html" or ".htm" => "html",
+            ".js" => "javascript",
+            ".cs" => "csharp",
+            ".css" => "css",
+            ".md" => "markdown",
+            ".yaml" or ".yml" => "yaml",
+            _ => "plaintext"
+        };
+    }
+}
