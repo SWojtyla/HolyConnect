@@ -1,0 +1,452 @@
+@using HolyConnect.Domain.Entities
+@inject IFormatterService FormatterService
+@inject ISnackbar Snackbar
+
+<MudGrid Class="mb-2" Spacing="2">
+    <MudItem xs="3" sm="2">
+        <MudSelect @bind-Value="Request.Method" Label="Method" Variant="Variant.Outlined" Margin="Margin.Dense">
+            @foreach (var method in Enum.GetValues<HolyConnect.Domain.Entities.HttpMethod>())
+            {
+                <MudSelectItem Value="@method">@method.ToString()</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="9" sm="10">
+        <VariableTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Environment="@Environment" Collection="@Collection" />
+    </MudItem>
+</MudGrid>
+
+<MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
+    <MudTabPanel Text="Body" Style="height: 100%;">
+        <div class="pa-4 d-flex flex-column" style="height: 100%;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
+                <MudSelect @bind-Value="Request.BodyType" Label="Body Type" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width: 10rem;">
+                    @foreach (var bodyType in Enum.GetValues<BodyType>())
+                    {
+                        <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Primary" 
+                           Size="Size.Small" 
+                           StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                           OnClick="@FormatRestBody">
+                    Format
+                </MudButton>
+            </MudStack>
+            <div style="flex: 1; overflow: hidden;">
+                <CodeEditor @ref="_restBodyEditor" 
+                            @bind-Value="Request.Body" 
+                            Language="@Request.BodyType.ToString()" 
+                            Height="100%" />
+            </div>
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Headers" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
+            <MudStack Row="true" Spacing="2" Class="mb-4">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
+                    + JSON
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/xml"))">
+                    + XML
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                    + Auth
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Accept", "*/*"))">
+                    + Accept
+                </MudButton>
+            </MudStack>
+            
+            @foreach (var header in _headers)
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="1" Class="d-flex align-center">
+                        <MudCheckBox Value="@header.Enabled" ValueChanged="@((bool v) => UpdateHeaderEnabled(header, v))" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <MudStack Spacing="1">
+                            <VariableTextField Value="@header.Key" 
+                                             ValueChanged="@((string v) => UpdateHeaderKey(header, v))"
+                                             Label="Header Name" 
+                                             Variant="Variant.Outlined" 
+                                             Disabled="@(!header.Enabled)" 
+                                             Environment="@Environment" 
+                                             Collection="@Collection" />
+                            @if (header.IsDefault)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
+                            }
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudStack Spacing="1">
+                            <VariableTextField Value="@header.Value" 
+                                             ValueChanged="@((string v) => UpdateHeaderValue(header, v))"
+                                             Label="Header Value" 
+                                             Variant="Variant.Outlined" 
+                                             Disabled="@(!header.Enabled)" 
+                                             Environment="@Environment" 
+                                             Collection="@Collection" />
+                            @if (header.IsDefault)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
+                            }
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="2" Class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                    </MudItem>
+                </MudGrid>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
+                Add Header
+            </MudButton>
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Query Params" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            @foreach (var param in _queryParams)
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="1" Class="d-flex align-center">
+                        <MudCheckBox Value="@param.Enabled" ValueChanged="@((bool v) => UpdateParamEnabled(param, v))" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <VariableTextField Value="@param.Key" 
+                                         ValueChanged="@((string v) => UpdateParamKey(param, v))"
+                                         Label="Parameter Name" 
+                                         Variant="Variant.Outlined" 
+                                         Disabled="@(!param.Enabled)" 
+                                         Environment="@Environment" 
+                                         Collection="@Collection" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <VariableTextField Value="@param.Value" 
+                                         ValueChanged="@((string v) => UpdateParamValue(param, v))"
+                                         Label="Parameter Value" 
+                                         Variant="Variant.Outlined" 
+                                         Disabled="@(!param.Enabled)" 
+                                         Environment="@Environment" 
+                                         Collection="@Collection" />
+                    </MudItem>
+                    <MudItem xs="2" Class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveQueryParam(param))" />
+                    </MudItem>
+                </MudGrid>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddQueryParam" StartIcon="@Icons.Material.Filled.Add">
+                Add Query Parameter
+            </MudButton>
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Auth" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
+                @foreach (var authType in Enum.GetValues<AuthenticationType>())
+                {
+                    <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
+                }
+            </MudSelect>
+            
+            @if (Request.AuthType == AuthenticationType.Basic)
+            {
+                <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
+                <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+            }
+            else if (Request.AuthType == AuthenticationType.BearerToken)
+            {
+                <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
+            }
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Extractions" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter, EditorRequired]
+    public RestRequest Request { get; set; } = default!;
+
+    [Parameter]
+    public Domain.Entities.Environment? Environment { get; set; }
+
+    [Parameter]
+    public Collection? Collection { get; set; }
+
+    private CodeEditor? _restBodyEditor;
+    private List<HeaderModel> _headers = new();
+    private List<ParamModel> _queryParams = new();
+
+    private class HeaderModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = false;
+    }
+
+    private class ParamModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+    }    
+    
+    // We use OnParametersSet to react to external Request changes, but we need to be careful not to overwrite local edits
+    // if the parent re-renders. For now, we'll initialize once per Request instance or if the ID changes.
+    private Guid _lastRequestId;
+    
+    protected override void OnParametersSet()
+    {
+        if (Request != null && Request.Id != _lastRequestId)
+        {
+            _lastRequestId = Request.Id;
+            InitializeHeaders();
+            InitializeQueryParams();
+        }
+    }
+
+    private void InitializeHeaders()
+    {
+        _headers = Request.Headers.Select(h => new HeaderModel 
+        { 
+            Key = h.Key, 
+            Value = h.Value,
+            Enabled = !Request.DisabledHeaders.Contains(h.Key)
+        }).ToList();
+        
+        // Add default User-Agent if missing
+        if (!_headers.Any(h => h.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase)))
+        {
+            _headers.Insert(0, new HeaderModel 
+            { 
+                Key = "User-Agent", 
+                Value = "HolyConnect/1.0",
+                Enabled = true,
+                IsDefault = true
+            });
+        }
+        
+        // Add default Content-Type if missing and body exists
+        if (!string.IsNullOrEmpty(Request.Body) && 
+            !_headers.Any(h => h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)))
+        {
+            var contentType = GetDefaultContentType();
+            _headers.Insert(_headers.Any(h => h.IsDefault) ? 1 : 0, new HeaderModel 
+            { 
+                Key = "Content-Type", 
+                Value = contentType,
+                Enabled = true,
+                IsDefault = true
+            });
+        }
+    }
+
+    private void InitializeQueryParams()
+    {
+        _queryParams = Request.QueryParameters.Select(p => new ParamModel 
+        { 
+            Key = p.Key, 
+            Value = p.Value,
+            Enabled = !Request.DisabledQueryParameters.Contains(p.Key)
+        }).ToList();
+    }
+
+    private string GetDefaultContentType()
+    {
+        if (!string.IsNullOrEmpty(Request.ContentType))
+        {
+            return Request.ContentType;
+        }
+
+        return Request.BodyType switch
+        {
+            BodyType.Json => "application/json",
+            BodyType.Xml => "application/xml",
+            BodyType.Html => "text/html",
+            BodyType.JavaScript => "application/javascript",
+            BodyType.Text => "text/plain",
+            _ => "text/plain"
+        };
+    }
+
+    private async Task FormatRestBody()
+    {
+        if (string.IsNullOrWhiteSpace(Request.Body) || _restBodyEditor == null)
+            return;
+
+        try
+        {
+            await _restBodyEditor.FormatDocumentAsync();
+            Snackbar.Add("Body formatted successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error formatting body: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private string GetAuthTypeName(AuthenticationType authType) => authType switch
+    {
+        AuthenticationType.None => "No Auth",
+        AuthenticationType.Basic => "Basic Auth",
+        AuthenticationType.BearerToken => "Bearer Token",
+        _ => authType.ToString()
+    };
+
+    // --- Header Management ---
+
+    private void AddHeader()
+    {
+        _headers.Add(new HeaderModel());
+        SyncHeadersToRequest();
+    }
+
+    private void RemoveHeader(HeaderModel header)
+    {
+        _headers.Remove(header);
+        SyncHeadersToRequest();
+    }
+
+    private void AddCommonHeader(string key, string value)
+    {
+        var existingHeader = _headers.FirstOrDefault(h => h.Key == key);
+        if (existingHeader != null)
+        {
+            existingHeader.Value = value;
+            existingHeader.Enabled = true;
+        }
+        else
+        {
+            _headers.Add(new HeaderModel { Key = key, Value = value });
+        }
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderKey(HeaderModel header, string newKey)
+    {
+        header.Key = newKey;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderValue(HeaderModel header, string newValue)
+    {
+        header.Value = newValue;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderEnabled(HeaderModel header, bool enabled)
+    {
+        header.Enabled = enabled;
+        SyncHeadersToRequest();
+    }
+
+    private void SyncHeadersToRequest()
+    {
+        Request.Headers.Clear();
+        Request.DisabledHeaders.Clear();
+        
+        foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
+        {
+            if (header.Enabled)
+            {
+                // Skip default headers if unmodified (similar to original logic, 
+                // assuming backend handles defaults if missing, or we explicitly send them if present)
+                // Actually, original logic was meant to avoid saving redundant defaults.
+                // Here we simply sync everything that is enabled to Headers, unless it's a default that shouldn't be saved?
+                // The original logic:
+                // if (header.IsDefault && !IsHeaderModified(header)) continue;
+                // Let's replicate that check.
+                if (header.IsDefault && !IsHeaderModified(header))
+                {
+                    continue;
+                }
+                
+                Request.Headers[header.Key] = header.Value;
+            }
+            else
+            {
+                Request.DisabledHeaders.Add(header.Key);
+            }
+        }
+    }
+
+    private bool IsHeaderModified(HeaderModel header)
+    {
+        if (header.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+        {
+            return header.Value != "HolyConnect/1.0";
+        }
+        
+        if (header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+        {
+            return header.Value != GetDefaultContentType();
+        }
+        
+        return true;
+    }
+
+    // --- Query Param Management ---
+
+    private void AddQueryParam()
+    {
+        _queryParams.Add(new ParamModel());
+        SyncQueryParamsToRequest();
+    }
+
+    private void RemoveQueryParam(ParamModel param)
+    {
+        _queryParams.Remove(param);
+        SyncQueryParamsToRequest();
+    }
+    
+    private void UpdateParamKey(ParamModel param, string newKey)
+    {
+        param.Key = newKey;
+        SyncQueryParamsToRequest();
+    }
+
+    private void UpdateParamValue(ParamModel param, string newValue)
+    {
+        param.Value = newValue;
+        SyncQueryParamsToRequest();
+    }
+
+    private void UpdateParamEnabled(ParamModel param, bool enabled)
+    {
+        param.Enabled = enabled;
+        SyncQueryParamsToRequest();
+    }
+
+    private void SyncQueryParamsToRequest()
+    {
+        Request.QueryParameters.Clear();
+        Request.DisabledQueryParameters.Clear();
+        
+        foreach (var param in _queryParams.Where(p => !string.IsNullOrWhiteSpace(p.Key)))
+        {
+            if (param.Enabled)
+            {
+                Request.QueryParameters[param.Key] = param.Value;
+            }
+            else
+            {
+                Request.DisabledQueryParameters.Add(param.Key);
+            }
+        }
+    }
+}

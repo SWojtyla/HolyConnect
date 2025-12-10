@@ -1,0 +1,311 @@
+@using HolyConnect.Domain.Entities
+@inject ISnackbar Snackbar
+
+<MudGrid Class="mb-2" Spacing="2">
+    <MudItem xs="12">
+        <VariableTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Environment="@Environment" Collection="@Collection" />
+    </MudItem>
+</MudGrid>
+
+<MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
+    <MudTabPanel Text="Message" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudTextField @bind-Value="Request.Message" 
+                          Label="Message to Send" 
+                          Lines="10" 
+                          Variant="Variant.Outlined"
+                          HelperText="Message to send after connection is established" />
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Headers" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
+            <MudStack Row="true" Spacing="2" Class="mb-4">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                    + Auth
+                </MudButton>
+            </MudStack>
+            
+            @foreach (var header in _headers)
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="1" Class="d-flex align-center">
+                        <MudCheckBox Value="@header.Enabled" ValueChanged="@((bool v) => UpdateHeaderEnabled(header, v))" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <MudStack Spacing="1">
+                            <VariableTextField Value="@header.Key" 
+                                             ValueChanged="@((string v) => UpdateHeaderKey(header, v))"
+                                             Label="Header Name" 
+                                             Variant="Variant.Outlined" 
+                                             Disabled="@(!header.Enabled)" 
+                                             Environment="@Environment" 
+                                             Collection="@Collection" />
+                            @if (header.IsDefault)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
+                            }
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudStack Spacing="1">
+                            <VariableTextField Value="@header.Value" 
+                                             ValueChanged="@((string v) => UpdateHeaderValue(header, v))"
+                                             Label="Header Value" 
+                                             Variant="Variant.Outlined" 
+                                             Disabled="@(!header.Enabled)" 
+                                             Environment="@Environment" 
+                                             Collection="@Collection" />
+                            @if (header.IsDefault)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
+                            }
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="2" Class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                    </MudItem>
+                </MudGrid>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
+                Add Header
+            </MudButton>
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Protocols" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudText Typo="Typo.body2" Class="mb-2">Sub-protocols (optional)</MudText>
+            @foreach (var protocol in _protocols)
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="10">
+                        <MudTextField Value="@protocol.Value" ValueChanged="@((string v) => UpdateProtocolValue(protocol, v))" Label="Protocol" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="2" Class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveProtocol(protocol))" />
+                    </MudItem>
+                </MudGrid>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddProtocol" StartIcon="@Icons.Material.Filled.Add">
+                Add Protocol
+            </MudButton>
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Auth" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
+                @foreach (var authType in Enum.GetValues<AuthenticationType>())
+                {
+                    <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
+                }
+            </MudSelect>
+            
+            @if (Request.AuthType == AuthenticationType.Basic)
+            {
+                <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
+                <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+            }
+            else if (Request.AuthType == AuthenticationType.BearerToken)
+            {
+                <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
+            }
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter, EditorRequired]
+    public WebSocketRequest Request { get; set; } = default!;
+
+    [Parameter]
+    public Domain.Entities.Environment? Environment { get; set; }
+
+    [Parameter]
+    public Collection? Collection { get; set; }
+
+    private List<HeaderModel> _headers = new();
+    private List<ProtocolModel> _protocols = new();
+    
+    private class HeaderModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = false;
+    }
+    
+    private class ProtocolModel
+    {
+        public string Value { get; set; } = string.Empty;
+    }
+
+    protected override void OnInitialized()
+    {
+        InitializeHeaders();
+        InitializeProtocols();
+    }
+    
+    private Guid _lastRequestId;
+    
+    protected override void OnParametersSet()
+    {
+        if (Request != null && Request.Id != _lastRequestId)
+        {
+            _lastRequestId = Request.Id;
+            InitializeHeaders();
+            InitializeProtocols();
+        }
+    }
+
+    private void InitializeHeaders()
+    {
+        _headers = Request.Headers.Select(h => new HeaderModel 
+        { 
+            Key = h.Key, 
+            Value = h.Value,
+            Enabled = !Request.DisabledHeaders.Contains(h.Key)
+        }).ToList();
+        
+        // Add default User-Agent if not already present
+        if (!_headers.Any(h => h.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase)))
+        {
+            _headers.Insert(0, new HeaderModel 
+            { 
+                Key = "User-Agent", 
+                Value = "HolyConnect/1.0",
+                Enabled = true,
+                IsDefault = true
+            });
+        }
+    }
+    
+    private void InitializeProtocols()
+    {
+        _protocols = Request.Protocols.Select(p => new ProtocolModel { Value = p }).ToList();
+    }
+
+    private string GetAuthTypeName(AuthenticationType authType) => authType switch
+    {
+        AuthenticationType.None => "No Auth",
+        AuthenticationType.Basic => "Basic Auth",
+        AuthenticationType.BearerToken => "Bearer Token",
+        _ => authType.ToString()
+    };
+    
+    // --- Header Management ---
+
+    private void AddHeader()
+    {
+        _headers.Add(new HeaderModel());
+        SyncHeadersToRequest();
+    }
+
+    private void RemoveHeader(HeaderModel header)
+    {
+        _headers.Remove(header);
+        SyncHeadersToRequest();
+    }
+
+    private void AddCommonHeader(string key, string value)
+    {
+        var existingHeader = _headers.FirstOrDefault(h => h.Key == key);
+        if (existingHeader != null)
+        {
+            existingHeader.Value = value;
+            existingHeader.Enabled = true;
+        }
+        else
+        {
+            _headers.Add(new HeaderModel { Key = key, Value = value });
+        }
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderKey(HeaderModel header, string newKey)
+    {
+        header.Key = newKey;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderValue(HeaderModel header, string newValue)
+    {
+        header.Value = newValue;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderEnabled(HeaderModel header, bool enabled)
+    {
+        header.Enabled = enabled;
+        SyncHeadersToRequest();
+    }
+
+    private void SyncHeadersToRequest()
+    {
+        Request.Headers.Clear();
+        Request.DisabledHeaders.Clear();
+        
+        foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
+        {
+            if (header.Enabled)
+            {
+                if (header.IsDefault && !IsHeaderModified(header))
+                {
+                    continue;
+                }
+                
+                Request.Headers[header.Key] = header.Value;
+            }
+            else
+            {
+                Request.DisabledHeaders.Add(header.Key);
+            }
+        }
+    }
+
+    private bool IsHeaderModified(HeaderModel header)
+    {
+        if (header.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+        {
+            return header.Value != "HolyConnect/1.0";
+        }
+        
+        return true;
+    }
+    
+    // --- Protocol Management ---
+
+    private void AddProtocol()
+    {
+        _protocols.Add(new ProtocolModel());
+        SyncProtocolsToRequest();
+    }
+
+    private void RemoveProtocol(ProtocolModel protocol)
+    {
+        _protocols.Remove(protocol);
+        SyncProtocolsToRequest();
+    }
+    
+    private void UpdateProtocolValue(ProtocolModel protocol, string newValue)
+    {
+        protocol.Value = newValue;
+        SyncProtocolsToRequest();
+    }
+    
+    private void SyncProtocolsToRequest()
+    {
+        Request.Protocols.Clear();
+        
+        foreach (var protocol in _protocols.Where(p => !string.IsNullOrWhiteSpace(p.Value)))
+        {
+            Request.Protocols.Add(protocol.Value);
+        }
+    }
+}
