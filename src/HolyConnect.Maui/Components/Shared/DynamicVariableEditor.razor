@@ -1,99 +1,112 @@
 @using HolyConnect.Domain.Entities
 
-<MudCard Class="mb-4">
-    <MudCardContent>
-        <MudText Typo="Typo.h6" Class="mb-3">
+<MudTable Items="@DynamicVariables" Dense="true" Hover="true" Elevation="1" Class="mb-4">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">
             <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Class="mr-2" />
             Dynamic Test Data Variables
         </MudText>
-        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
-            Dynamic variables generate fake test data on each request execution. They are useful for creating realistic test scenarios with randomized data.
+        <MudSpacer />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mr-4">
+            Dynamic variables generate fake test data on each request.
         </MudText>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Variable Name</MudTh>
+        <MudTh>Data Type</MudTh>
+        <MudTh Style="text-align:center">Secret</MudTh>
+        <MudTh>Constraints</MudTh>
+        <MudTh Style="text-align:center">Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Variable Name">
+            <MudTextField @bind-Value="@context.Name" 
+                          Variant="Variant.Outlined" 
+                          Margin="Margin.Dense" 
+                          Dense="true"
+                          Placeholder="e.g. variableName"
+                          HideSpinButtons="true" />
+        </MudTd>
+        <MudTd DataLabel="Data Type">
+            <MudSelect @bind-Value="@context.GeneratorType" 
+                       Variant="Variant.Outlined" 
+                       Margin="Margin.Dense" 
+                       Dense="true">
+                <MudSelectItem Value="DataGeneratorType.FirstName">First Name</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.LastName">Last Name</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.FullName">Full Name</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Email">Email</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.PhoneNumber">Phone Number</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Username">Username</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Integer">Integer</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Decimal">Decimal</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Date">Date</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.DatePast">Date (Past)</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.DateFuture">Date (Future)</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.DateTime">Date Time</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Boolean">Boolean</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Guid">GUID/UUID</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Url">URL</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.IpAddress">IP Address</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.StreetAddress">Street Address</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.City">City</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Country">Country</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.ZipCode">Zip Code</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.CreditCardNumber">Credit Card Number</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Word">Word</MudSelectItem>
+                <MudSelectItem Value="DataGeneratorType.Sentence">Sentence</MudSelectItem>
+            </MudSelect>
+        </MudTd>
+        <MudTd DataLabel="Secret" Style="text-align: center;">
+            <MudCheckBox @bind-Value="@context.IsSecret" Color="Color.Primary" Dense="true" Size="Size.Small" />
+        </MudTd>
+        <MudTd DataLabel="Constraints">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIconButton Icon="@Icons.Material.Filled.Settings" 
+                               Size="Size.Small"
+                               Color="@(context.Constraints.Any() ? Color.Primary : Color.Default)"
+                               OnClick="@(() => EditConstraints(context))"
+                               Title="Configure Constraints" />
+                
+                @if (context.Constraints.Any())
+                {
+                    <MudChipSet T="ConstraintRule" Class="d-flex flex-wrap gap-1">
+                        @foreach (var constraint in context.Constraints)
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Class="mx-0 my-0">
+                                @GetConstraintDisplay(constraint)
+                            </MudChip>
+                        }
+                    </MudChipSet>
+                }
+            </MudStack>
+        </MudTd>
+        <MudTd DataLabel="Actions" Style="text-align: center;">
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                           Size="Size.Small"
+                           Color="Color.Error"
+                           OnClick="@(() => RemoveDynamicVariable(context))" />
+        </MudTd>
+    </RowTemplate>
+    <FooterContent>
+        <MudTd ColSpan="5" Class="pa-2">
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddDynamicVariable"
+                       FullWidth="true"
+                       Class="dashed-border">
+                Add Dynamic Variable
+            </MudButton>
+        </MudTd>
+    </FooterContent>
+</MudTable>
 
-        @foreach (var dynamicVar in DynamicVariables)
-        {
-            <MudPaper Elevation="1" Class="pa-3 mb-3">
-                <MudGrid Spacing="2">
-                    <MudItem xs="12" sm="4">
-                        <MudTextField @bind-Value="dynamicVar.Name" 
-                                      Label="Variable Name" 
-                                      Variant="Variant.Outlined"
-                                      Dense="true"
-                                      HelperText="Use in requests with {{ variableName }}" />
-                    </MudItem>
-                    <MudItem xs="12" sm="4">
-                        <MudSelect @bind-Value="dynamicVar.GeneratorType" 
-                                   Label="Data Type" 
-                                   Variant="Variant.Outlined"
-                                   Dense="true">
-                            <MudSelectItem Value="DataGeneratorType.FirstName">First Name</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.LastName">Last Name</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.FullName">Full Name</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Email">Email</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.PhoneNumber">Phone Number</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Username">Username</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Integer">Integer</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Decimal">Decimal</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Date">Date</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.DatePast">Date (Past)</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.DateFuture">Date (Future)</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.DateTime">Date Time</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Boolean">Boolean</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Guid">GUID/UUID</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Url">URL</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.IpAddress">IP Address</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.StreetAddress">Street Address</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.City">City</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Country">Country</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.ZipCode">Zip Code</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.CreditCardNumber">Credit Card Number</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Word">Word</MudSelectItem>
-                            <MudSelectItem Value="DataGeneratorType.Sentence">Sentence</MudSelectItem>
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" sm="3">
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                            <MudCheckBox @bind-Value="dynamicVar.IsSecret" 
-                                         Label="Secret" 
-                                         Color="Color.Primary"
-                                         Dense="true" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Settings" 
-                                          Size="Size.Small"
-                                          Color="Color.Primary"
-                                          OnClick="@(() => EditConstraints(dynamicVar))"
-                                          Title="Configure Constraints" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                          Size="Size.Small"
-                                          Color="Color.Error"
-                                          OnClick="@(() => RemoveDynamicVariable(dynamicVar))" />
-                        </MudStack>
-                    </MudItem>
-                    
-                    @if (dynamicVar.Constraints.Any())
-                    {
-                        <MudItem xs="12">
-                            <MudChipSet T="ConstraintRule">
-                                @foreach (var constraint in dynamicVar.Constraints)
-                                {
-                                    <MudChip Size="Size.Small" Color="Color.Info">
-                                        @GetConstraintDisplay(constraint)
-                                    </MudChip>
-                                }
-                            </MudChipSet>
-                        </MudItem>
-                    }
-                </MudGrid>
-            </MudPaper>
-        }
-
-        <MudButton Variant="Variant.Outlined" 
-                   Color="Color.Primary" 
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="AddDynamicVariable">
-            Add Dynamic Variable
-        </MudButton>
-    </MudCardContent>
-</MudCard>
+<style>
+    .dashed-border {
+        border-style: dashed !important;
+    }
+</style>
 
 <MudDialog @bind-Visible="_showConstraintDialog" Options="_dialogOptions">
     <TitleContent>
