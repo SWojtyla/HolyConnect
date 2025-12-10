@@ -72,10 +72,10 @@
                     @if (dynamicVar.Constraints.Any())
                     {
                         <MudItem xs="12">
-                            <MudChipSet T="string">
+                            <MudChipSet T="ConstraintRule">
                                 @foreach (var constraint in dynamicVar.Constraints)
                                 {
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                                    <MudChip Size="Size.Small" Color="Color.Info">
                                         @GetConstraintDisplay(constraint)
                                     </MudChip>
                                 }
