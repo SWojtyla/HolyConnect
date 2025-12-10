@@ -26,7 +26,8 @@
                 <!-- Environment Selection -->
                 <MudSelect T="Guid?" 
                           Label="Target Environment" 
-                          @bind-Value="_selectedEnvironmentId"
+                          Value="_selectedEnvironmentId"
+                          ValueChanged="OnEnvironmentChanged"
                           Variant="Variant.Outlined"
                           Required="true"
                           RequiredError="Please select an environment">
@@ -73,6 +74,14 @@
                                  RequiredError="Please enter a curl command"
                                  Placeholder="curl 'https://api.example.com/users' -H 'Authorization: Bearer token123'"
                                  HelperText="Paste your curl command here. Multi-line commands are supported." />
+                    
+                    <!-- Request Name Input -->
+                    <MudTextField T="string" 
+                                 Label="Request Name (Optional)" 
+                                 @bind-Value="_requestName"
+                                 Variant="Variant.Outlined"
+                                 Placeholder="Leave empty to auto-generate from URL"
+                                 HelperText="Specify a custom name for the imported request, or leave empty to auto-generate." />
                 }
 
                 <!-- Import Button -->
@@ -169,6 +178,7 @@
     private Guid? _selectedEnvironmentId;
     private Guid? _selectedCollectionId;
     private string _curlCommand = string.Empty;
+    private string? _requestName;
     
     private bool _isImporting;
     private bool _importSuccess;
@@ -180,11 +190,18 @@
         await LoadEnvironments();
     }
 
-    protected override async Task OnParametersSetAsync()
+    private async Task OnEnvironmentChanged(Guid? environmentId)
     {
-        if (_selectedEnvironmentId.HasValue)
+        _selectedEnvironmentId = environmentId;
+        _selectedCollectionId = null; // Reset collection selection
+        
+        if (environmentId.HasValue)
         {
-            await LoadCollections(_selectedEnvironmentId.Value);
+            await LoadCollections(environmentId.Value);
+        }
+        else
+        {
+            _collections = null;
         }
     }
 
@@ -204,12 +221,6 @@
     {
         var allCollections = await CollectionService.GetAllCollectionsAsync();
         _collections = allCollections.Where(c => c.EnvironmentId == environmentId);
-        
-        // Reset collection selection if it doesn't belong to selected environment
-        if (_selectedCollectionId.HasValue && !_collections.Any(c => c.Id == _selectedCollectionId.Value))
-        {
-            _selectedCollectionId = null;
-        }
         
         StateHasChanged();
     }
@@ -246,7 +257,7 @@
 
             if (_selectedSource == ImportSource.Curl)
             {
-                result = await ImportService.ImportFromCurlAsync(_curlCommand, _selectedEnvironmentId.Value, _selectedCollectionId);
+                result = await ImportService.ImportFromCurlAsync(_curlCommand, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
             }
             else
             {

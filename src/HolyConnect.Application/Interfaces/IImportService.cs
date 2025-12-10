@@ -13,8 +13,9 @@ public interface IImportService
     /// <param name="curlCommand">The curl command string</param>
     /// <param name="environmentId">Target environment ID</param>
     /// <param name="collectionId">Optional target collection ID</param>
+    /// <param name="customName">Optional custom name for the request. If not provided, name will be auto-generated from URL</param>
     /// <returns>Import result containing the imported request or error details</returns>
-    Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid environmentId, Guid? collectionId = null);
+    Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid environmentId, Guid? collectionId = null, string? customName = null);
     
     /// <summary>
     /// Check if the service can handle a specific import source

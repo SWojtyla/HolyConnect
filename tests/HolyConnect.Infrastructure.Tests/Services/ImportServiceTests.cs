@@ -367,4 +367,49 @@ public class ImportServiceTests
         Assert.NotNull(capturedRequest.Body);
         Assert.Contains("John", capturedRequest.Body);
     }
+
+    [Fact]
+    public async Task ImportFromCurlAsync_WithCustomName_UsesCustomName()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var curlCommand = "curl 'https://api.example.com/users'";
+        var customName = "My Custom Request Name";
+        RestRequest? capturedRequest = null;
+
+        _mockRequestService.Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .Callback<Request>(r => capturedRequest = r as RestRequest)
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _service.ImportFromCurlAsync(curlCommand, environmentId, null, customName);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(customName, capturedRequest.Name);
+    }
+
+    [Fact]
+    public async Task ImportFromCurlAsync_WithoutCustomName_AutoGeneratesName()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var curlCommand = "curl 'https://api.example.com/users'";
+        RestRequest? capturedRequest = null;
+
+        _mockRequestService.Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .Callback<Request>(r => capturedRequest = r as RestRequest)
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _service.ImportFromCurlAsync(curlCommand, environmentId);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest.Name);
+        Assert.NotEqual("Imported Request", capturedRequest.Name);
+        Assert.Contains("Request", capturedRequest.Name);
+    }
 }

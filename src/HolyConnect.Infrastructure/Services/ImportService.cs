@@ -24,7 +24,7 @@ public class ImportService : IImportService
         return source == ImportSource.Curl;
     }
 
-    public async Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid environmentId, Guid? collectionId = null)
+    public async Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid environmentId, Guid? collectionId = null, string? customName = null)
     {
         var result = new ImportResult();
 
@@ -45,7 +45,7 @@ public class ImportService : IImportService
             }
 
             // Parse the curl command
-            var request = ParseCurlCommand(curlCommand, environmentId, collectionId);
+            var request = ParseCurlCommand(curlCommand, environmentId, collectionId, customName);
             
             if (request == null)
             {
@@ -67,7 +67,7 @@ public class ImportService : IImportService
         return result;
     }
 
-    private RestRequest? ParseCurlCommand(string curlCommand, Guid environmentId, Guid? collectionId)
+    private RestRequest? ParseCurlCommand(string curlCommand, Guid environmentId, Guid? collectionId, string? customName)
     {
         var request = new RestRequest
         {
@@ -89,8 +89,15 @@ public class ImportService : IImportService
             }
             request.Url = url;
             
-            // Generate a name from the URL
-            request.Name = GenerateNameFromUrl(url);
+            // Use custom name if provided, otherwise generate from URL
+            if (!string.IsNullOrWhiteSpace(customName))
+            {
+                request.Name = customName.Trim();
+            }
+            else
+            {
+                request.Name = GenerateNameFromUrl(url);
+            }
 
             // Extract HTTP method (-X or --request)
             var method = ExtractMethod(curlCommand);
