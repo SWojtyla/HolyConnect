@@ -10,6 +10,9 @@ namespace HolyConnect.Infrastructure.Services;
 public class ImportService : IImportService
 {
     private readonly IRequestService _requestService;
+    
+    // Constants for request name generation
+    private const int MaxSegmentLengthForNaming = 20;
 
     public ImportService(IRequestService requestService)
     {
@@ -126,25 +129,31 @@ public class ImportService : IImportService
 
     private string? ExtractUrl(string curlCommand)
     {
-        // Match URL patterns - it's usually the first unquoted argument or in quotes
-        // Pattern 1: URL in single or double quotes
+        // Try multiple patterns to extract the URL from curl command
+        // URLs can be quoted or unquoted and may appear before or after flags
+        
+        // Pattern 1: URL in single or double quotes after curl
+        // Example: curl 'https://example.com' or curl "https://example.com"
         var quotedUrlMatch = Regex.Match(curlCommand, @"curl\s+[^\s]*\s*['""]([^'""]+)['""]");
         if (quotedUrlMatch.Success)
         {
             return quotedUrlMatch.Groups[1].Value;
         }
 
-        // Pattern 2: URL without quotes (first argument after curl and any flags)
+        // Pattern 2: URL without quotes (after curl and optional flags)
+        // Example: curl -X POST https://example.com
+        // Matches first non-flag argument (doesn't start with -)
         var urlMatch = Regex.Match(curlCommand, @"curl\s+(?:--[^\s]+\s+|--[^\s]+\s+['""][^'""]*['""]|)*\s*([^\s-][^\s]*?)(?:\s+|$)");
         if (urlMatch.Success)
         {
             var url = urlMatch.Groups[1].Value.Trim();
-            // Remove trailing flags or options
+            // Clean up any trailing whitespace or options
             url = Regex.Replace(url, @"[\s]+.*$", "");
             return url;
         }
 
-        // Pattern 3: Simple case - curl URL
+        // Pattern 3: Simple case - just curl followed by URL
+        // Example: curl https://example.com
         var simpleMatch = Regex.Match(curlCommand, @"curl\s+([^\s]+)");
         if (simpleMatch.Success)
         {
@@ -170,7 +179,7 @@ public class ImportService : IImportService
             var lastSegment = segments[^1];
             
             // If last segment looks like an ID or is too long, use the second-to-last
-            if (lastSegment.Length > 20 || Guid.TryParse(lastSegment, out _) || lastSegment.All(char.IsDigit))
+            if (lastSegment.Length > MaxSegmentLengthForNaming || Guid.TryParse(lastSegment, out _) || lastSegment.All(char.IsDigit))
             {
                 if (segments.Length > 1)
                 {
@@ -242,18 +251,21 @@ public class ImportService : IImportService
             contentType = headerContentType;
         }
 
-        // Match -d, --data, --data-raw, --data-binary, --data-urlencode
-        // Use a more sophisticated pattern to handle escaped quotes inside the data
+        // Extract data from -d, --data, --data-raw, --data-binary, --data-urlencode flags
+        // Pattern matches: -d "data" or --data 'data'
+        // Uses non-greedy matching with backreference to match opening/closing quotes
+        // Group 1: quote character (' or ")
+        // Group 2: the actual data content
         var dataPattern = @"(?:-d|--data|--data-raw|--data-binary|--data-urlencode)\s+(['""])(.+?)\1";
         var dataMatch = Regex.Match(curlCommand, dataPattern);
         if (dataMatch.Success)
         {
             body = dataMatch.Groups[2].Value;
             
-            // Unescape backslash-escaped quotes
+            // Unescape backslash-escaped quotes that were in the original curl command
             body = body.Replace("\\\"", "\"");
             
-            // If no content-type specified, try to infer it
+            // Infer content type from body structure if not explicitly set
             if (string.IsNullOrEmpty(contentType))
             {
                 if (body.TrimStart().StartsWith("{") || body.TrimStart().StartsWith("["))
@@ -271,7 +283,7 @@ public class ImportService : IImportService
             }
         }
 
-        // Also check for --data without quotes (for simple data)
+        // Fallback: try to match unquoted data (simple key=value format)
         if (body == null)
         {
             var simpleDataMatch = Regex.Match(curlCommand, @"(?:-d|--data)\s+([^\s-]+)");
