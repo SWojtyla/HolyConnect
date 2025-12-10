@@ -22,21 +22,58 @@ public class GitService : IGitService
         _getStoragePath = getStoragePath;
     }
 
-    private string GetRepositoryPath()
+    private string GetRepositoryPath(string? repositoryPath = null)
     {
-        return _getStoragePath();
+        return repositoryPath ?? _getStoragePath();
     }
 
-    public Task<bool> IsRepositoryAsync()
+    public Task<bool> IsRepositoryAsync(string? repositoryPath = null)
     {
         try
         {
-            var path = GetRepositoryPath();
+            var path = GetRepositoryPath(repositoryPath);
             return Task.FromResult(Repository.IsValid(path));
         }
         catch
         {
             return Task.FromResult(false);
+        }
+    }
+
+    public Task<string?> GetRepositoryNameAsync(string? repositoryPath = null)
+    {
+        try
+        {
+            var path = GetRepositoryPath(repositoryPath);
+            if (!Repository.IsValid(path))
+                return Task.FromResult<string?>(null);
+
+            using var repo = new Repository(path);
+            
+            // Try to get name from remote URL first
+            var remote = repo.Network.Remotes.FirstOrDefault();
+            if (remote != null)
+            {
+                var url = remote.Url;
+                // Extract repository name from URL (e.g., "owner/repo" from "https://github.com/owner/repo.git")
+                var lastSlashIndex = url.TrimEnd('/').LastIndexOf('/');
+                if (lastSlashIndex >= 0)
+                {
+                    var name = url[(lastSlashIndex + 1)..].TrimEnd('/');
+                    // Remove .git extension if present
+                    if (name.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+                        name = name[..^4];
+                    return Task.FromResult<string?>(name);
+                }
+            }
+
+            // Fallback to directory name
+            var dirName = Path.GetFileName(path);
+            return Task.FromResult<string?>(dirName);
+        }
+        catch
+        {
+            return Task.FromResult<string?>(null);
         }
     }
 
@@ -53,11 +90,11 @@ public class GitService : IGitService
         }
     }
 
-    public Task<string?> GetCurrentBranchAsync()
+    public Task<string?> GetCurrentBranchAsync(string? repositoryPath = null)
     {
         try
         {
-            var repoPath = GetRepositoryPath();
+            var repoPath = GetRepositoryPath(repositoryPath);
             if (!Repository.IsValid(repoPath))
                 return Task.FromResult<string?>(null);
 
