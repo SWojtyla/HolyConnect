@@ -1,0 +1,330 @@
+@using HolyConnect.Domain.Entities
+@inject IFormatterService FormatterService
+@inject ISnackbar Snackbar
+
+<MudGrid Class="mb-2" Spacing="2">
+    <MudItem xs="12">
+        <VariableTextField @bind-Value="Request.Url" Label="URL" Variant="Variant.Outlined" Margin="Margin.Dense" Environment="@Environment" Collection="@Collection" />
+    </MudItem>
+</MudGrid>
+
+<MudTabs Class="mt-2" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
+    <MudTabPanel Text="Query" Style="height: 100%;">
+        <div class="pa-4 d-flex flex-column" style="height: 100%;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Press <strong>Ctrl+Space</strong> for autocomplete suggestions</MudText>
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary" 
+                          Size="Size.Small" 
+                          StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                          OnClick="@PrettifyGraphQLQuery">
+                    Prettify
+                </MudButton>
+            </MudStack>
+            <div style="flex: 1; overflow: hidden;">
+                <GraphQLCodeEditor @bind-Value="Request.Query" Request="@Request" Height="100%" />
+            </div>
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Variables" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Primary" 
+                           Size="Size.Small" 
+                           StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                           OnClick="@PrettifyGraphQLVariables">
+                    Prettify
+                </MudButton>
+            </MudStack>
+            <VariableTextField @bind-Value="Request.Variables" Label="Variables (JSON)" Lines="8" Variant="Variant.Outlined" Environment="@Environment" Collection="@Collection" />
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Headers" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
+            <MudStack Row="true" Spacing="2" Class="mb-4">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))">
+                    + JSON
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))">
+                    + Auth
+                </MudButton>
+            </MudStack>
+            
+            @foreach (var header in _headers)
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="1" Class="d-flex align-center">
+                        <MudCheckBox Value="@header.Enabled" ValueChanged="@((bool v) => UpdateHeaderEnabled(header, v))" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <MudStack Spacing="1">
+                            <VariableTextField Value="@header.Key" 
+                                             ValueChanged="@((string v) => UpdateHeaderKey(header, v))"
+                                             Label="Header Name" 
+                                             Variant="Variant.Outlined" 
+                                             Disabled="@(!header.Enabled)" 
+                                             Environment="@Environment" 
+                                             Collection="@Collection" />
+                            @if (header.IsDefault)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
+                            }
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudStack Spacing="1">
+                            <VariableTextField Value="@header.Value" 
+                                             ValueChanged="@((string v) => UpdateHeaderValue(header, v))"
+                                             Label="Header Value" 
+                                             Variant="Variant.Outlined" 
+                                             Disabled="@(!header.Enabled)" 
+                                             Environment="@Environment" 
+                                             Collection="@Collection" />
+                            @if (header.IsDefault)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
+                            }
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="2" Class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveHeader(header))" />
+                    </MudItem>
+                </MudGrid>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddHeader" StartIcon="@Icons.Material.Filled.Add">
+                Add Header
+            </MudButton>
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Auth" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <MudSelect @bind-Value="Request.AuthType" Label="Authentication Type" Variant="Variant.Outlined" Class="mb-4">
+                @foreach (var authType in Enum.GetValues<AuthenticationType>())
+                {
+                    <MudSelectItem Value="@authType">@GetAuthTypeName(authType)</MudSelectItem>
+                }
+            </MudSelect>
+            
+            @if (Request.AuthType == AuthenticationType.Basic)
+            {
+                <MudTextField @bind-Value="Request.BasicAuthUsername" Label="Username" Variant="Variant.Outlined" Class="mb-2" />
+                <MudTextField @bind-Value="Request.BasicAuthPassword" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-2" />
+            }
+            else if (Request.AuthType == AuthenticationType.BearerToken)
+            {
+                <VariableTextField @bind-Value="Request.BearerToken" Label="Bearer Token" Variant="Variant.Outlined" Lines="3" Environment="@Environment" Collection="@Collection" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No authentication selected</MudText>
+            }
+        </div>
+    </MudTabPanel>
+    
+    <MudTabPanel Text="Extractions" Style="height: 100%;">
+        <div class="pa-4" style="height: 100%; overflow-y: auto;">
+            <ResponseExtractionManager Extractions="@Request.ResponseExtractions" ExtractionsChanged="@((e) => Request.ResponseExtractions = e)" />
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter, EditorRequired]
+    public GraphQLRequest Request { get; set; } = default!;
+
+    [Parameter]
+    public Domain.Entities.Environment? Environment { get; set; }
+
+    [Parameter]
+    public Collection? Collection { get; set; }
+
+    private List<HeaderModel> _headers = new();
+    
+    private class HeaderModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = false;
+    }
+
+    protected override void OnInitialized()
+    {
+        InitializeHeaders();
+    }
+    
+    private Guid _lastRequestId;
+    
+    protected override void OnParametersSet()
+    {
+        if (Request != null && Request.Id != _lastRequestId)
+        {
+            _lastRequestId = Request.Id;
+            InitializeHeaders();
+        }
+    }
+
+    private void InitializeHeaders()
+    {
+        _headers = Request.Headers.Select(h => new HeaderModel 
+        { 
+            Key = h.Key, 
+            Value = h.Value,
+            Enabled = !Request.DisabledHeaders.Contains(h.Key)
+        }).ToList();
+        
+        // Add default User-Agent if not already present
+        if (!_headers.Any(h => h.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase)))
+        {
+            _headers.Insert(0, new HeaderModel 
+            { 
+                Key = "User-Agent", 
+                Value = "HolyConnect/1.0",
+                Enabled = true,
+                IsDefault = true
+            });
+        }
+        
+        // Add default Content-Type if not already present (always JSON for GraphQL)
+        if (!_headers.Any(h => h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)))
+        {
+            _headers.Insert(_headers.Any(h => h.IsDefault) ? 1 : 0, new HeaderModel 
+            { 
+                Key = "Content-Type", 
+                Value = "application/json",
+                Enabled = true,
+                IsDefault = true
+            });
+        }
+    }
+
+    private void PrettifyGraphQLQuery()
+    {
+        if (string.IsNullOrWhiteSpace(Request.Query))
+            return;
+
+        try
+        {
+            Request.Query = FormatterService.FormatGraphQL(Request.Query);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error formatting query: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private void PrettifyGraphQLVariables()
+    {
+        if (string.IsNullOrWhiteSpace(Request.Variables))
+            return;
+
+        try
+        {
+            Request.Variables = FormatterService.FormatJson(Request.Variables);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error formatting variables: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private string GetAuthTypeName(AuthenticationType authType) => authType switch
+    {
+        AuthenticationType.None => "No Auth",
+        AuthenticationType.Basic => "Basic Auth",
+        AuthenticationType.BearerToken => "Bearer Token",
+        _ => authType.ToString()
+    };
+    
+    // --- Header Management ---
+
+    private void AddHeader()
+    {
+        _headers.Add(new HeaderModel());
+        SyncHeadersToRequest();
+    }
+
+    private void RemoveHeader(HeaderModel header)
+    {
+        _headers.Remove(header);
+        SyncHeadersToRequest();
+    }
+
+    private void AddCommonHeader(string key, string value)
+    {
+        var existingHeader = _headers.FirstOrDefault(h => h.Key == key);
+        if (existingHeader != null)
+        {
+            existingHeader.Value = value;
+            existingHeader.Enabled = true;
+        }
+        else
+        {
+            _headers.Add(new HeaderModel { Key = key, Value = value });
+        }
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderKey(HeaderModel header, string newKey)
+    {
+        header.Key = newKey;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderValue(HeaderModel header, string newValue)
+    {
+        header.Value = newValue;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderEnabled(HeaderModel header, bool enabled)
+    {
+        header.Enabled = enabled;
+        SyncHeadersToRequest();
+    }
+
+    private void SyncHeadersToRequest()
+    {
+        Request.Headers.Clear();
+        Request.DisabledHeaders.Clear();
+        
+        foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
+        {
+            if (header.Enabled)
+            {
+                if (header.IsDefault && !IsHeaderModified(header))
+                {
+                    continue;
+                }
+                
+                Request.Headers[header.Key] = header.Value;
+            }
+            else
+            {
+                Request.DisabledHeaders.Add(header.Key);
+            }
+        }
+    }
+
+    private bool IsHeaderModified(HeaderModel header)
+    {
+        if (header.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+        {
+            return header.Value != "HolyConnect/1.0";
+        }
+        
+        if (header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+        {
+            return header.Value != "application/json";
+        }
+        
+        return true;
+    }
+}
