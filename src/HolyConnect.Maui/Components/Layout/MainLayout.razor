@@ -175,9 +175,12 @@
         {
             await GitFolderService.SetActiveAsync(folderId);
             
-            // Force a full page reload to refresh all data from the new active folder
-            // This ensures environments, collections, and requests are loaded from the new path
-            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+            // Avoid full page reload to prevent flicker; update status and trigger a client-side rerender
+            await LoadGitStatus();
+            StateHasChanged();
+            
+            // Soft navigate to current URI to notify pages listening to navigation without forcing a reload
+            NavigationManager.NavigateTo(NavigationManager.Uri);
         }
         catch
         {
