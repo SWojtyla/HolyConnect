@@ -2,11 +2,13 @@
 @inject SettingsService SettingsService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject IGitFolderService GitFolderService
 @inject IGitService GitService
 @using HolyConnect.Maui.Services
 @using HolyConnect.Application.Interfaces
 @using HolyConnect.Domain.Entities
+@using HolyConnect.Maui.Components.Shared.Dialogs
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-6">
     <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
@@ -296,16 +298,17 @@
             if (folder == null)
                 return;
 
-            var confirm = await Snackbar.Add(
-                $"Are you sure you want to remove '{folder.Name}'? This won't delete any files.",
-                Severity.Warning,
-                config =>
-                {
-                    config.Action = "Delete";
-                    config.ActionColor = MudBlazor.Color.Error;
-                });
+            var parameters = new DialogParameters
+            {
+                ["ContentText"] = $"Are you sure you want to remove '{folder.Name}'? This won't delete any files.",
+                ["ButtonText"] = "Delete",
+                ["Color"] = MudBlazor.Color.Error
+            };
 
-            if (confirm == SnackbarResult.Clicked)
+            var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Repository", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled)
             {
                 await GitFolderService.DeleteAsync(id);
                 await LoadGitFolders();
