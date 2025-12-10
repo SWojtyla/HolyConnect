@@ -174,10 +174,10 @@
         try
         {
             await GitFolderService.SetActiveAsync(folderId);
-            await LoadGitStatus();
-            StateHasChanged();
-            // Navigate to home to refresh the view
-            NavigationManager.NavigateTo("/", forceLoad: true);
+            
+            // Force a full page reload to refresh all data from the new active folder
+            // This ensures environments, collections, and requests are loaded from the new path
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
         }
         catch
         {
