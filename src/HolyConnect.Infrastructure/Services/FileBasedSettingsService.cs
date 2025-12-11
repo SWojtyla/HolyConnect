@@ -26,7 +26,15 @@ public class FileBasedSettingsService : ISettingsService
         try
         {
             var json = await File.ReadAllTextAsync(_settingsFilePath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? GetDefaultSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? GetDefaultSettings();
+            
+            // Ensure GitFolders is never null (for backward compatibility with old settings files)
+            if (settings.GitFolders == null)
+            {
+                settings.GitFolders = new List<GitFolder>();
+            }
+            
+            return settings;
         }
         catch (JsonException ex)
         {
