@@ -99,10 +99,7 @@ public class ImportService : IImportService
 
     public async Task<ImportResult> ImportFromBrunoFolderAsync(string folderPath, Guid environmentId, Guid? parentCollectionId = null)
     {
-        var result = new ImportResult
-        {
-            Success = true // Will be set to false if any critical errors occur
-        };
+        var result = new ImportResult();
 
         try
         {
@@ -124,7 +121,7 @@ public class ImportService : IImportService
             // Process the folder recursively
             await ProcessFolderAsync(folderPath, environmentId, parentCollectionId, strategy, result);
 
-            // Update summary
+            // Determine final success status based on results
             if (result.TotalFilesProcessed == 0)
             {
                 result.Success = false;
@@ -135,9 +132,14 @@ public class ImportService : IImportService
                 result.Success = false;
                 result.ErrorMessage = $"Failed to import all {result.FailedImports} files.";
             }
-            else if (result.FailedImports > 0)
+            else
             {
-                result.Warnings.Add($"{result.FailedImports} out of {result.TotalFilesProcessed} files failed to import.");
+                // Partial or complete success
+                result.Success = true;
+                if (result.FailedImports > 0)
+                {
+                    result.Warnings.Add($"{result.FailedImports} out of {result.TotalFilesProcessed} files failed to import.");
+                }
             }
         }
         catch (Exception ex)
@@ -217,7 +219,9 @@ public class ImportService : IImportService
         // Process subfolders recursively
         foreach (var subFolder in subFolders)
         {
-            await ProcessFolderAsync(subFolder, environmentId, folderCollection?.Id ?? parentCollectionId, strategy, result);
+            // Use the newly created collection as parent for subfolders, or the original parent if no collection was created
+            var effectiveParentId = folderCollection?.Id ?? parentCollectionId;
+            await ProcessFolderAsync(subFolder, environmentId, effectiveParentId, strategy, result);
         }
     }
 }
