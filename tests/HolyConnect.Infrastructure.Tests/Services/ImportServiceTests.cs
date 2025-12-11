@@ -1,6 +1,7 @@
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 using HolyConnect.Infrastructure.Services;
+using HolyConnect.Infrastructure.Services.ImportStrategies;
 using Moq;
 
 namespace HolyConnect.Infrastructure.Tests.Services;
@@ -13,7 +14,12 @@ public class ImportServiceTests
     public ImportServiceTests()
     {
         _mockRequestService = new Mock<IRequestService>();
-        _service = new ImportService(_mockRequestService.Object);
+        var strategies = new List<IImportStrategy>
+        {
+            new CurlImportStrategy(),
+            new BrunoImportStrategy()
+        };
+        _service = new ImportService(_mockRequestService.Object, strategies);
     }
 
     [Fact]
@@ -428,7 +434,7 @@ public class ImportServiceTests
         // Assert
         Assert.False(result.Success);
         Assert.NotNull(result.ErrorMessage);
-        Assert.Contains("empty", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Failed to parse Bruno file", result.ErrorMessage);
     }
 
     [Fact]

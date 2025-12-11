@@ -3,6 +3,7 @@ using HolyConnect.Application.Services;
 using HolyConnect.Domain.Entities;
 using HolyConnect.Infrastructure.Persistence;
 using HolyConnect.Infrastructure.Services;
+using HolyConnect.Infrastructure.Services.ImportStrategies;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Extensions;
 using MudBlazor.Services;
@@ -203,6 +204,10 @@ public static class MauiProgram
         builder.Services.AddScoped<IResponseValueExtractor, ResponseValueExtractor>();
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IGraphQLSchemaService, GraphQLSchemaService>();
+        
+        // Register import strategies
+        builder.Services.AddScoped<IImportStrategy, CurlImportStrategy>();
+        builder.Services.AddScoped<IImportStrategy, BrunoImportStrategy>();
         builder.Services.AddScoped<IImportService, ImportService>();
 
         // Add request executors
