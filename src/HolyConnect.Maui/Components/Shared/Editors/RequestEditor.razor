@@ -1,43 +1,25 @@
 @inject IRequestService RequestService
 @inject IFormatterService FormatterService
 @inject ISnackbar Snackbar
-@inject SettingsService SettingsService
 
-@if (_layout == Domain.Entities.RequestLayout.Vertical)
-{
-    <!-- Vertical Layout: Request on left, Response on right (side-by-side split with MudSplitter) -->
-    <MudSplitter @bind-Dimension="@_splitPercentage"
-                 EnableSlide="true"
-                 EnableMargin="true"
-                 Sensitivity="0.1"
-                 Height="calc(100vh - 11.25rem)"
-                 Bordered="true">
-        <StartContent>
-            <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden; padding-right: 0.5rem;">
-                @RequestConfigurationSection
-            </div>
-        </StartContent>
-        <EndContent>
-            <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden; padding-left: 0.5rem;">
-                @ResponseSection
-            </div>
-        </EndContent>
-    </MudSplitter>
-}
-else
-{
-    <!-- Horizontal Layout: Request on top, Response on bottom -->
-    <div Style="height: calc(100vh - 11.25rem); display: flex; flex-direction: column; overflow: hidden;">
-        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+<!-- Vertical Layout: Request on left, Response on right (side-by-side split with MudSplitter) -->
+<MudSplitter @bind-Dimension="@_splitPercentage"
+             EnableSlide="true"
+             EnableMargin="true"
+             Sensitivity="0.1"
+             Height="calc(100vh - 11.25rem)"
+             Bordered="true">
+    <StartContent>
+        <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden; padding-right: 0.5rem;">
             @RequestConfigurationSection
         </div>
-        
-        <MudDivider Class="my-4" />
-        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
+    </StartContent>
+    <EndContent>
+        <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden; padding-left: 0.5rem;">
             @ResponseSection
         </div>
-    </div>
-}
+    </EndContent>
+</MudSplitter>
 
 @code {
     private RenderFragment RequestConfigurationSection => __builder =>
@@ -128,15 +110,8 @@ else
     public Collection? Collection { get; set; }
 
     private RequestResponse? _response;
-    private Domain.Entities.RequestLayout _layout = Domain.Entities.RequestLayout.Horizontal;
     private bool _isExecuting;
     private double _splitPercentage = 50;
-
-    protected override async Task OnInitializedAsync()
-    {
-        var settings = await SettingsService.GetSettingsAsync();
-        _layout = settings.Layout;
-    }
 
     private async Task ExecuteRequest()
     {

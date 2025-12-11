@@ -72,25 +72,6 @@
                     </MudItem>
                 }
             </MudGrid>
-
-            <MudDivider Class="my-4" />
-
-            <MudText Typo="Typo.subtitle1" Class="mb-2">Request Layout</MudText>
-            <MudText Typo="Typo.body2" Class="mb-2">
-                Choose how requests and responses are displayed.
-            </MudText>
-            <MudRadioGroup @bind-Value="_requestLayout">
-                <MudRadio Value="@Domain.Entities.RequestLayout.Horizontal" Color="Color.Primary">
-                    <MudText Typo="Typo.body2">
-                        <strong>Horizontal (Default)</strong> - Request configuration on top, response below with resizable areas
-                    </MudText>
-                </MudRadio>
-                <MudRadio Value="@Domain.Entities.RequestLayout.Vertical" Color="Color.Primary">
-                    <MudText Typo="Typo.body2">
-                        <strong>Vertical (Bruno/Postman style)</strong> - Request on left, response on right
-                    </MudText>
-                </MudRadio>
-            </MudRadioGroup>
         </MudCardContent>
     </MudCard>
 
@@ -180,7 +161,6 @@
 </MudContainer>
 
 @code {
-    private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
     private Domain.Entities.ThemePreset _themePreset = Domain.Entities.ThemePreset.Default;
     private List<GitFolder> _gitFolders = new();
     private string _newGitFolderName = string.Empty;
@@ -198,7 +178,6 @@
     private async Task LoadSettings()
     {
         var settings = await SettingsService.GetSettingsAsync();
-        _requestLayout = settings.Layout;
         _themePreset = settings.Theme;
     }
 
@@ -296,7 +275,6 @@
             var settings = await SettingsService.GetSettingsAsync();
             settings.Theme = _themePreset;
             settings.IsDarkMode = isDark;
-            settings.Layout = _requestLayout;
             await SettingsService.SaveSettingsAsync(settings);
             Snackbar.Add($"Theme changed to {ThemeProvider.GetThemeName(preset)}", Severity.Success);
         }
