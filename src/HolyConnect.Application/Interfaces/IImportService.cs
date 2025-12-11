@@ -18,6 +18,16 @@ public interface IImportService
     Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid environmentId, Guid? collectionId = null, string? customName = null);
     
     /// <summary>
+    /// Import a request from Bruno file content
+    /// </summary>
+    /// <param name="brunoFileContent">The Bruno file content (.bru format)</param>
+    /// <param name="environmentId">Target environment ID</param>
+    /// <param name="collectionId">Optional target collection ID</param>
+    /// <param name="customName">Optional custom name for the request. If not provided, name from file will be used</param>
+    /// <returns>Import result containing the imported request or error details</returns>
+    Task<ImportResult> ImportFromBrunoAsync(string brunoFileContent, Guid environmentId, Guid? collectionId = null, string? customName = null);
+    
+    /// <summary>
     /// Check if the service can handle a specific import source
     /// </summary>
     /// <param name="source">Import source type</param>
