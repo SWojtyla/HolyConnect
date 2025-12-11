@@ -10,13 +10,14 @@ public class FileBasedSettingsService : ISettingsService
     private const string BackupSettingsFileName = "settings.backup.json";
     private readonly string _settingsFilePath;
     private readonly string _backupSettingsFilePath;
+    private readonly string _appDataPath;
 
     public FileBasedSettingsService()
     {
-        var appDataPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "HolyConnect");
-        Directory.CreateDirectory(appDataPath);
-        _settingsFilePath = Path.Combine(appDataPath, SettingsFileName);
-        _backupSettingsFilePath = Path.Combine(appDataPath, BackupSettingsFileName);
+        _appDataPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "HolyConnect");
+        Directory.CreateDirectory(_appDataPath);
+        _settingsFilePath = Path.Combine(_appDataPath, SettingsFileName);
+        _backupSettingsFilePath = Path.Combine(_appDataPath, BackupSettingsFileName);
     }
 
     public async Task<AppSettings> GetSettingsAsync()
@@ -77,8 +78,8 @@ public class FileBasedSettingsService : ISettingsService
                 
                 Console.WriteLine($"Successfully restored settings from backup with {settings.GitFolders.Count} git repositories");
                 
-                // Restore the main settings file from backup
-                await File.WriteAllTextAsync(_settingsFilePath, json);
+                // Restore the main settings file from backup atomically
+                await WriteFileAtomicallyAsync(_settingsFilePath, json);
                 
                 return settings;
             }
@@ -109,7 +110,10 @@ public class FileBasedSettingsService : ISettingsService
         {
             try
             {
-                File.Copy(_settingsFilePath, _backupSettingsFilePath, overwrite: true);
+                // Use atomic copy via temp file
+                var tempBackupPath = Path.Combine(_appDataPath, $"{BackupSettingsFileName}.tmp");
+                File.Copy(_settingsFilePath, tempBackupPath, overwrite: true);
+                File.Move(tempBackupPath, _backupSettingsFilePath, overwrite: true);
             }
             catch (Exception ex)
             {
@@ -118,6 +122,30 @@ public class FileBasedSettingsService : ISettingsService
             }
         }
         
-        await File.WriteAllTextAsync(_settingsFilePath, json);
+        // Write settings atomically
+        await WriteFileAtomicallyAsync(_settingsFilePath, json);
+    }
+
+    private async Task WriteFileAtomicallyAsync(string filePath, string content)
+    {
+        // Write to a temporary file first
+        var tempPath = Path.Combine(_appDataPath, $"{Path.GetFileName(filePath)}.tmp");
+        
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, content);
+            
+            // Atomic rename to replace the original file
+            File.Move(tempPath, filePath, overwrite: true);
+        }
+        catch
+        {
+            // Clean up temp file if something went wrong
+            if (File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { /* ignore */ }
+            }
+            throw;
+        }
     }
 }
