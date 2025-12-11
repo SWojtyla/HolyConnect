@@ -88,38 +88,72 @@
                 @if (_selectedSource == ImportSource.Bruno)
                 {
                     <MudStack Spacing="2">
-                        <MudButton Variant="Variant.Outlined" 
-                                  Color="Color.Primary"
-                                  StartIcon="@Icons.Material.Filled.Upload"
-                                  OnClick="BrowseBrunoFile">
-                            Browse File
-                        </MudButton>
-                        
-                        @if (!string.IsNullOrEmpty(_selectedFileName))
+                        <!-- Import Mode Selection -->
+                        <MudRadioGroup T="bool" @bind-Value="_importFolder">
+                            <MudRadio T="bool" Value="false" Color="Color.Primary">Import Single File</MudRadio>
+                            <MudRadio T="bool" Value="true" Color="Color.Primary">Import Folder (with subfolders)</MudRadio>
+                        </MudRadioGroup>
+
+                        @if (!_importFolder)
                         {
-                            <MudChip T="string" Color="Color.Info" Icon="@Icons.Material.Filled.Description">
-                                @_selectedFileName
-                            </MudChip>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(_brunoFileContent))
-                        {
+                            <!-- Single File Import -->
+                            <MudButton Variant="Variant.Outlined" 
+                                      Color="Color.Primary"
+                                      StartIcon="@Icons.Material.Filled.Upload"
+                                      OnClick="BrowseBrunoFile">
+                                Browse File
+                            </MudButton>
+                            
+                            @if (!string.IsNullOrEmpty(_selectedFileName))
+                            {
+                                <MudChip T="string" Color="Color.Info" Icon="@Icons.Material.Filled.Description">
+                                    @_selectedFileName
+                                </MudChip>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(_brunoFileContent))
+                            {
+                                <MudTextField T="string" 
+                                             Label="Bruno File Content (Preview)" 
+                                             Value="_brunoFileContent"
+                                             Variant="Variant.Outlined"
+                                             Lines="10"
+                                             ReadOnly="true"
+                                             HelperText="Preview of the selected Bruno file" />
+                            }
+                            
+                            <!-- Request Name Input -->
                             <MudTextField T="string" 
-                                         Label="Bruno File Content (Preview)" 
-                                         Value="_brunoFileContent"
+                                         Label="Request Name (Optional)" 
+                                         @bind-Value="_requestName"
                                          Variant="Variant.Outlined"
-                                         Lines="10"
-                                         ReadOnly="true"
-                                         HelperText="Preview of the selected Bruno file" />
+                                         Placeholder="Leave empty to use name from file"
+                                         HelperText="Specify a custom name for the imported request, or leave empty to use the name from the Bruno file." />
                         }
-                        
-                        <!-- Request Name Input -->
-                        <MudTextField T="string" 
-                                     Label="Request Name (Optional)" 
-                                     @bind-Value="_requestName"
-                                     Variant="Variant.Outlined"
-                                     Placeholder="Leave empty to use name from file"
-                                     HelperText="Specify a custom name for the imported request, or leave empty to use the name from the Bruno file." />
+                        else
+                        {
+                            <!-- Folder Import -->
+                            <MudTextField T="string" 
+                                         Label="Folder Path" 
+                                         @bind-Value="_brunoFolderPath"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="Please enter a folder path"
+                                         Placeholder="e.g., /path/to/bruno/collection"
+                                         HelperText="Enter the full path to the folder containing Bruno files. All .bru files in this folder and its subfolders will be imported." />
+                            
+                            @if (!string.IsNullOrEmpty(_brunoFolderPath))
+                            {
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                                    <MudText Typo="Typo.body2">
+                                        <strong>Folder structure will be preserved:</strong><br/>
+                                        • Each folder will become a collection<br/>
+                                        • Each subfolder will become a subcollection<br/>
+                                        • Each .bru file will become a request in its parent folder's collection
+                                    </MudText>
+                                </MudAlert>
+                            }
+                        }
                     </MudStack>
                 }
 
@@ -320,6 +354,8 @@ body:graphql:vars {
     private string _brunoFileContent = string.Empty;
     private string? _selectedFileName;
     private string? _requestName;
+    private bool _importFolder = false;
+    private string _brunoFolderPath = string.Empty;
     
     private bool _isImporting;
     private bool _importSuccess;
@@ -425,10 +461,19 @@ body:graphql:vars {
             return;
         }
 
-        if (_selectedSource == ImportSource.Bruno && string.IsNullOrWhiteSpace(_brunoFileContent))
+        if (_selectedSource == ImportSource.Bruno)
         {
-            Snackbar.Add("Please select a Bruno file", Severity.Error);
-            return;
+            if (_importFolder && string.IsNullOrWhiteSpace(_brunoFolderPath))
+            {
+                Snackbar.Add("Please enter a folder path", Severity.Error);
+                return;
+            }
+            
+            if (!_importFolder && string.IsNullOrWhiteSpace(_brunoFileContent))
+            {
+                Snackbar.Add("Please select a Bruno file", Severity.Error);
+                return;
+            }
         }
 
         _isImporting = true;
@@ -446,7 +491,14 @@ body:graphql:vars {
             }
             else if (_selectedSource == ImportSource.Bruno)
             {
-                result = await ImportService.ImportFromBrunoAsync(_brunoFileContent, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
+                if (_importFolder)
+                {
+                    result = await ImportService.ImportFromBrunoFolderAsync(_brunoFolderPath, _selectedEnvironmentId.Value, _selectedCollectionId);
+                }
+                else
+                {
+                    result = await ImportService.ImportFromBrunoAsync(_brunoFileContent, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
+                }
             }
             else
             {
@@ -460,14 +512,37 @@ body:graphql:vars {
             _importSuccess = result.Success;
             _warnings = result.Warnings;
 
-            if (result.Success && result.ImportedRequest != null)
+            if (result.Success)
             {
-                _resultMessage = $"Successfully imported request: {result.ImportedRequest.Name}";
-                Snackbar.Add(_resultMessage, Severity.Success);
-                
-                // Navigate to the imported request after a short delay
-                await Task.Delay(1500);
-                NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}?requestId={result.ImportedRequest.Id}");
+                // Handle folder import results
+                if (result.ImportedRequests.Count > 0)
+                {
+                    _resultMessage = $"Successfully imported {result.SuccessfulImports} request(s) from {result.TotalFilesProcessed} file(s)";
+                    if (result.ImportedCollections.Count > 0)
+                    {
+                        _resultMessage += $" and created {result.ImportedCollections.Count} collection(s)";
+                    }
+                    Snackbar.Add(_resultMessage, Severity.Success);
+                    
+                    // Navigate to the environment after a short delay
+                    await Task.Delay(1500);
+                    NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}");
+                }
+                // Handle single file import results
+                else if (result.ImportedRequest != null)
+                {
+                    _resultMessage = $"Successfully imported request: {result.ImportedRequest.Name}";
+                    Snackbar.Add(_resultMessage, Severity.Success);
+                    
+                    // Navigate to the imported request after a short delay
+                    await Task.Delay(1500);
+                    NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}?requestId={result.ImportedRequest.Id}");
+                }
+                else
+                {
+                    _resultMessage = result.ErrorMessage ?? "Import completed but no requests were imported";
+                    Snackbar.Add(_resultMessage, Severity.Warning);
+                }
             }
             else
             {

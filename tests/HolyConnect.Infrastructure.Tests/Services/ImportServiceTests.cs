@@ -14,12 +14,13 @@ public class ImportServiceTests
     public ImportServiceTests()
     {
         _mockRequestService = new Mock<IRequestService>();
+        var mockCollectionService = new Mock<ICollectionService>();
         var strategies = new List<IImportStrategy>
         {
             new CurlImportStrategy(),
             new BrunoImportStrategy()
         };
-        _service = new ImportService(_mockRequestService.Object, strategies);
+        _service = new ImportService(_mockRequestService.Object, mockCollectionService.Object, strategies);
     }
 
     [Fact]
