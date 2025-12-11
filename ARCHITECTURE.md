@@ -151,10 +151,13 @@ Implements external concerns:
   - Supports initialize, commit, branch, fetch, pull, push operations
 
 - **Import Services**:
-  - `ImportService`: Imports requests from various formats
-  - Supports curl command parsing with full feature detection
-  - Extensible architecture for adding new import formats (Bruno, Postman, etc.)
-  - Automatically detects HTTP method, headers, body, authentication
+  - `ImportService`: Coordinates importing requests from various formats using Strategy pattern
+  - `IImportStrategy`: Interface defining contract for import format parsers
+  - `CurlImportStrategy`: Parses curl commands with full feature detection (method, headers, body, auth)
+  - `BrunoImportStrategy`: Parses Bruno (.bru) files for REST and GraphQL requests
+  - Extensible architecture: add new formats by implementing `IImportStrategy` and registering in DI
+  - Supports automatic detection of HTTP method, headers, body, authentication
+  - Follows Strategy pattern for clean separation of parsing logic per format
 
 - **External Services**: 
   - HTTP clients, file systems, databases, git repositories
@@ -199,9 +202,14 @@ Domain ← Application ← Infrastructure ← Maui
 - Currently using in-memory storage, easily replaceable
 
 ### 2. Strategy Pattern
-- `IRequestExecutor` interface for different request types
-- Each executor handles specific request types
-- New request types can be added without modifying existing code
+- **Request Execution**: `IRequestExecutor` interface for different request types
+  - Each executor handles specific request types (REST, GraphQL, WebSocket, etc.)
+  - New request types can be added without modifying existing code
+- **Import Parsing**: `IImportStrategy` interface for different import formats
+  - Each strategy handles parsing for one format (cURL, Bruno, etc.)
+  - ImportService acts as coordinator, delegates to appropriate strategy
+  - New formats can be added by implementing `IImportStrategy` and registering in DI
+  - Example: Adding Postman support requires only creating `PostmanImportStrategy`
 
 ### 3. Dependency Injection
 - All dependencies injected through constructor
@@ -245,6 +253,41 @@ builder.Services.AddScoped<IRequestExecutor, SoapRequestExecutor>();
 ```razor
 <MudSelectItem Value="@RequestType.Soap">SOAP</MudSelectItem>
 ```
+
+### Adding New Import Formats
+
+1. **Application Layer**: Create strategy implementing `IImportStrategy`
+```csharp
+public class PostmanImportStrategy : IImportStrategy
+{
+    public ImportSource Source => ImportSource.Postman;
+    
+    public Request? Parse(string content, Guid environmentId, 
+        Guid? collectionId, string? customName)
+    {
+        // Parse Postman collection/request JSON
+        // Return RestRequest, GraphQLRequest, or null if parsing fails
+    }
+}
+```
+
+2. **Domain Layer**: Add new import source (if needed)
+```csharp
+public enum ImportSource
+{
+    Curl,
+    Bruno,
+    Postman  // New format
+}
+```
+
+3. **Presentation Layer**: Register strategy in DI container
+```csharp
+builder.Services.AddScoped<IImportStrategy, PostmanImportStrategy>();
+```
+
+4. **UI Layer**: Strategy automatically available via `IImportService`
+- No UI changes needed, service routes to correct strategy based on source
 
 ### Adding Persistent Storage
 
