@@ -97,7 +97,7 @@
                         
                         @if (!string.IsNullOrEmpty(_selectedFileName))
                         {
-                            <MudChip Color="Color.Info" Icon="@Icons.Material.Filled.Description">
+                            <MudChip T="string" Color="Color.Info" Icon="@Icons.Material.Filled.Description">
                                 @_selectedFileName
                             </MudChip>
                         }
