@@ -319,9 +319,129 @@ public class MultiFileRepositoryTests : IDisposable
         Assert.Equal(entity2.Id, retrieved2.Id);
     }
 
+    [Fact]
+    public async Task AddAsync_WithHierarchicalPath_ShouldStoreInSubdirectory()
+    {
+        // Arrange - Repository with hierarchical path provider
+        var parent1Id = Guid.NewGuid();
+        var parent2Id = Guid.NewGuid();
+        
+        Task<string> GetHierarchicalPath(TestEntity e)
+        {
+            if (!e.ParentId.HasValue) return Task.FromResult(string.Empty);
+            // Simulate parent path lookup
+            if (e.ParentId == parent1Id) return Task.FromResult("folder1");
+            if (e.ParentId == parent2Id) return Task.FromResult("folder2");
+            return Task.FromResult(string.Empty);
+        }
+        
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            GetHierarchicalPath,
+            e => e.ParentId);
+        
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parent1Id };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parent2Id };
+
+        // Act
+        await repository.AddAsync(entity1);
+        await repository.AddAsync(entity2);
+
+        // Assert - Both should exist in different folders
+        var file1 = Path.Combine(_testDirectory, "test-entities", "folder1", "GetUser.json");
+        var file2 = Path.Combine(_testDirectory, "test-entities", "folder2", "GetUser.json");
+        Assert.True(File.Exists(file1), $"Expected file to exist at {file1}");
+        Assert.True(File.Exists(file2), $"Expected file to exist at {file2}");
+        
+        // Verify both can be retrieved
+        var retrieved1 = await repository.GetByIdAsync(entity1.Id);
+        var retrieved2 = await repository.GetByIdAsync(entity2.Id);
+        Assert.NotNull(retrieved1);
+        Assert.NotNull(retrieved2);
+        Assert.Equal("GetUser", retrieved1.Name);
+        Assert.Equal("GetUser", retrieved2.Name);
+    }
+
+    [Fact]
+    public async Task AddAsync_WithSameNameInSameHierarchicalFolder_ShouldThrowException()
+    {
+        // Arrange
+        var parentId = Guid.NewGuid();
+        
+        Task<string> GetHierarchicalPath(TestEntity e)
+        {
+            if (!e.ParentId.HasValue) return Task.FromResult(string.Empty);
+            if (e.ParentId == parentId) return Task.FromResult("shared-folder");
+            return Task.FromResult(string.Empty);
+        }
+        
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            GetHierarchicalPath,
+            e => e.ParentId);
+        
+        var entity1 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parentId };
+        var entity2 = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parentId };
+
+        // Act
+        await repository.AddAsync(entity1);
+
+        // Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.AddAsync(entity2));
+        Assert.Contains("already exists in this scope", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithHierarchicalPath_MovingToNewFolder_ShouldMoveFile()
+    {
+        // Arrange
+        var parent1Id = Guid.NewGuid();
+        var parent2Id = Guid.NewGuid();
+        
+        Task<string> GetHierarchicalPath(TestEntity e)
+        {
+            if (!e.ParentId.HasValue) return Task.FromResult(string.Empty);
+            if (e.ParentId == parent1Id) return Task.FromResult("folder1");
+            if (e.ParentId == parent2Id) return Task.FromResult("folder2");
+            return Task.FromResult(string.Empty);
+        }
+        
+        var repository = new MultiFileRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities",
+            e => e.Name,
+            GetHierarchicalPath,
+            e => e.ParentId);
+        
+        var entity = new TestEntity { Id = Guid.NewGuid(), Name = "GetUser", ParentId = parent1Id };
+        await repository.AddAsync(entity);
+
+        // Act - Move to different parent
+        entity.ParentId = parent2Id;
+        await repository.UpdateAsync(entity);
+
+        // Assert
+        var oldFile = Path.Combine(_testDirectory, "test-entities", "folder1", "GetUser.json");
+        var newFile = Path.Combine(_testDirectory, "test-entities", "folder2", "GetUser.json");
+        Assert.False(File.Exists(oldFile), "Old file should be deleted");
+        Assert.True(File.Exists(newFile), "New file should exist");
+        
+        var retrieved = await repository.GetByIdAsync(entity.Id);
+        Assert.NotNull(retrieved);
+        Assert.Equal(parent2Id, retrieved.ParentId);
+    }
+
     private class TestEntity
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public Guid? ParentId { get; set; }
     }
 }

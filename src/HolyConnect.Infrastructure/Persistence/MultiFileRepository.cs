@@ -5,7 +5,9 @@ namespace HolyConnect.Infrastructure.Persistence;
 
 /// <summary>
 /// A repository implementation that stores each entity in a separate file for better performance with large collections.
-/// File names are readable: "<sanitized-name>__<id>.json" (no legacy support).
+/// Supports hierarchical storage where entities can be organized in subdirectories based on parent relationships.
+/// File names use readable names: "{name}.json"
+/// When hierarchical path provider is configured, files are stored as: "{base-dir}/{parent-path}/{name}.json"
 /// </summary>
 public class MultiFileRepository<T> : IRepository<T> where T : class
 {
@@ -13,13 +15,23 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     private readonly Func<string> _storagePathProvider;
     private readonly string _directoryName;
     private readonly Func<T, string>? _nameSelector;
+    private readonly Func<T, Task<string>>? _hierarchicalPathProvider;
+    private readonly Func<T, Guid?>? _parentIdSelector;
 
-    public MultiFileRepository(Func<T, Guid> idSelector, Func<string> storagePathProvider, string directoryName, Func<T, string>? nameSelector = null)
+    public MultiFileRepository(
+        Func<T, Guid> idSelector, 
+        Func<string> storagePathProvider, 
+        string directoryName, 
+        Func<T, string>? nameSelector = null,
+        Func<T, Task<string>>? hierarchicalPathProvider = null,
+        Func<T, Guid?>? parentIdSelector = null)
     {
         _idSelector = idSelector;
         _storagePathProvider = storagePathProvider;
         _directoryName = directoryName;
         _nameSelector = nameSelector;
+        _hierarchicalPathProvider = hierarchicalPathProvider;
+        _parentIdSelector = parentIdSelector;
     }
 
     private string GetDirectoryPath()
@@ -45,6 +57,25 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         return name.Trim();
     }
 
+    private async Task<string> GetEntityDirectoryPath(T entity)
+    {
+        var baseDir = GetDirectoryPath();
+        
+        // If hierarchical path provider is configured, use subdirectories
+        if (_hierarchicalPathProvider != null)
+        {
+            var hierarchicalPath = await _hierarchicalPathProvider(entity);
+            if (!string.IsNullOrWhiteSpace(hierarchicalPath))
+            {
+                var fullPath = Path.Combine(baseDir, hierarchicalPath);
+                Directory.CreateDirectory(fullPath);
+                return fullPath;
+            }
+        }
+        
+        return baseDir;
+    }
+
     private string GetReadableFileName(T entity)
     {
         var baseName = _nameSelector?.Invoke(entity);
@@ -57,17 +88,17 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         return $"{readable}.json";
     }
 
-    private string GetFilePath(Guid id)
+    private async Task<string?> GetFilePath(Guid id)
     {
-        // Search for file by loading all entities and finding the one with matching ID
-        var dir = GetDirectoryPath();
-        var files = Directory.GetFiles(dir, "*.json");
+        // Search for file by loading all entities recursively and finding the one with matching ID
+        var baseDir = GetDirectoryPath();
+        var files = Directory.GetFiles(baseDir, "*.json", SearchOption.AllDirectories);
         
         foreach (var file in files)
         {
             try
             {
-                var json = File.ReadAllText(file);
+                var json = await File.ReadAllTextAsync(file);
                 var options = GetOptions();
                 var entity = System.Text.Json.JsonSerializer.Deserialize<T>(json, options);
                 if (entity != null && _idSelector(entity) == id)
@@ -81,13 +112,12 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
             }
         }
         
-        // If not found, return a deterministic path based on ID (for backwards compatibility)
-        return Path.Combine(dir, $"{id}.json");
+        return null;
     }
 
-    private string GetFilePath(T entity)
+    private async Task<string> GetFilePath(T entity)
     {
-        var dir = GetDirectoryPath();
+        var dir = await GetEntityDirectoryPath(entity);
         var readable = GetReadableFileName(entity);
         return Path.Combine(dir, readable);
     }
@@ -109,8 +139,8 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
 
     private async Task<T?> LoadEntityAsync(Guid id)
     {
-        var filePath = GetFilePath(id);
-        if (!File.Exists(filePath))
+        var filePath = await GetFilePath(id);
+        if (filePath == null || !File.Exists(filePath))
         {
             return null;
         }
@@ -130,7 +160,7 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
 
     private async Task SaveEntityAsync(T entity)
     {
-        var filePath = GetFilePath(entity);
+        var filePath = await GetFilePath(entity);
         var options = GetOptions();
         var json = JsonSerializer.Serialize(entity, options);
         await File.WriteAllTextAsync(filePath, json);
@@ -144,7 +174,8 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     public async Task<IEnumerable<T>> GetAllAsync()
     {
         var directoryPath = GetDirectoryPath();
-        var files = Directory.GetFiles(directoryPath, "*.json");
+        // Search recursively for all JSON files in subdirectories
+        var files = Directory.GetFiles(directoryPath, "*.json", SearchOption.AllDirectories);
         var entities = new List<T>();
 
         foreach (var file in files)
@@ -171,10 +202,28 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     public async Task<T> AddAsync(T entity)
     {
         // Check for duplicate names if a name selector is provided
-        if (_nameSelector != null)
+        if (_nameSelector != null && _parentIdSelector != null)
         {
+            // Check uniqueness within the same parent scope
+            var allEntities = await GetAllAsync();
+            var entityName = _nameSelector(entity);
+            var entityParentId = _parentIdSelector(entity);
+            
+            var duplicate = allEntities.FirstOrDefault(e => 
+                !_idSelector(e).Equals(_idSelector(entity)) &&
+                _nameSelector(e).Equals(entityName, StringComparison.OrdinalIgnoreCase) &&
+                Equals(_parentIdSelector(e), entityParentId));
+            
+            if (duplicate != null)
+            {
+                throw new InvalidOperationException($"An entity with the name '{entityName}' already exists in this scope.");
+            }
+        }
+        else if (_nameSelector != null)
+        {
+            // Original global uniqueness check
             var newFileName = GetReadableFileName(entity);
-            var filePath = Path.Combine(GetDirectoryPath(), newFileName);
+            var filePath = await GetFilePath(entity);
             
             if (File.Exists(filePath))
             {
@@ -198,12 +247,30 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     public async Task<T> UpdateAsync(T entity)
     {
         var id = _idSelector(entity);
-        var oldPath = GetFilePath(id);
-        var newPath = GetFilePath(entity);
+        var oldPath = await GetFilePath(id);
+        var newPath = await GetFilePath(entity);
         
-        // Check for duplicate names if the file path changed and name selector is provided
-        if (_nameSelector != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+        // Check for duplicate names if name selector and parent selector are provided
+        if (_nameSelector != null && _parentIdSelector != null)
         {
+            // Check uniqueness within the same parent scope
+            var allEntities = await GetAllAsync();
+            var entityName = _nameSelector(entity);
+            var entityParentId = _parentIdSelector(entity);
+            
+            var duplicate = allEntities.FirstOrDefault(e => 
+                !_idSelector(e).Equals(id) &&
+                _nameSelector(e).Equals(entityName, StringComparison.OrdinalIgnoreCase) &&
+                Equals(_parentIdSelector(e), entityParentId));
+            
+            if (duplicate != null)
+            {
+                throw new InvalidOperationException($"An entity with the name '{entityName}' already exists in this scope.");
+            }
+        }
+        else if (_nameSelector != null && oldPath != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+        {
+            // Original global uniqueness check
             if (File.Exists(newPath))
             {
                 var existingJson = await File.ReadAllTextAsync(newPath);
@@ -219,8 +286,8 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
             }
         }
         
-        // If the readable filename changed (e.g., entity was renamed), delete the old file to avoid duplicates
-        if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && File.Exists(oldPath))
+        // If the readable filename or path changed (e.g., entity was renamed or moved), delete the old file to avoid duplicates
+        if (oldPath != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && File.Exists(oldPath))
         {
             try
             {
@@ -236,12 +303,12 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         return entity;
     }
 
-    public Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id)
     {
-        var filePath = GetFilePath(id);
+        var filePath = await GetFilePath(id);
         try
         {
-            if (File.Exists(filePath))
+            if (filePath != null && File.Exists(filePath))
             {
                 File.Delete(filePath);
             }
@@ -250,6 +317,5 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
         {
             Console.WriteLine($"Error deleting file {filePath}: {ex.Message}");
         }
-        return Task.CompletedTask;
     }
 }

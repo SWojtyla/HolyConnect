@@ -85,26 +85,91 @@ public static class MauiProgram
                 e => e.Id,
                 GetStoragePathSafe,
                 "environments",
-                e => e.Name);
+                e => e.Name,
+                null, // No hierarchical path for environments (top-level)
+                null); // No parent for environments
         });
 
         builder.Services.AddSingleton<IRepository<Collection>>(sp =>
         {
+            // Helper to build hierarchical path for collections
+            async Task<string> GetCollectionPath(Collection collection)
+            {
+                if (!collection.ParentCollectionId.HasValue)
+                {
+                    return string.Empty; // Root collection
+                }
+                
+                var path = new List<string>();
+                var currentId = collection.ParentCollectionId;
+                var allCollections = await sp.GetRequiredService<IRepository<Collection>>().GetAllAsync();
+                
+                while (currentId.HasValue)
+                {
+                    var parent = allCollections.FirstOrDefault(c => c.Id == currentId.Value);
+                    if (parent == null) break;
+                    
+                    path.Insert(0, SanitizeFolderName(parent.Name));
+                    currentId = parent.ParentCollectionId;
+                }
+                
+                return path.Count > 0 ? string.Join(Path.DirectorySeparatorChar, path) : string.Empty;
+            }
+            
             return new MultiFileRepository<Collection>(
                 c => c.Id,
                 GetStoragePathSafe,
                 "collections",
-                c => c.Name);
+                c => c.Name,
+                GetCollectionPath,
+                c => c.ParentCollectionId);
         });
 
         builder.Services.AddSingleton<IRepository<Request>>(sp =>
         {
+            // Helper to build hierarchical path for requests
+            async Task<string> GetRequestPath(Request request)
+            {
+                if (!request.CollectionId.HasValue)
+                {
+                    return string.Empty; // Request not in any collection
+                }
+                
+                var path = new List<string>();
+                var currentId = request.CollectionId;
+                var allCollections = await sp.GetRequiredService<IRepository<Collection>>().GetAllAsync();
+                
+                while (currentId.HasValue)
+                {
+                    var collection = allCollections.FirstOrDefault(c => c.Id == currentId.Value);
+                    if (collection == null) break;
+                    
+                    path.Insert(0, SanitizeFolderName(collection.Name));
+                    currentId = collection.ParentCollectionId;
+                }
+                
+                return path.Count > 0 ? string.Join(Path.DirectorySeparatorChar, path) : string.Empty;
+            }
+            
             return new MultiFileRepository<Request>(
                 r => r.Id,
                 GetStoragePathSafe,
                 "requests",
-                r => r.Name);
+                r => r.Name,
+                GetRequestPath,
+                r => r.CollectionId);
         });
+
+        // Helper method to sanitize folder names
+        static string SanitizeFolderName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                name = name.Replace(c, '_');
+            }
+            return name.Trim();
+        }
 
         builder.Services.AddSingleton<IRepository<RequestHistoryEntry>>(sp =>
         {
