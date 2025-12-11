@@ -291,24 +291,18 @@
         await OnDarkModeToggle.InvokeAsync(isDark);
         
         // Auto-save theme preference
-        try
-        {
-            var settings = await SettingsService.GetSettingsAsync();
-            settings.Theme = _themePreset;
-            settings.IsDarkMode = isDark;
-            settings.Layout = _requestLayout;
-            await SettingsService.SaveSettingsAsync(settings);
-            Snackbar.Add($"Theme changed to {ThemeProvider.GetThemeName(preset)}", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error saving theme preference: {ex.Message}", Severity.Warning);
-        }
+        await SaveCurrentSettingsAsync($"Theme changed to {ThemeProvider.GetThemeName(preset)}", "theme preference");
     }
 
     private async Task OnLayoutChanged()
     {
         // Auto-save layout preference
+        var layoutName = _requestLayout == Domain.Entities.RequestLayout.Horizontal ? "Horizontal" : "Vertical";
+        await SaveCurrentSettingsAsync($"Layout changed to {layoutName}", "layout preference");
+    }
+
+    private async Task SaveCurrentSettingsAsync(string successMessage, string operationName)
+    {
         try
         {
             var settings = await SettingsService.GetSettingsAsync();
@@ -316,13 +310,11 @@
             settings.Theme = _themePreset;
             settings.IsDarkMode = ThemeProvider.IsThemeDark(_themePreset);
             await SettingsService.SaveSettingsAsync(settings);
-            
-            var layoutName = _requestLayout == Domain.Entities.RequestLayout.Horizontal ? "Horizontal" : "Vertical";
-            Snackbar.Add($"Layout changed to {layoutName}", Severity.Success);
+            Snackbar.Add(successMessage, Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error saving layout preference: {ex.Message}", Severity.Warning);
+            Snackbar.Add($"Error saving {operationName}: {ex.Message}", Severity.Warning);
         }
     }
 }

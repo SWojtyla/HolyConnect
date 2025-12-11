@@ -110,8 +110,8 @@ public class FileBasedSettingsService : ISettingsService
         {
             try
             {
-                // Use atomic copy via temp file
-                var tempBackupPath = Path.Combine(_appDataPath, $"{BackupSettingsFileName}.tmp");
+                // Use atomic copy via temp file with unique name to avoid conflicts
+                var tempBackupPath = Path.Combine(_appDataPath, $"{BackupSettingsFileName}.{Guid.NewGuid():N}.tmp");
                 File.Copy(_settingsFilePath, tempBackupPath, overwrite: true);
                 File.Move(tempBackupPath, _backupSettingsFilePath, overwrite: true);
             }
@@ -128,8 +128,8 @@ public class FileBasedSettingsService : ISettingsService
 
     private async Task WriteFileAtomicallyAsync(string filePath, string content)
     {
-        // Write to a temporary file first
-        var tempPath = Path.Combine(_appDataPath, $"{Path.GetFileName(filePath)}.tmp");
+        // Write to a temporary file first with unique name to avoid conflicts
+        var tempPath = Path.Combine(_appDataPath, $"{Path.GetFileName(filePath)}.{Guid.NewGuid():N}.tmp");
         
         try
         {
@@ -143,7 +143,15 @@ public class FileBasedSettingsService : ISettingsService
             // Clean up temp file if something went wrong
             if (File.Exists(tempPath))
             {
-                try { File.Delete(tempPath); } catch { /* ignore */ }
+                try 
+                { 
+                    File.Delete(tempPath); 
+                } 
+                catch 
+                { 
+                    // Intentionally ignore cleanup failures to avoid masking the original exception
+                    // The temp file will be cleaned up by the OS eventually
+                }
             }
             throw;
         }
