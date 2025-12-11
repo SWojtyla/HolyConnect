@@ -4,45 +4,47 @@
 @if (Collection != null)
 {
     <div>
-        <MudPaper Class="pa-2 mb-1" Style="@GetCollectionStyle()">
-            <MudText Style="flex: 1;">
-                <span @onclick="@(() => ToggleExpanded())" style="cursor: pointer;">
+        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" Style="@GetCollectionStyle()">
+            <MudText Style="flex: 1;" Class="d-flex align-center">
+                <span @onclick="@(() => ToggleExpanded())" style="cursor: pointer; display: inline-flex; align-items: center;">
                     @if (HasChildren)
                     {
                         <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" />
                     }
                     else
                     {
-                        <span style="display: inline-block; width: 1.5rem;"></span>
+                        <span style="display: inline-block; width: 1.25rem;"></span>
                     }
                 </span>
-                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" style="cursor: pointer;">
-                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="@(IsCollectionSelected ? Color.Primary : Color.Default)" /> @Collection.Name
+                <span @onclick="@(() => OnSelect.InvokeAsync(Collection))" style="cursor: pointer; display: inline-flex; align-items: center;" class="ml-1">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="@(IsCollectionSelected ? Color.Primary : Color.Default)" Class="mr-1" />
+                    <span style="font-size: 0.875rem;">@Collection.Name</span>
                 </span>
             </MudText>
             <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
-                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="@(() => ShowAddMenu())" aria-label="Add sub-collection or request" />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditCollection())" aria-label="Edit collection" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="@(() => ShowAddMenu())" aria-label="Add sub-collection or request" Class="pa-1" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditCollection())" aria-label="Edit collection" Class="pa-1" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" Class="pa-1" />
             </div>
-        </MudPaper>
+        </div>
         
         @if (_isExpanded)
         {
-            <div Class="ml-4">
+            <div Class="ml-2">
                 @if (Collection.Requests != null && Collection.Requests.Any())
                 {
                     @foreach (var request in Collection.Requests)
                     {
-                        <MudPaper Class="pa-2 mb-1" Style="@GetRequestStyle(request)">
-                            <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))">
-                                <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" /> @request.Name
+                        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" Style="@GetRequestStyle(request)">
+                            <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))" Class="d-flex align-center">
+                                <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" Class="mr-1" />
+                                <span style="font-size: 0.875rem;">@request.Name</span>
                             </MudText>
                             <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" Class="pa-1" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" Class="pa-1" />
                             </div>
-                        </MudPaper>
+                        </div>
                     }
                 }
                 
@@ -161,22 +163,22 @@
 
     private string GetCollectionStyle()
     {
-        var baseStyle = "display: flex; align-items: center; justify-content: space-between;";
+        var baseStyle = "";
         if (IsCollectionSelected)
         {
             return baseStyle + " background-color: rgba(var(--mud-palette-primary-rgb), 0.12); border-left: 3px solid var(--mud-palette-primary);";
         }
-        return baseStyle;
+        return baseStyle + "border-left: 3px solid transparent;";
     }
 
     private string GetRequestStyle(Request request)
     {
-        var baseStyle = "display: flex; align-items: center; justify-content: space-between;";
+        var baseStyle = "";
         if (SelectedRequestId.HasValue && request.Id == SelectedRequestId.Value)
         {
             return baseStyle + " background-color: rgba(var(--mud-palette-primary-rgb), 0.12); border-left: 3px solid var(--mud-palette-primary);";
         }
-        return baseStyle;
+        return baseStyle + "border-left: 3px solid transparent;";
     }
 
     private string GetRequestIcon(RequestType type) => type switch
