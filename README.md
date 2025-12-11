@@ -17,7 +17,10 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 🔄 **Git Integration**: Full version control with git support (initialize, commit, branch, push, pull, commit history, selective staging)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
 - 🔀 **Flows**: Chain multiple requests together in sequence, passing variables between steps for complex workflows
-- 📥 **Import Support**: Import requests from curl commands (Bruno files support coming soon)
+- 📥 **Import Support**: Import requests from curl commands and Bruno files (.bru)
+  - **Single File Import**: Import individual Bruno or curl requests
+  - **Folder Import**: Import complete Bruno collections with folder hierarchy preserved
+  - Automatically creates collections and subcollections matching folder structure
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
 - 🏗️ **Extensible Architecture**: Built with clean architecture principles for easy extension
 
@@ -276,7 +279,39 @@ HolyConnect supports importing requests from various formats to help you migrate
    - Bearer token authentication (Authorization header)
    - Multi-line curl commands with backslash continuation
 
-3. **Example curl commands**:
+3. **Importing from Bruno files**:
+   - **Single File**: Click "Browse File" to select a single .bru file
+   - **Folder Import**: Enter a folder path to import an entire Bruno collection
+   - The folder structure is preserved as collections and subcollections
+   
+4. **Bruno Folder Import Features**:
+   - **Preserves hierarchy**: Each folder becomes a collection, subfolders become subcollections
+   - **Automatic organization**: Requests are automatically placed in their parent folder's collection
+   - **Nested support**: Unlimited folder depth is supported
+   - **Mixed types**: Handles both REST and GraphQL requests in the same import
+   - **Detailed reporting**: Shows success/failure statistics and warnings
+   
+5. **Example Bruno folder structure**:
+   ```
+   my-api-collection/
+   ├── api/
+   │   ├── users/
+   │   │   ├── get-users.bru
+   │   │   └── create-user.bru
+   │   └── posts/
+   │       └── get-posts.bru
+   └── auth/
+       └── login.bru
+   ```
+   
+   After import, this creates:
+   - Collection: "my-api-collection"
+     - Subcollection: "api"
+       - Subcollection: "users" (with "Get Users" and "Create User" requests)
+       - Subcollection: "posts" (with "Get Posts" request)
+     - Subcollection: "auth" (with "Login" request)
+
+6. **Example curl commands**:
    ```bash
    # Simple GET request
    curl 'https://api.github.com/users/octocat'
@@ -290,8 +325,7 @@ HolyConnect supports importing requests from various formats to help you migrate
    curl -H 'Authorization: Bearer token123' 'https://api.example.com/protected'
    ```
 
-4. **Coming soon**:
-   - Bruno file format import
+7. **Coming soon**:
    - Postman collection import
    - OpenAPI/Swagger import
 
