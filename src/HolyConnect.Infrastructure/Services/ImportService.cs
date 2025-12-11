@@ -21,7 +21,7 @@ public class ImportService : IImportService
 
     public bool CanImport(ImportSource source)
     {
-        return source == ImportSource.Curl;
+        return source == ImportSource.Curl || source == ImportSource.Bruno;
     }
 
     public async Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid environmentId, Guid? collectionId = null, string? customName = null)
@@ -65,6 +65,368 @@ public class ImportService : IImportService
         }
 
         return result;
+    }
+
+    public async Task<ImportResult> ImportFromBrunoAsync(string brunoFileContent, Guid environmentId, Guid? collectionId = null, string? customName = null)
+    {
+        var result = new ImportResult();
+
+        try
+        {
+            // Clean up the content
+            brunoFileContent = brunoFileContent.Trim();
+            
+            if (string.IsNullOrWhiteSpace(brunoFileContent))
+            {
+                result.ErrorMessage = "Bruno file content is empty.";
+                return result;
+            }
+
+            // Parse the Bruno file
+            var request = ParseBrunoFile(brunoFileContent, environmentId, collectionId, customName);
+            
+            if (request == null)
+            {
+                result.ErrorMessage = "Failed to parse Bruno file. Please check the format.";
+                return result;
+            }
+
+            // Save the request
+            var savedRequest = await _requestService.CreateRequestAsync(request);
+            
+            result.Success = true;
+            result.ImportedRequest = savedRequest;
+        }
+        catch (Exception ex)
+        {
+            result.ErrorMessage = $"Error importing Bruno file: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    private Request? ParseBrunoFile(string brunoFileContent, Guid environmentId, Guid? collectionId, string? customName)
+    {
+        try
+        {
+            // Parse sections from Bruno file
+            var sections = ParseBrunoSections(brunoFileContent);
+            
+            // Extract meta information
+            var meta = ParseBrunoMeta(sections);
+            var requestName = !string.IsNullOrWhiteSpace(customName) ? customName : meta.Name;
+            var requestType = meta.Type;
+            
+            // Determine if it's REST or GraphQL based on type or body content
+            var isGraphQL = requestType.Equals("graphql", StringComparison.OrdinalIgnoreCase) ||
+                           sections.ContainsKey("body:graphql");
+            
+            if (isGraphQL)
+            {
+                return ParseBrunoGraphQLRequest(sections, environmentId, collectionId, requestName);
+            }
+            else
+            {
+                return ParseBrunoRestRequest(sections, environmentId, collectionId, requestName);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private Dictionary<string, string> ParseBrunoSections(string content)
+    {
+        var sections = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var lines = content.Split('\n');
+        string? currentSection = null;
+        var currentContent = new System.Text.StringBuilder();
+        int braceDepth = 0;
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            
+            // Skip comments
+            if (trimmedLine.StartsWith("//"))
+                continue;
+            
+            // Check if this is a section header (e.g., "meta {", "headers {", "body:json {")
+            // Only when we're not inside a section (braceDepth == 0)
+            if (braceDepth == 0 && trimmedLine.EndsWith('{') && !string.IsNullOrWhiteSpace(trimmedLine))
+            {
+                // Save previous section if exists
+                if (currentSection != null)
+                {
+                    sections[currentSection] = currentContent.ToString().Trim();
+                }
+                
+                // Start new section
+                currentSection = trimmedLine.TrimEnd('{').Trim();
+                currentContent.Clear();
+                braceDepth = 1;
+            }
+            else if (currentSection != null)
+            {
+                // Count braces to track nesting depth
+                foreach (char c in line)
+                {
+                    if (c == '{') braceDepth++;
+                    else if (c == '}') braceDepth--;
+                }
+                
+                // If we're back to depth 0, the section is complete
+                if (braceDepth == 0)
+                {
+                    sections[currentSection] = currentContent.ToString().Trim();
+                    currentSection = null;
+                    currentContent.Clear();
+                }
+                else
+                {
+                    // Add content to current section (but not the closing brace line if it closes the section)
+                    if (braceDepth > 0)
+                    {
+                        currentContent.AppendLine(line);
+                    }
+                }
+            }
+        }
+        
+        return sections;
+    }
+
+    private (string Name, string Type) ParseBrunoMeta(Dictionary<string, string> sections)
+    {
+        var name = "Imported Request";
+        var type = "http";
+        
+        if (sections.TryGetValue("meta", out var metaContent))
+        {
+            var nameMatch = Regex.Match(metaContent, @"name:\s*(.+)", RegexOptions.Multiline);
+            if (nameMatch.Success)
+            {
+                name = nameMatch.Groups[1].Value.Trim();
+            }
+            
+            var typeMatch = Regex.Match(metaContent, @"type:\s*(\w+)", RegexOptions.Multiline);
+            if (typeMatch.Success)
+            {
+                type = typeMatch.Groups[1].Value.Trim();
+            }
+        }
+        
+        return (name, type);
+    }
+
+    private RestRequest ParseBrunoRestRequest(Dictionary<string, string> sections, Guid environmentId, Guid? collectionId, string requestName)
+    {
+        var request = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            EnvironmentId = environmentId,
+            CollectionId = collectionId,
+            CreatedAt = DateTime.UtcNow,
+            Name = requestName,
+            Method = Domain.Entities.HttpMethod.Get
+        };
+        
+        // Extract HTTP method and URL from method sections (get, post, put, delete, patch, etc.)
+        var methodInfo = ExtractBrunoHttpMethod(sections);
+        request.Method = methodInfo.Method;
+        request.Url = methodInfo.Url;
+        
+        // Extract headers
+        if (sections.TryGetValue("headers", out var headersContent))
+        {
+            request.Headers = ParseBrunoHeaders(headersContent);
+        }
+        
+        // Extract authentication
+        ParseBrunoAuthentication(sections, request);
+        
+        // Extract body
+        var bodyInfo = ExtractBrunoBody(sections);
+        if (!string.IsNullOrEmpty(bodyInfo.Body))
+        {
+            request.Body = bodyInfo.Body;
+            request.BodyType = bodyInfo.BodyType;
+            request.ContentType = bodyInfo.ContentType;
+        }
+        
+        return request;
+    }
+
+    private GraphQLRequest ParseBrunoGraphQLRequest(Dictionary<string, string> sections, Guid environmentId, Guid? collectionId, string requestName)
+    {
+        var request = new GraphQLRequest
+        {
+            Id = Guid.NewGuid(),
+            EnvironmentId = environmentId,
+            CollectionId = collectionId,
+            CreatedAt = DateTime.UtcNow,
+            Name = requestName,
+            Query = string.Empty
+        };
+        
+        // Extract URL from post section
+        if (sections.TryGetValue("post", out var postContent))
+        {
+            var urlMatch = Regex.Match(postContent, @"url:\s*(.+)", RegexOptions.Multiline);
+            if (urlMatch.Success)
+            {
+                request.Url = urlMatch.Groups[1].Value.Trim();
+            }
+        }
+        
+        // Extract headers
+        if (sections.TryGetValue("headers", out var headersContent))
+        {
+            request.Headers = ParseBrunoHeaders(headersContent);
+        }
+        
+        // Extract authentication
+        ParseBrunoAuthentication(sections, request);
+        
+        // Extract GraphQL query
+        if (sections.TryGetValue("body:graphql", out var queryContent))
+        {
+            request.Query = queryContent.Trim();
+            
+            // Determine operation type from query
+            if (queryContent.TrimStart().StartsWith("mutation", StringComparison.OrdinalIgnoreCase))
+            {
+                request.OperationType = GraphQLOperationType.Mutation;
+            }
+            else if (queryContent.TrimStart().StartsWith("subscription", StringComparison.OrdinalIgnoreCase))
+            {
+                request.OperationType = GraphQLOperationType.Subscription;
+            }
+            else
+            {
+                request.OperationType = GraphQLOperationType.Query;
+            }
+        }
+        
+        // Extract GraphQL variables
+        if (sections.TryGetValue("body:graphql:vars", out var varsContent))
+        {
+            request.Variables = varsContent.Trim();
+        }
+        
+        return request;
+    }
+
+    private (Domain.Entities.HttpMethod Method, string Url) ExtractBrunoHttpMethod(Dictionary<string, string> sections)
+    {
+        // Check for each HTTP method section
+        var methods = new[]
+        {
+            ("get", Domain.Entities.HttpMethod.Get),
+            ("post", Domain.Entities.HttpMethod.Post),
+            ("put", Domain.Entities.HttpMethod.Put),
+            ("delete", Domain.Entities.HttpMethod.Delete),
+            ("patch", Domain.Entities.HttpMethod.Patch),
+            ("head", Domain.Entities.HttpMethod.Head),
+            ("options", Domain.Entities.HttpMethod.Options)
+        };
+        
+        foreach (var (sectionName, method) in methods)
+        {
+            if (sections.TryGetValue(sectionName, out var methodContent))
+            {
+                var urlMatch = Regex.Match(methodContent, @"url:\s*(.+)", RegexOptions.Multiline);
+                if (urlMatch.Success)
+                {
+                    var url = urlMatch.Groups[1].Value.Trim();
+                    return (method, url);
+                }
+            }
+        }
+        
+        return (Domain.Entities.HttpMethod.Get, string.Empty);
+    }
+
+    private Dictionary<string, string> ParseBrunoHeaders(string headersContent)
+    {
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var lines = headersContent.Split('\n');
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedLine))
+                continue;
+                
+            var parts = trimmedLine.Split(':', 2);
+            if (parts.Length == 2)
+            {
+                var key = parts[0].Trim();
+                var value = parts[1].Trim();
+                headers[key] = value;
+            }
+        }
+        
+        return headers;
+    }
+
+    private void ParseBrunoAuthentication(Dictionary<string, string> sections, Request request)
+    {
+        // Check for auth:bearer
+        if (sections.TryGetValue("auth:bearer", out var bearerContent))
+        {
+            var tokenMatch = Regex.Match(bearerContent, @"token:\s*(.+)", RegexOptions.Multiline);
+            if (tokenMatch.Success)
+            {
+                request.AuthType = AuthenticationType.BearerToken;
+                request.BearerToken = tokenMatch.Groups[1].Value.Trim();
+            }
+        }
+        // Check for auth:basic
+        else if (sections.TryGetValue("auth:basic", out var basicContent))
+        {
+            var usernameMatch = Regex.Match(basicContent, @"username:\s*(.+)", RegexOptions.Multiline);
+            var passwordMatch = Regex.Match(basicContent, @"password:\s*(.+)", RegexOptions.Multiline);
+            
+            if (usernameMatch.Success && passwordMatch.Success)
+            {
+                request.AuthType = AuthenticationType.Basic;
+                request.BasicAuthUsername = usernameMatch.Groups[1].Value.Trim();
+                request.BasicAuthPassword = passwordMatch.Groups[1].Value.Trim();
+            }
+        }
+        else
+        {
+            request.AuthType = AuthenticationType.None;
+        }
+    }
+
+    private (string? Body, BodyType BodyType, string? ContentType) ExtractBrunoBody(Dictionary<string, string> sections)
+    {
+        // Check for different body types
+        if (sections.TryGetValue("body:json", out var jsonBody))
+        {
+            return (jsonBody.Trim(), BodyType.Json, "application/json");
+        }
+        if (sections.TryGetValue("body:xml", out var xmlBody))
+        {
+            return (xmlBody.Trim(), BodyType.Xml, "application/xml");
+        }
+        if (sections.TryGetValue("body:text", out var textBody))
+        {
+            return (textBody.Trim(), BodyType.Text, "text/plain");
+        }
+        if (sections.TryGetValue("body:html", out var htmlBody))
+        {
+            return (htmlBody.Trim(), BodyType.Html, "text/html");
+        }
+        if (sections.TryGetValue("body:javascript", out var jsBody))
+        {
+            return (jsBody.Trim(), BodyType.JavaScript, "application/javascript");
+        }
+        
+        return (null, BodyType.None, null);
     }
 
     private RestRequest? ParseCurlCommand(string curlCommand, Guid environmentId, Guid? collectionId, string? customName)

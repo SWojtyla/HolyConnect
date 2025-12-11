@@ -8,7 +8,7 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Import Request</MudText>
     <MudText Typo="Typo.body1" Class="mb-6" Color="Color.Secondary">
-        Import requests from curl commands. Support for Bruno files coming soon!
+        Import requests from curl commands or Bruno files.
     </MudText>
 
     <MudPaper Class="pa-6" Elevation="2">
@@ -20,7 +20,7 @@
                           @bind-Value="_selectedSource"
                           Variant="Variant.Outlined">
                     <MudSelectItem Value="ImportSource.Curl">curl Command</MudSelectItem>
-                    <MudSelectItem Value="ImportSource.Bruno" Disabled="true">Bruno File (Coming Soon)</MudSelectItem>
+                    <MudSelectItem Value="ImportSource.Bruno">Bruno File (.bru)</MudSelectItem>
                 </MudSelect>
 
                 <!-- Environment Selection -->
@@ -84,6 +84,45 @@
                                  HelperText="Specify a custom name for the imported request, or leave empty to auto-generate." />
                 }
 
+                <!-- Bruno File Input -->
+                @if (_selectedSource == ImportSource.Bruno)
+                {
+                    <MudStack Spacing="2">
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Primary"
+                                  StartIcon="@Icons.Material.Filled.Upload"
+                                  OnClick="BrowseBrunoFile">
+                            Browse File
+                        </MudButton>
+                        
+                        @if (!string.IsNullOrEmpty(_selectedFileName))
+                        {
+                            <MudChip Color="Color.Info" Icon="@Icons.Material.Filled.Description">
+                                @_selectedFileName
+                            </MudChip>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(_brunoFileContent))
+                        {
+                            <MudTextField T="string" 
+                                         Label="Bruno File Content (Preview)" 
+                                         Value="_brunoFileContent"
+                                         Variant="Variant.Outlined"
+                                         Lines="10"
+                                         ReadOnly="true"
+                                         HelperText="Preview of the selected Bruno file" />
+                        }
+                        
+                        <!-- Request Name Input -->
+                        <MudTextField T="string" 
+                                     Label="Request Name (Optional)" 
+                                     @bind-Value="_requestName"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Leave empty to use name from file"
+                                     HelperText="Specify a custom name for the imported request, or leave empty to use the name from the Bruno file." />
+                    </MudStack>
+                }
+
                 <!-- Import Button -->
                 <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
                     <MudButton Variant="Variant.Outlined" 
@@ -138,34 +177,134 @@
     <MudPaper Class="pa-6 mt-6" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-3">
             <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
-            Example curl Commands
+            @if (_selectedSource == ImportSource.Curl)
+            {
+                <text>Example curl Commands</text>
+            }
+            else
+            {
+                <text>Example Bruno Files</text>
+            }
         </MudText>
-        <MudStack Spacing="3">
-            <div>
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Simple GET request:</MudText>
-                <MudPaper Class="pa-3" Outlined="true">
-                    <code class="code-example">curl 'https://api.github.com/users/octocat'</code>
-                </MudPaper>
-            </div>
-            <div>
-                <MudText Typo="Typo.subtitle2" Class="mb-2">POST request with JSON body:</MudText>
-                <MudPaper Class="pa-3" Outlined="true">
-                    <code class="code-example">curl -X POST 'https://api.example.com/users' -H 'Content-Type: application/json' -d '{"name":"John","email":"john@example.com"}'</code>
-                </MudPaper>
-            </div>
-            <div>
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Request with Bearer token:</MudText>
-                <MudPaper Class="pa-3" Outlined="true">
-                    <code class="code-example">curl 'https://api.example.com/protected' -H 'Authorization: Bearer your-token-here'</code>
-                </MudPaper>
-            </div>
-            <div>
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Request with Basic authentication:</MudText>
-                <MudPaper Class="pa-3" Outlined="true">
-                    <code class="code-example">curl -u username:password 'https://api.example.com/protected'</code>
-                </MudPaper>
-            </div>
-        </MudStack>
+        
+        @if (_selectedSource == ImportSource.Curl)
+        {
+            <MudStack Spacing="3">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Simple GET request:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <code class="code-example">curl 'https://api.github.com/users/octocat'</code>
+                    </MudPaper>
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">POST request with JSON body:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <code class="code-example">curl -X POST 'https://api.example.com/users' -H 'Content-Type: application/json' -d '{"name":"John","email":"john@example.com"}'</code>
+                    </MudPaper>
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Request with Bearer token:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <code class="code-example">curl 'https://api.example.com/protected' -H 'Authorization: Bearer your-token-here'</code>
+                    </MudPaper>
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Request with Basic authentication:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <code class="code-example">curl -u username:password 'https://api.example.com/protected'</code>
+                    </MudPaper>
+                </div>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Simple GET request:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <pre class="code-example">meta {
+  name: Get Users
+  type: http
+}
+
+get {
+  url: https://api.example.com/users
+  body: none
+  auth: none
+}</pre>
+                    </MudPaper>
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">POST request with JSON body:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <pre class="code-example">meta {
+  name: Create User
+  type: http
+}
+
+post {
+  url: https://api.example.com/users
+  body: json
+}
+
+body:json {
+  {
+    "name": "John Doe",
+    "email": "john@example.com"
+  }
+}</pre>
+                    </MudPaper>
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Request with Bearer token:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <pre class="code-example">meta {
+  name: Get Protected Data
+  type: http
+}
+
+get {
+  url: https://api.example.com/protected
+  auth: bearer
+}
+
+auth:bearer {
+  token: your-token-here
+}</pre>
+                    </MudPaper>
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">GraphQL query:</MudText>
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <pre class="code-example">meta {
+  name: Get User
+  type: graphql
+}
+
+post {
+  url: https://api.example.com/graphql
+  body: graphql
+}
+
+body:graphql {
+  query GetUser($id: ID!) {
+    user(id: $id) {
+      id
+      name
+      email
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "id": "123"
+  }
+}</pre>
+                    </MudPaper>
+                </div>
+            </MudStack>
+        }
     </MudPaper>
 </MudContainer>
 
@@ -178,6 +317,8 @@
     private Guid? _selectedEnvironmentId;
     private Guid? _selectedCollectionId;
     private string _curlCommand = string.Empty;
+    private string _brunoFileContent = string.Empty;
+    private string? _selectedFileName;
     private string? _requestName;
     
     private bool _isImporting;
@@ -225,6 +366,44 @@
         StateHasChanged();
     }
 
+    private async Task BrowseBrunoFile()
+    {
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.iOS, new[] { "public.data" } },
+                { DevicePlatform.Android, new[] { "application/octet-stream", "*/*" } },
+                { DevicePlatform.WinUI, new[] { ".bru" } },
+                { DevicePlatform.MacCatalyst, new[] { "bru" } },
+            });
+
+            var options = new PickOptions
+            {
+                FileTypes = fileTypes,
+                PickerTitle = "Select a Bruno file (.bru)"
+            };
+
+            var result = await FilePicker.Default.PickAsync(options);
+            
+            if (result != null)
+            {
+                _selectedFileName = result.FileName;
+                
+                // Read file content
+                using var stream = await result.OpenReadAsync();
+                using var reader = new StreamReader(stream);
+                _brunoFileContent = await reader.ReadToEndAsync();
+                
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error reading file: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task ImportRequest()
     {
         if (_form == null)
@@ -240,9 +419,15 @@
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_curlCommand))
+        if (_selectedSource == ImportSource.Curl && string.IsNullOrWhiteSpace(_curlCommand))
         {
             Snackbar.Add("Please enter a curl command", Severity.Error);
+            return;
+        }
+
+        if (_selectedSource == ImportSource.Bruno && string.IsNullOrWhiteSpace(_brunoFileContent))
+        {
+            Snackbar.Add("Please select a Bruno file", Severity.Error);
             return;
         }
 
@@ -258,6 +443,10 @@
             if (_selectedSource == ImportSource.Curl)
             {
                 result = await ImportService.ImportFromCurlAsync(_curlCommand, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
+            }
+            else if (_selectedSource == ImportSource.Bruno)
+            {
+                result = await ImportService.ImportFromBrunoAsync(_brunoFileContent, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
             }
             else
             {
