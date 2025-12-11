@@ -79,7 +79,7 @@
             <MudText Typo="Typo.body2" Class="mb-2">
                 Choose how requests and responses are displayed.
             </MudText>
-            <MudRadioGroup @bind-Value="_requestLayout">
+            <MudRadioGroup @bind-Value="_requestLayout" @bind-Value:after="OnLayoutChanged">
                 <MudRadio Value="@Domain.Entities.RequestLayout.Horizontal" Color="Color.Primary">
                     <MudText Typo="Typo.body2">
                         <strong>Horizontal (Default)</strong> - Request configuration on top, response below with resizable areas
@@ -303,6 +303,26 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error saving theme preference: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task OnLayoutChanged()
+    {
+        // Auto-save layout preference
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            settings.Layout = _requestLayout;
+            settings.Theme = _themePreset;
+            settings.IsDarkMode = ThemeProvider.IsThemeDark(_themePreset);
+            await SettingsService.SaveSettingsAsync(settings);
+            
+            var layoutName = _requestLayout == Domain.Entities.RequestLayout.Horizontal ? "Horizontal" : "Vertical";
+            Snackbar.Add($"Layout changed to {layoutName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving layout preference: {ex.Message}", Severity.Warning);
         }
     }
 }
