@@ -9,11 +9,16 @@ namespace HolyConnect.Infrastructure.Services;
 public class ImportService : IImportService
 {
     private readonly IRequestService _requestService;
+    private readonly ICollectionService _collectionService;
     private readonly IEnumerable<IImportStrategy> _importStrategies;
 
-    public ImportService(IRequestService requestService, IEnumerable<IImportStrategy> importStrategies)
+    public ImportService(
+        IRequestService requestService, 
+        ICollectionService collectionService,
+        IEnumerable<IImportStrategy> importStrategies)
     {
         _requestService = requestService;
+        _collectionService = collectionService;
         _importStrategies = importStrategies;
     }
 
@@ -90,5 +95,129 @@ public class ImportService : IImportService
         }
 
         return result;
+    }
+
+    public async Task<ImportResult> ImportFromBrunoFolderAsync(string folderPath, Guid environmentId, Guid? parentCollectionId = null)
+    {
+        var result = new ImportResult
+        {
+            Success = true // Will be set to false if any critical errors occur
+        };
+
+        try
+        {
+            var strategy = _importStrategies.FirstOrDefault(s => s.Source == ImportSource.Bruno);
+            if (strategy == null)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Bruno import strategy not found.";
+                return result;
+            }
+
+            if (!Directory.Exists(folderPath))
+            {
+                result.Success = false;
+                result.ErrorMessage = "The specified folder does not exist.";
+                return result;
+            }
+
+            // Process the folder recursively
+            await ProcessFolderAsync(folderPath, environmentId, parentCollectionId, strategy, result);
+
+            // Update summary
+            if (result.TotalFilesProcessed == 0)
+            {
+                result.Success = false;
+                result.ErrorMessage = "No Bruno files (.bru) found in the specified folder.";
+            }
+            else if (result.FailedImports > 0 && result.SuccessfulImports == 0)
+            {
+                result.Success = false;
+                result.ErrorMessage = $"Failed to import all {result.FailedImports} files.";
+            }
+            else if (result.FailedImports > 0)
+            {
+                result.Warnings.Add($"{result.FailedImports} out of {result.TotalFilesProcessed} files failed to import.");
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = $"Error importing Bruno folder: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    private async Task ProcessFolderAsync(
+        string folderPath, 
+        Guid environmentId, 
+        Guid? parentCollectionId, 
+        IImportStrategy strategy,
+        ImportResult result)
+    {
+        var folderName = Path.GetFileName(folderPath);
+        
+        // Create a collection for this folder (unless it's the root folder being imported)
+        Collection? folderCollection = null;
+        var brunoFiles = Directory.GetFiles(folderPath, "*.bru", SearchOption.TopDirectoryOnly);
+        var subFolders = Directory.GetDirectories(folderPath);
+        
+        // Only create a collection if there are files or subfolders to organize
+        if (brunoFiles.Length > 0 || subFolders.Length > 0)
+        {
+            try
+            {
+                folderCollection = await _collectionService.CreateCollectionAsync(
+                    folderName,
+                    environmentId,
+                    parentCollectionId,
+                    $"Imported from folder: {folderPath}");
+                
+                result.ImportedCollections.Add(folderCollection);
+            }
+            catch (Exception ex)
+            {
+                result.Warnings.Add($"Failed to create collection for folder '{folderName}': {ex.Message}");
+                // Continue processing files even if collection creation failed
+            }
+        }
+
+        // Import all .bru files in the current folder
+        foreach (var filePath in brunoFiles)
+        {
+            result.TotalFilesProcessed++;
+            
+            try
+            {
+                var fileContent = await File.ReadAllTextAsync(filePath);
+                var fileName = Path.GetFileNameWithoutExtension(filePath);
+                
+                var request = strategy.Parse(fileContent, environmentId, folderCollection?.Id, fileName);
+                
+                if (request == null)
+                {
+                    result.FailedImports++;
+                    result.Warnings.Add($"Failed to parse Bruno file: {Path.GetFileName(filePath)}");
+                    continue;
+                }
+
+                // Save the request
+                var savedRequest = await _requestService.CreateRequestAsync(request);
+                result.ImportedRequests.Add(savedRequest);
+                result.SuccessfulImports++;
+            }
+            catch (Exception ex)
+            {
+                result.FailedImports++;
+                result.Warnings.Add($"Error importing file '{Path.GetFileName(filePath)}': {ex.Message}");
+            }
+        }
+
+        // Process subfolders recursively
+        foreach (var subFolder in subFolders)
+        {
+            await ProcessFolderAsync(subFolder, environmentId, folderCollection?.Id ?? parentCollectionId, strategy, result);
+        }
     }
 }
