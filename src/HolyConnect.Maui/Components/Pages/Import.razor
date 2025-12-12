@@ -398,12 +398,6 @@ body:graphql:vars {
         if (!_form.IsValid)
             return;
 
-        if (!_selectedEnvironmentId.HasValue)
-        {
-            Snackbar.Add("Please select an environment", Severity.Error);
-            return;
-        }
-
         if (_selectedSource == ImportSource.Curl && string.IsNullOrWhiteSpace(_curlCommand))
         {
             Snackbar.Add("Please enter a curl command", Severity.Error);

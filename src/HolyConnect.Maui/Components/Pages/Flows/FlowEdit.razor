@@ -24,24 +24,6 @@
                              Lines="3"
                              Class="mb-3" />
 
-                @* Environment field is read-only during editing to maintain data integrity.
-                   Changing the environment could break request references and variable scoping. *@
-                <MudSelect @bind-Value="_flow.EnvironmentId" 
-                          Label="Environment" 
-                          Required="true"
-                          RequiredError="Environment is required"
-                          T="Guid"
-                          Disabled="true"
-                          Class="mb-3">
-                    @if (_environments != null)
-                    {
-                        @foreach (var env in _environments)
-                        {
-                            <MudSelectItem Value="@env.Id">@env.Name</MudSelectItem>
-                        }
-                    }
-                </MudSelect>
-
                 @if (_collections != null && _collections.Any())
                 {
                     <MudSelect @bind-Value="_flow.CollectionId" 
@@ -208,13 +190,12 @@
     {
         if (_flow == null) return;
 
+        // Load all collections
         var allCollections = await CollectionService.GetAllCollectionsAsync();
-        _collections = allCollections.Where(c => c.EnvironmentId == _flow.EnvironmentId).ToList();
+        _collections = allCollections.ToList();
         
-        // Load requests
-        var environmentRequests = await RequestService.GetRequestsByEnvironmentIdAsync(_flow.EnvironmentId);
+        // Load all requests from all collections
         var collectionRequests = new List<Request>();
-        
         if (_collections != null)
         {
             foreach (var collection in _collections)
@@ -224,7 +205,11 @@
             }
         }
         
-        _availableRequests = environmentRequests.Concat(collectionRequests).ToList();
+        // Also load requests without collection
+        var rootRequests = await RequestService.GetAllRequestsAsync();
+        var requestsWithoutCollection = rootRequests.Where(r => !r.CollectionId.HasValue).ToList();
+        
+        _availableRequests = requestsWithoutCollection.Concat(collectionRequests).ToList();
     }
 
     private void AddStep()

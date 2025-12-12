@@ -176,7 +176,6 @@ else
             // Store the original request ID and references
             var originalId = Request.Id;
             var originalCollectionId = Request.CollectionId;
-            var originalEnvironmentId = Request.EnvironmentId;
 
             // Delete the original request
             await RequestService.DeleteRequestAsync(originalId);
@@ -187,7 +186,6 @@ else
             // Use the original ID to replace the request
             convertedRequest.Id = originalId;
             convertedRequest.CollectionId = originalCollectionId;
-            convertedRequest.EnvironmentId = originalEnvironmentId;
             
             // Remove the "(TypeName)" suffix from the name that ConvertTo adds
             convertedRequest.Name = Request.Name;

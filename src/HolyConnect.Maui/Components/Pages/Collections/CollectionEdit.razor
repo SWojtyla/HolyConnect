@@ -121,18 +121,8 @@
 
     private void NavigateBackWithRequest()
     {
-        if (_collection != null)
-        {
-            var url = $"/environment/{_collection.EnvironmentId}";
-            if (_requestIdToPreserve.HasValue)
-            {
-                url += $"?requestId={_requestIdToPreserve.Value}";
-            }
-            NavigationManager.NavigateTo(url);
-        }
-        else
-        {
-            NavigationManager.NavigateTo("/");
+        NavigationManager.NavigateTo("/");
+    }
         }
     }
 }

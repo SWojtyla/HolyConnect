@@ -227,7 +227,7 @@
     private class VariableRow
     {
         public string Key { get; set; } = string.Empty;
-        public Dictionary<Guid, string> Values { get; set} = new();
+        public Dictionary<Guid, string> Values { get; set; } = new();
         public Dictionary<Guid, bool> SecretFlags { get; set; } = new();
     }
 }

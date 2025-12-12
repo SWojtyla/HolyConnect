@@ -54,9 +54,6 @@
                                 <MudDivider />
                                 
                                 <MudStack Row="true" Spacing="2" Class="flex-wrap">
-                                    <MudChip T="string" Icon="@Icons.Material.Filled.Dns" Size="Size.Small" Color="Color.Primary">
-                                        @GetEnvironmentName(flow.EnvironmentId)
-                                    </MudChip>
                                     @if (flow.CollectionId.HasValue)
                                     {
                                         <MudChip T="string" Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Info">
@@ -166,11 +163,6 @@
         }
     }
 
-    private string GetEnvironmentName(Guid environmentId)
-    {
-        return _environments?.FirstOrDefault(e => e.Id == environmentId)?.Name ?? "Unknown";
-    }
-
     private void CreateFlow()
     {
         NavigationManager.NavigateTo("/flow/create");
@@ -178,7 +170,7 @@
 
     private void ViewFlow(Flow flow)
     {
-        NavigationManager.NavigateTo($"/environment/{flow.EnvironmentId}?flowId={flow.Id}");
+        NavigationManager.NavigateTo("/");
     }
 
     private void EditFlow(Flow flow)
