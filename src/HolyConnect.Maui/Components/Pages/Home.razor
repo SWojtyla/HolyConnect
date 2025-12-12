@@ -36,6 +36,13 @@
                     </MudButton>
                     <MudButton Variant="Variant.Outlined" 
                               Color="Color.Primary" 
+                              OnClick="CreateCollection" 
+                              FullWidth="true"
+                              StartIcon="@Icons.Material.Filled.Folder">
+                        Create Collection
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" 
+                              Color="Color.Primary" 
                               OnClick="CreateRequest" 
                               FullWidth="true"
                               StartIcon="@Icons.Material.Filled.Http">
@@ -260,6 +267,11 @@
     private void CreateEnvironment()
     {
         NavigationManager.NavigateTo("/environment/create");
+    }
+
+    private void CreateCollection()
+    {
+        NavigationManager.NavigateTo("/collection/create");
     }
 
     private void CreateRequest()
