@@ -131,11 +131,14 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath(repositoryPath);
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath(repositoryPath);
+            
+            // Discover the actual repository root (handles subdirectories)
+            var repoRoot = DiscoverRepositoryRoot(path);
+            if (repoRoot == null)
                 return Task.FromResult<string?>(null);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(repoRoot);
             return Task.FromResult<string?>(repo.Head?.FriendlyName);
         }
         catch

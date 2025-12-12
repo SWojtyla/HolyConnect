@@ -1318,4 +1318,23 @@ public class GitServiceTests : IDisposable
         var expectedName = Path.GetFileName(_testRepoPath);
         Assert.Equal(expectedName, repoName);
     }
+
+    [Fact]
+    public async Task GetCurrentBranchAsync_WithSubdirectoryOfGitRepo_ShouldReturnCurrentBranch()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        // Create a subdirectory
+        var subDir = Path.Combine(_testRepoPath, "data", "collections");
+        Directory.CreateDirectory(subDir);
+
+        // Act
+        var branch = await _gitService.GetCurrentBranchAsync(subDir);
+
+        // Assert
+        Assert.NotNull(branch);
+        Assert.True(branch == "master" || branch == "main");
+    }
 }
