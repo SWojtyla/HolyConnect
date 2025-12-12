@@ -377,9 +377,9 @@
                 {
                     await RequestService.UpdateRequestAsync(_selectedRequest);
                     Snackbar.Add("Request saved", Severity.Success);
+                    await LoadData();
+                    await InvokeAsync(StateHasChanged);
                 }
-                await LoadData();
-                await InvokeAsync(StateHasChanged);
             }
             catch (Exception ex)
             {
