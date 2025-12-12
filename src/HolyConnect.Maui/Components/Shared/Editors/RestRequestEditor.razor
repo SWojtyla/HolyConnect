@@ -38,7 +38,9 @@
                 <CodeEditor @ref="_restBodyEditor" 
                             @bind-Value="Request.Body" 
                             Language="@Request.BodyType.ToString()" 
-                            Height="100%" />
+                            Height="100%"
+                            Environment="@Environment"
+                            Collection="@Collection" />
             </div>
         </div>
     </MudTabPanel>

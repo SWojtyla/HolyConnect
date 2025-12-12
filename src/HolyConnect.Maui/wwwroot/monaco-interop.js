@@ -2,6 +2,7 @@
 window.monacoEditorInterop = {
     editors: {},
     completionProviders: {},
+    hoverProviders: {},
 
     // Initialize Monaco Editor
     initializeEditor: function (editorId, initialValue, language, theme, readOnly) {
@@ -272,6 +273,11 @@ window.monacoEditorInterop = {
             this.completionProviders[editorId].dispose();
             delete this.completionProviders[editorId];
         }
+
+        if (this.hoverProviders[editorId]) {
+            this.hoverProviders[editorId].dispose();
+            delete this.hoverProviders[editorId];
+        }
     },
 
     // Trigger suggestions
@@ -287,6 +293,115 @@ window.monacoEditorInterop = {
         const editor = this.editors[editorId];
         if (editor) {
             editor.getAction('editor.action.formatDocument').run();
+        }
+    },
+
+    // Register variable hover provider
+    registerVariableHoverProvider: function (editorId, dotNetHelper) {
+        try {
+            // Dispose existing provider if any
+            if (this.hoverProviders[editorId]) {
+                this.hoverProviders[editorId].dispose();
+                delete this.hoverProviders[editorId];
+            }
+
+            if (!dotNetHelper) {
+                return false;
+            }
+
+            const editor = this.editors[editorId];
+            if (!editor) {
+                return false;
+            }
+
+            // Register hover provider for all languages
+            const provider = monaco.languages.registerHoverProvider('*', {
+                provideHover: async function (model, position) {
+                    // Check if this is the correct editor by comparing models
+                    if (editor.getModel() !== model) {
+                        return null;
+                    }
+
+                    // Get the word at the current position
+                    const word = model.getWordAtPosition(position);
+                    if (!word) {
+                        return null;
+                    }
+
+                    // Check if we're hovering over a variable pattern {{ variableName }}
+                    const line = model.getLineContent(position.lineNumber);
+                    const beforeCursor = line.substring(0, position.column - 1);
+                    const afterCursor = line.substring(position.column - 1);
+                    
+                    // Look for {{ before cursor and }} after cursor
+                    const openBraceMatch = beforeCursor.match(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)$/);
+                    const closeBraceMatch = afterCursor.match(/^([a-zA-Z0-9_]*)\s*\}\}/);
+                    
+                    if (openBraceMatch || closeBraceMatch) {
+                        // Extract the full variable name
+                        let variableName;
+                        let startColumn;
+                        let endColumn;
+                        
+                        if (openBraceMatch) {
+                            variableName = openBraceMatch[1];
+                            const varStart = beforeCursor.lastIndexOf('{{');
+                            startColumn = varStart + 1;
+                            
+                            // Find the closing braces
+                            const afterVarName = line.substring(position.column - 1);
+                            const closeMatch = afterVarName.match(/^([a-zA-Z0-9_]*)\s*\}\}/);
+                            if (closeMatch) {
+                                variableName += closeMatch[1];
+                                endColumn = position.column + closeMatch[0].indexOf('}}') + 2;
+                            } else {
+                                endColumn = position.column + word.word.length;
+                            }
+                        } else {
+                            variableName = closeBraceMatch[1];
+                            // Look backwards for the full variable name
+                            const beforeMatch = beforeCursor.match(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)$/);
+                            if (beforeMatch) {
+                                variableName = beforeMatch[1] + variableName;
+                                const varStart = beforeCursor.lastIndexOf('{{');
+                                startColumn = varStart + 1;
+                                endColumn = position.column + variableName.length - beforeMatch[1].length;
+                            } else {
+                                return null;
+                            }
+                        }
+                        
+                        // Call back to .NET to get variable value
+                        try {
+                            const result = await dotNetHelper.invokeMethodAsync('GetVariableHoverInfo', variableName);
+                            if (result) {
+                                return {
+                                    range: new monaco.Range(
+                                        position.lineNumber,
+                                        startColumn,
+                                        position.lineNumber,
+                                        endColumn
+                                    ),
+                                    contents: [
+                                        { value: '**Variable**' },
+                                        { value: result }
+                                    ]
+                                };
+                            }
+                        } catch (error) {
+                            console.error('Error getting variable hover info:', error);
+                        }
+                    }
+                    
+                    return null;
+                }
+            });
+
+            this.hoverProviders[editorId] = provider;
+            return true;
+        } catch (error) {
+            console.error('Error registering hover provider:', error);
+            return false;
         }
     },
 
