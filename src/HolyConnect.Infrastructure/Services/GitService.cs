@@ -48,9 +48,11 @@ public class GitService : IGitService
             // Repository.Discover returns the path to the .git directory
             // We need to get the working directory (parent of .git)
             // For bare repositories, it returns the repository path itself
+            // The using statement ensures proper disposal of the Repository object
             using var repo = new Repository(gitPath);
-            return repo.Info.WorkingDirectory?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) 
-                   ?? repo.Info.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var workingDir = repo.Info.WorkingDirectory?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var repoPath = repo.Info.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return workingDir ?? repoPath;
         }
         catch
         {
