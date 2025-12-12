@@ -1,4 +1,5 @@
 @page "/collection/{CollectionId:guid}"
+@using HolyConnect.Domain.Entities
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
 @inject NavigationManager NavigationManager
@@ -100,7 +101,7 @@
                                             <MudText Typo="Typo.subtitle1" Class="text-truncate"><strong>@request.Name</strong></MudText>
                                         </MudTooltip>
                                     </MudStack>
-                                    <MudChip T="string" Size="Size.Small" Color="@GetRequestColor(request.Type)">@request.Type</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetRequestColor(request.Type)">@request.Type.ToString()</MudChip>
                                 </MudStack>
                             </MudPaper>
                         </MudItem>
@@ -141,7 +142,7 @@
                     @foreach (var variable in _collection.Variables)
                     {
                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
-                            <MudText Typo="Typo.body2"><strong>@variable.Key:</strong> @(variable.IsSecret ? "****" : variable.Value)</MudText>
+                            <MudText Typo="Typo.body2"><strong>@variable.Key:</strong> @(_collection.SecretVariableNames.Contains(variable.Key) ? "****" : variable.Value)</MudText>
                         </MudStack>
                     }
                 </MudPaper>
@@ -162,7 +163,7 @@
                                             <MudText Typo="Typo.subtitle1" Class="text-truncate"><strong>@request.Name</strong></MudText>
                                         </MudTooltip>
                                     </MudStack>
-                                    <MudChip T="string" Size="Size.Small" Color="@GetRequestColor(request.Type)">@request.Type</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetRequestColor(request.Type)">@request.Type.ToString()</MudChip>
                                 </MudStack>
                             </MudPaper>
                         </MudItem>
@@ -398,19 +399,19 @@
             : "cursor: pointer;";
     }
 
-    private string GetRequestIcon(string requestType) => requestType switch
+    private string GetRequestIcon(RequestType requestType) => requestType switch
     {
-        "REST" => Icons.Material.Filled.Http,
-        "GraphQL" => Icons.Material.Filled.GraphicEq,
-        "WebSocket" => Icons.Material.Filled.Cable,
+        RequestType.Rest => Icons.Material.Filled.Http,
+        RequestType.GraphQL => Icons.Material.Filled.GraphicEq,
+        RequestType.WebSocket => Icons.Material.Filled.Cable,
         _ => Icons.Material.Filled.Code
     };
 
-    private Color GetRequestColor(string requestType) => requestType switch
+    private Color GetRequestColor(RequestType requestType) => requestType switch
     {
-        "REST" => Color.Primary,
-        "GraphQL" => Color.Secondary,
-        "WebSocket" => Color.Tertiary,
+        RequestType.Rest => Color.Primary,
+        RequestType.GraphQL => Color.Secondary,
+        RequestType.WebSocket => Color.Tertiary,
         _ => Color.Default
     };
 
