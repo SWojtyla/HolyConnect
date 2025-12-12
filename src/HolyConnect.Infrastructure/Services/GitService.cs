@@ -31,7 +31,7 @@ public class GitService : IGitService
     /// Discovers the actual git repository path from a given path (which might be a subdirectory)
     /// </summary>
     /// <param name="path">Path to search from</param>
-    /// <returns>The repository root path, or the original path if no repository is found</returns>
+    /// <returns>The repository root path, or null if no repository is found</returns>
     private string? DiscoverRepositoryRoot(string path)
     {
         try
@@ -63,14 +63,8 @@ public class GitService : IGitService
         try
         {
             var path = GetRepositoryPath(repositoryPath);
-            
-            // First check if the path itself is a valid repository
-            if (Repository.IsValid(path))
-                return Task.FromResult(true);
-            
-            // If not, try to discover a repository in parent directories
-            var discoveredPath = Repository.Discover(path);
-            return Task.FromResult(!string.IsNullOrEmpty(discoveredPath));
+            var repoRoot = DiscoverRepositoryRoot(path);
+            return Task.FromResult(repoRoot != null);
         }
         catch
         {
