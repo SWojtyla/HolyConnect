@@ -8,7 +8,9 @@ namespace HolyConnect.Application.Tests.Services;
 public class RequestServiceTests
 {
     private readonly Mock<IRepository<Request>> _mockRepository;
-    private readonly Mock<IRepository<Domain.Entities.Environment>> _mockEnvironmentRepository;
+    private readonly Mock<IActiveEnvironmentService> _mockActiveEnvironmentService;
+    private readonly Mock<IEnvironmentService> _mockEnvironmentService;
+    private readonly Mock<ICollectionService> _mockCollectionService;
     private readonly Mock<IRepository<Collection>> _mockCollectionRepository;
     private readonly Mock<IRequestExecutor> _mockExecutor;
     private readonly Mock<IVariableResolver> _mockVariableResolver;
@@ -17,14 +19,18 @@ public class RequestServiceTests
     public RequestServiceTests()
     {
         _mockRepository = new Mock<IRepository<Request>>();
-        _mockEnvironmentRepository = new Mock<IRepository<Domain.Entities.Environment>>();
+        _mockActiveEnvironmentService = new Mock<IActiveEnvironmentService>();
+        _mockEnvironmentService = new Mock<IEnvironmentService>();
+        _mockCollectionService = new Mock<ICollectionService>();
         _mockCollectionRepository = new Mock<IRepository<Collection>>();
         _mockExecutor = new Mock<IRequestExecutor>();
         _mockVariableResolver = new Mock<IVariableResolver>();
         var executors = new List<IRequestExecutor> { _mockExecutor.Object };
         _service = new RequestService(
-            _mockRepository.Object, 
-            _mockEnvironmentRepository.Object,
+            _mockRepository.Object,
+            _mockActiveEnvironmentService.Object,
+            _mockEnvironmentService.Object,
+            _mockCollectionService.Object,
             _mockCollectionRepository.Object,
             executors,
             _mockVariableResolver.Object);
@@ -173,9 +179,7 @@ public class RequestServiceTests
         var request = new RestRequest 
         { 
             Id = Guid.NewGuid(), 
-            Name = "Test Request",
-            EnvironmentId = environmentId,
-            Url = "https://api.example.com"
+            Name = "Test Request",            Url = "https://api.example.com"
         };
         var expectedResponse = new RequestResponse
         {
@@ -183,7 +187,7 @@ public class RequestServiceTests
             Body = "Success"
         };
 
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
@@ -216,11 +220,9 @@ public class RequestServiceTests
         var request = new RestRequest 
         { 
             Id = Guid.NewGuid(), 
-            Name = "Test Request",
-            EnvironmentId = environmentId
-        };
+            Name = "Test Request",        };
 
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
@@ -234,35 +236,6 @@ public class RequestServiceTests
     }
 
     [Fact]
-    public async Task GetRequestsByEnvironmentIdAsync_ShouldReturnRequestsWithoutCollection()
-    {
-        // Arrange
-        var environmentId = Guid.NewGuid();
-        var collectionId = Guid.NewGuid();
-        var requests = new List<Request>
-        {
-            new RestRequest { Id = Guid.NewGuid(), Name = "Request 1", EnvironmentId = environmentId, CollectionId = null },
-            new RestRequest { Id = Guid.NewGuid(), Name = "Request 2", EnvironmentId = environmentId, CollectionId = null },
-            new RestRequest { Id = Guid.NewGuid(), Name = "Request 3", EnvironmentId = environmentId, CollectionId = collectionId },
-            new RestRequest { Id = Guid.NewGuid(), Name = "Request 4", EnvironmentId = Guid.NewGuid(), CollectionId = null }
-        };
-
-        _mockRepository.Setup(r => r.GetAllAsync())
-            .ReturnsAsync(requests);
-
-        // Act
-        var result = await _service.GetRequestsByEnvironmentIdAsync(environmentId);
-
-        // Assert
-        Assert.Equal(2, result.Count());
-        Assert.All(result, r =>
-        {
-            Assert.Equal(environmentId, r.EnvironmentId);
-            Assert.Null(r.CollectionId);
-        });
-    }
-
-    [Fact]
     public async Task CreateRequestAsync_ShouldCreateRequestWithoutCollection()
     {
         // Arrange
@@ -270,9 +243,7 @@ public class RequestServiceTests
         var request = new RestRequest
         {
             Name = "Test Request",
-            Url = "https://api.example.com/test",
-            EnvironmentId = environmentId,
-            CollectionId = null
+            Url = "https://api.example.com/test",            CollectionId = null
         };
         Request? capturedRequest = null;
 
@@ -284,9 +255,7 @@ public class RequestServiceTests
         var result = await _service.CreateRequestAsync(request);
 
         // Assert
-        Assert.NotNull(capturedRequest);
-        Assert.Equal(environmentId, capturedRequest.EnvironmentId);
-        Assert.Null(capturedRequest.CollectionId);
+        Assert.NotNull(capturedRequest);        Assert.Null(capturedRequest.CollectionId);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Request>()), Times.Once);
     }
 
@@ -309,15 +278,13 @@ public class RequestServiceTests
         {
             Id = Guid.NewGuid(),
             Name = "Auth Test",
-            Url = "https://api.example.com/test",
-            EnvironmentId = environmentId,
-            AuthType = AuthenticationType.BearerToken,
+            Url = "https://api.example.com/test",            AuthType = AuthenticationType.BearerToken,
             BearerToken = "{{ token }}"
         };
 
         Request? executedRequest = null;
 
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
 
         _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
@@ -360,9 +327,7 @@ public class RequestServiceTests
         {
             Id = Guid.NewGuid(),
             Name = "Basic Auth Test",
-            Url = "https://api.example.com/graphql",
-            EnvironmentId = environmentId,
-            Query = "query { test }",
+            Url = "https://api.example.com/graphql",            Query = "query { test }",
             AuthType = AuthenticationType.Basic,
             BasicAuthUsername = "testuser",
             BasicAuthPassword = "testpass"
@@ -370,7 +335,7 @@ public class RequestServiceTests
 
         Request? executedRequest = null;
 
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
 
         _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
@@ -416,9 +381,7 @@ public class RequestServiceTests
         var request = new RestRequest
         {
             Id = requestId,
-            Name = "Test Request",
-            EnvironmentId = environmentId,
-            CollectionId = collectionId,
+            Name = "Test Request",            CollectionId = collectionId,
             Url = "https://api.example.com",
             Method = Domain.Entities.HttpMethod.Get
         };
@@ -447,13 +410,15 @@ public class RequestServiceTests
         
         var serviceWithHistory = new RequestService(
             _mockRepository.Object,
-            _mockEnvironmentRepository.Object,
+            _mockActiveEnvironmentService.Object,
+            _mockEnvironmentService.Object,
+            _mockCollectionService.Object,
             _mockCollectionRepository.Object,
             new List<IRequestExecutor> { _mockExecutor.Object },
             _mockVariableResolver.Object,
             mockHistoryService.Object);
         
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
@@ -469,9 +434,7 @@ public class RequestServiceTests
         Assert.NotNull(capturedHistoryEntry);
         Assert.Equal("Test Request", capturedHistoryEntry.RequestName);
         Assert.Equal(RequestType.Rest, capturedHistoryEntry.RequestType);
-        Assert.Equal(requestId, capturedHistoryEntry.RequestId);
-        Assert.Equal(environmentId, capturedHistoryEntry.EnvironmentId);
-        Assert.Equal(collectionId, capturedHistoryEntry.CollectionId);
+        Assert.Equal(requestId, capturedHistoryEntry.RequestId);        Assert.Equal(collectionId, capturedHistoryEntry.CollectionId);
         Assert.Equal(200, capturedHistoryEntry.Response.StatusCode);
         mockHistoryService.Verify(h => h.AddHistoryEntryAsync(It.IsAny<RequestHistoryEntry>()), Times.Once);
     }
@@ -483,9 +446,7 @@ public class RequestServiceTests
         var request = new RestRequest
         {
             Name = "Duplicate Request",
-            Url = "https://api.example.com",
-            EnvironmentId = Guid.NewGuid()
-        };
+            Url = "https://api.example.com",        };
         _mockRepository.Setup(r => r.AddAsync(It.IsAny<Request>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{request.Name}' already exists."));
 
@@ -504,9 +465,7 @@ public class RequestServiceTests
         {
             Id = Guid.NewGuid(),
             Name = "Duplicate Request",
-            Url = "https://api.example.com",
-            EnvironmentId = Guid.NewGuid()
-        };
+            Url = "https://api.example.com",        };
         _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Request>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{request.Name}' already exists."));
 

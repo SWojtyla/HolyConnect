@@ -21,7 +21,6 @@ public class FlowsPageTests
                 Id = Guid.NewGuid(),
                 Name = "Test Flow 1",
                 Description = "First test flow",
-                EnvironmentId = Guid.NewGuid(),
                 Steps = new List<FlowStep>
                 {
                     new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = Guid.NewGuid() }
@@ -33,7 +32,6 @@ public class FlowsPageTests
                 Id = Guid.NewGuid(),
                 Name = "Test Flow 2",
                 Description = "Second test flow",
-                EnvironmentId = Guid.NewGuid(),
                 Steps = new List<FlowStep>
                 {
                     new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = Guid.NewGuid() },
@@ -99,7 +97,6 @@ public class FlowsPageTests
             Id = flowId,
             Name = "Test Flow",
             Description = "Test Description",
-            EnvironmentId = Guid.NewGuid(),
             Steps = new List<FlowStep>(),
             CreatedAt = DateTime.UtcNow
         };
@@ -127,7 +124,6 @@ public class FlowsPageTests
             Id = Guid.NewGuid(),
             Name = "Updated Flow",
             Description = "Updated Description",
-            EnvironmentId = Guid.NewGuid(),
             Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = Guid.NewGuid() }

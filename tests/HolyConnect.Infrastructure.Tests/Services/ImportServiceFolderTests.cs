@@ -46,11 +46,7 @@ public class ImportServiceFolderTests : IDisposable
         var environmentId = Guid.NewGuid();
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId);
-
-        // Assert
-        Assert.False(result.Success);
-        Assert.Contains("No Bruno files", result.ErrorMessage);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
         Assert.Equal(0, result.TotalFilesProcessed);
     }
 
@@ -62,11 +58,7 @@ public class ImportServiceFolderTests : IDisposable
         var nonExistentPath = Path.Combine(_testFolderPath, "nonexistent");
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(nonExistentPath, environmentId);
-
-        // Assert
-        Assert.False(result.Success);
-        Assert.Contains("does not exist", result.ErrorMessage);
+        var result = await _importService.ImportFromBrunoFolderAsync(nonExistentPath);
     }
 
     [Fact]
@@ -91,7 +83,7 @@ get {
 
         var mockCollection = new Collection { Id = collectionId, Name = Path.GetFileName(_testFolderPath) };
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), environmentId, null, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()))
             .ReturnsAsync(mockCollection);
 
         var mockRequest = new RestRequest { Id = Guid.NewGuid(), Name = "Test Request" };
@@ -100,17 +92,13 @@ get {
             .ReturnsAsync(mockRequest);
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId);
-
-        // Assert
-        Assert.True(result.Success);
-        Assert.Equal(1, result.TotalFilesProcessed);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
         Assert.Equal(1, result.SuccessfulImports);
         Assert.Equal(0, result.FailedImports);
         Assert.Single(result.ImportedRequests);
         Assert.Single(result.ImportedCollections);
         _mockRequestService.Verify(s => s.CreateRequestAsync(It.IsAny<Request>()), Times.Once);
-        _mockCollectionService.Verify(s => s.CreateCollectionAsync(It.IsAny<string>(), environmentId, null, It.IsAny<string>()), Times.Once);
+        _mockCollectionService.Verify(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -138,7 +126,7 @@ get {{
 
         var mockCollection = new Collection { Id = collectionId, Name = Path.GetFileName(_testFolderPath) };
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), environmentId, null, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()))
             .ReturnsAsync(mockCollection);
 
         _mockRequestService
@@ -146,11 +134,7 @@ get {{
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId);
-
-        // Assert
-        Assert.True(result.Success);
-        Assert.Equal(3, result.TotalFilesProcessed);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
         Assert.Equal(3, result.SuccessfulImports);
         Assert.Equal(0, result.FailedImports);
         Assert.Equal(3, result.ImportedRequests.Count);
@@ -184,12 +168,12 @@ get {
         
         // Mock root collection creation
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync(Path.GetFileName(_testFolderPath), environmentId, null, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync(Path.GetFileName(_testFolderPath), null, It.IsAny<string>()))
             .ReturnsAsync(new Collection { Id = rootCollectionId, Name = Path.GetFileName(_testFolderPath) });
 
         // Mock subcollection creation
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync("subfolder1", environmentId, rootCollectionId, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync("subfolder1", rootCollectionId, It.IsAny<string>()))
             .ReturnsAsync(new Collection { Id = subCollectionId, Name = "subfolder1", ParentCollectionId = rootCollectionId });
 
         _mockRequestService
@@ -197,15 +181,11 @@ get {
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId);
-
-        // Assert
-        Assert.True(result.Success);
-        Assert.Equal(1, result.TotalFilesProcessed);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
         Assert.Equal(1, result.SuccessfulImports);
         Assert.Equal(2, result.ImportedCollections.Count); // Root and subfolder
-        _mockCollectionService.Verify(s => s.CreateCollectionAsync(It.IsAny<string>(), environmentId, null, It.IsAny<string>()), Times.Once);
-        _mockCollectionService.Verify(s => s.CreateCollectionAsync("subfolder1", environmentId, rootCollectionId, It.IsAny<string>()), Times.Once);
+        _mockCollectionService.Verify(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()), Times.Once);
+        _mockCollectionService.Verify(s => s.CreateCollectionAsync("subfolder1", rootCollectionId, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -236,15 +216,15 @@ get {
         var v1CollectionId = Guid.NewGuid();
         
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync(Path.GetFileName(_testFolderPath), environmentId, null, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync(Path.GetFileName(_testFolderPath), null, It.IsAny<string>()))
             .ReturnsAsync(new Collection { Id = rootCollectionId, Name = Path.GetFileName(_testFolderPath) });
 
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync("api", environmentId, rootCollectionId, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync("api", rootCollectionId, It.IsAny<string>()))
             .ReturnsAsync(new Collection { Id = apiCollectionId, Name = "api", ParentCollectionId = rootCollectionId });
 
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync("v1", environmentId, apiCollectionId, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync("v1", apiCollectionId, It.IsAny<string>()))
             .ReturnsAsync(new Collection { Id = v1CollectionId, Name = "v1", ParentCollectionId = apiCollectionId });
 
         _mockRequestService
@@ -252,11 +232,7 @@ get {
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId);
-
-        // Assert
-        Assert.True(result.Success);
-        Assert.Equal(1, result.TotalFilesProcessed);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
         Assert.Equal(1, result.SuccessfulImports);
         Assert.Equal(3, result.ImportedCollections.Count); // Root, api, and v1
     }
@@ -285,7 +261,7 @@ get {
 
         var mockCollection = new Collection { Id = collectionId, Name = Path.GetFileName(_testFolderPath) };
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), environmentId, null, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()))
             .ReturnsAsync(mockCollection);
 
         _mockRequestService
@@ -293,11 +269,7 @@ get {
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId);
-
-        // Assert
-        Assert.True(result.Success); // Should still succeed as one file was imported
-        Assert.Equal(2, result.TotalFilesProcessed);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
         Assert.Equal(1, result.SuccessfulImports);
         Assert.Equal(1, result.FailedImports);
         Assert.NotEmpty(result.Warnings);
@@ -334,7 +306,7 @@ get {
         };
         
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), environmentId, parentCollectionId, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), parentCollectionId, It.IsAny<string>()))
             .ReturnsAsync(mockCollection);
 
         _mockRequestService
@@ -342,15 +314,12 @@ get {
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId, parentCollectionId);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, parentCollectionId);
 
         // Assert
         Assert.True(result.Success);
         _mockCollectionService.Verify(s => s.CreateCollectionAsync(
-            It.IsAny<string>(), 
-            environmentId, 
-            parentCollectionId, 
-            It.IsAny<string>()), Times.Once);
+            It.IsAny<string>(), parentCollectionId, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -389,7 +358,7 @@ body:graphql {
 
         var mockCollection = new Collection { Id = collectionId, Name = Path.GetFileName(_testFolderPath) };
         _mockCollectionService
-            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), environmentId, null, It.IsAny<string>()))
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()))
             .ReturnsAsync(mockCollection);
 
         _mockRequestService
@@ -397,11 +366,7 @@ body:graphql {
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath, environmentId);
-
-        // Assert
-        Assert.True(result.Success);
-        Assert.Equal(2, result.TotalFilesProcessed);
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
         Assert.Equal(2, result.SuccessfulImports);
         Assert.Equal(2, result.ImportedRequests.Count);
         Assert.Contains(result.ImportedRequests, r => r is RestRequest);

@@ -1,0 +1,233 @@
+@page "/variables/matrix"
+@inject IEnvironmentService EnvironmentService
+@inject IActiveEnvironmentService ActiveEnvironmentService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <div>
+                <MudText Typo="Typo.h4">Variable Matrix</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Manage the same variables across all environments in one place
+                </MudText>
+            </div>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.Add"
+                          OnClick="AddVariable">
+                    Add Variable
+                </MudButton>
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Success" 
+                          StartIcon="@Icons.Material.Filled.Save"
+                          OnClick="SaveChanges"
+                          Disabled="@(!_hasChanges)">
+                    Save All Changes
+                </MudButton>
+            </MudStack>
+        </MudStack>
+
+        @if (_environments == null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (!_environments.Any())
+        {
+            <MudAlert Severity="Severity.Info">
+                No environments exist. Create at least one environment to manage variables.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/environment/create"))">
+                Create Environment
+            </MudButton>
+        }
+        else
+        {
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudTable Items="@_variableRows" Hover="true" Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh Style="width: 200px;">Variable Key</MudTh>
+                        @foreach (var env in _environments.OrderBy(e => e.Name))
+                        {
+                            <MudTh>
+                                <MudStack Spacing="1">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        @if (env.Id == _activeEnvironmentId)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                                        }
+                                        <MudText Typo="Typo.body2"><strong>@env.Name</strong></MudText>
+                                    </MudStack>
+                                </MudStack>
+                            </MudTh>
+                        }
+                        <MudTh Style="width: 80px;">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Variable Key">
+                            <MudTextField @bind-Value="context.Key" 
+                                        Variant="Variant.Outlined" 
+                                        Margin="Margin.Dense"
+                                        Placeholder="VARIABLE_KEY"
+                                        OnKeyUp="@(() => MarkChanged())" />
+                        </MudTd>
+                        @foreach (var env in _environments.OrderBy(e => e.Name))
+                        {
+                            <MudTd DataLabel="@env.Name">
+                                @{
+                                    var value = context.Values.GetValueOrDefault(env.Id, "");
+                                    var isSecret = context.SecretFlags.GetValueOrDefault(env.Id, false);
+                                }
+                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                    <MudTextField @bind-Value="@context.Values[env.Id]" 
+                                                Variant="Variant.Outlined" 
+                                                Margin="Margin.Dense"
+                                                Placeholder="value"
+                                                InputType="@(isSecret ? InputType.Password : InputType.Text)"
+                                                OnKeyUp="@(() => MarkChanged())"
+                                                Class="flex-grow-1" />
+                                    <MudIconButton Icon="@(isSecret ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)" 
+                                                 Size="Size.Small"
+                                                 Color="@(isSecret ? Color.Warning : Color.Default)"
+                                                 OnClick="@(() => ToggleSecret(context, env.Id))"
+                                                 Title="@(isSecret ? "Secret variable" : "Regular variable")" />
+                                </MudStack>
+                            </MudTd>
+                        }
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                         Color="Color.Error" 
+                                         Size="Size.Small"
+                                         OnClick="@(() => RemoveVariable(context))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+                
+                @if (_hasChanges)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mt-4">
+                        You have unsaved changes. Click "Save All Changes" to apply them.
+                    </MudAlert>
+                }
+            </MudPaper>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private IEnumerable<Domain.Entities.Environment>? _environments;
+    private Guid? _activeEnvironmentId;
+    private List<VariableRow> _variableRows = new();
+    private bool _hasChanges = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+        _activeEnvironmentId = await ActiveEnvironmentService.GetActiveEnvironmentIdAsync();
+        
+        if (_environments != null && _environments.Any())
+        {
+            var allKeys = _environments
+                .SelectMany(e => e.Variables.Keys)
+                .Distinct()
+                .OrderBy(k => k);
+
+            _variableRows = allKeys.Select(key => 
+            {
+                var row = new VariableRow { Key = key };
+                foreach (var env in _environments)
+                {
+                    row.Values[env.Id] = env.Variables.GetValueOrDefault(key, "");
+                    row.SecretFlags[env.Id] = env.SecretVariableNames.Contains(key);
+                }
+                return row;
+            }).ToList();
+        }
+        
+        _hasChanges = false;
+    }
+
+    private void AddVariable()
+    {
+        var newRow = new VariableRow { Key = $"NEW_VARIABLE_{_variableRows.Count + 1}" };
+        
+        if (_environments != null)
+        {
+            foreach (var env in _environments)
+            {
+                newRow.Values[env.Id] = "";
+                newRow.SecretFlags[env.Id] = false;
+            }
+        }
+        
+        _variableRows.Add(newRow);
+        MarkChanged();
+    }
+
+    private void RemoveVariable(VariableRow row)
+    {
+        _variableRows.Remove(row);
+        MarkChanged();
+    }
+
+    private void ToggleSecret(VariableRow row, Guid envId)
+    {
+        row.SecretFlags[envId] = !row.SecretFlags[envId];
+        MarkChanged();
+    }
+
+    private void MarkChanged()
+    {
+        _hasChanges = true;
+    }
+
+    private async Task SaveChanges()
+    {
+        try
+        {
+            if (_environments == null) return;
+
+            foreach (var env in _environments)
+            {
+                env.Variables.Clear();
+                env.SecretVariableNames.Clear();
+
+                foreach (var row in _variableRows.Where(r => !string.IsNullOrWhiteSpace(r.Key)))
+                {
+                    var value = row.Values.GetValueOrDefault(env.Id, "");
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        env.Variables[row.Key] = value;
+                        if (row.SecretFlags.GetValueOrDefault(env.Id, false))
+                        {
+                            env.SecretVariableNames.Add(row.Key);
+                        }
+                    }
+                }
+
+                await EnvironmentService.UpdateEnvironmentAsync(env);
+            }
+
+            _hasChanges = false;
+            Snackbar.Add("All variables saved successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving variables: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private class VariableRow
+    {
+        public string Key { get; set; } = string.Empty;
+        public Dictionary<Guid, string> Values { get; set; } = new();
+        public Dictionary<Guid, bool> SecretFlags { get; set; } = new();
+    }
+}

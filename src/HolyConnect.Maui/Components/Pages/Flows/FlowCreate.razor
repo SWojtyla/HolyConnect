@@ -245,15 +245,12 @@
 
     private async Task LoadEnvironmentData()
     {
-        if (!_selectedEnvironmentId.HasValue) return;
-
+        // Load all collections
         var allCollections = await CollectionService.GetAllCollectionsAsync();
-        _collections = allCollections.Where(c => c.EnvironmentId == _selectedEnvironmentId.Value).ToList();
+        _collections = allCollections.ToList();
         
-        // Load requests
-        var environmentRequests = await RequestService.GetRequestsByEnvironmentIdAsync(_selectedEnvironmentId.Value);
+        // Load all requests from all collections
         var collectionRequests = new List<Request>();
-        
         if (_collections != null)
         {
             foreach (var collection in _collections)
@@ -263,7 +260,11 @@
             }
         }
         
-        _availableRequests = environmentRequests.Concat(collectionRequests).ToList();
+        // Also load requests without collection
+        var rootRequests = await RequestService.GetAllRequestsAsync();
+        var requestsWithoutCollection = rootRequests.Where(r => !r.CollectionId.HasValue).ToList();
+        
+        _availableRequests = requestsWithoutCollection.Concat(collectionRequests).ToList();
     }
 
     private void AddStep()
@@ -342,14 +343,13 @@
             {
                 Name = _flowName,
                 Description = _flowDescription,
-                EnvironmentId = _selectedEnvironmentId.Value,
                 CollectionId = _selectedCollectionId,
                 Steps = _steps
             };
 
             await FlowService.CreateFlowAsync(flow);
             Snackbar.Add("Flow created successfully!", Severity.Success);
-            NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}");
+            NavigationManager.NavigateTo("/");
         }
         catch (Exception ex)
         {

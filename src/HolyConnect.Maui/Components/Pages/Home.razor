@@ -29,10 +29,10 @@
                 <MudCardActions Class="d-flex flex-column gap-2 pa-4">
                     <MudButton Variant="Variant.Filled" 
                               Color="Color.Primary" 
-                              OnClick="CreateEnvironment" 
+                              OnClick="CreateCollection" 
                               FullWidth="true"
-                              StartIcon="@Icons.Material.Filled.Dns">
-                        Create Environment
+                              StartIcon="@Icons.Material.Filled.Folder">
+                        Create Collection
                     </MudButton>
                     <MudButton Variant="Variant.Outlined" 
                               Color="Color.Primary" 
@@ -47,6 +47,13 @@
                               FullWidth="true"
                               StartIcon="@Icons.Material.Filled.AccountTree">
                         Create Flow
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                              Color="Color.Primary"
+                              OnClick="CreateEnvironment"
+                              FullWidth="true"
+                              StartIcon="@Icons.Material.Filled.Dns">
+                        Manage Variables
                     </MudButton>
                 </MudCardActions>
             </MudCard>
@@ -255,6 +262,11 @@
     private async Task LoadHistory()
     {
         _historyEntries = await HistoryService.GetHistoryAsync(10);
+    }
+
+    private void CreateCollection()
+    {
+        NavigationManager.NavigateTo("/collection/create");
     }
 
     private void CreateEnvironment()

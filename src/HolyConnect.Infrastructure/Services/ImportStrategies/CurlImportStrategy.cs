@@ -14,7 +14,7 @@ public class CurlImportStrategy : IImportStrategy
     
     public ImportSource Source => ImportSource.Curl;
 
-    public Request? Parse(string content, Guid environmentId, Guid? collectionId, string? customName)
+    public Request? Parse(string content, Guid? collectionId, string? customName)
     {
         try
         {
@@ -31,7 +31,7 @@ public class CurlImportStrategy : IImportStrategy
                 return null;
             }
 
-            return ParseCurlCommand(content, environmentId, collectionId, customName);
+            return ParseCurlCommand(content, collectionId, customName);
         }
         catch
         {
@@ -39,12 +39,11 @@ public class CurlImportStrategy : IImportStrategy
         }
     }
 
-    private RestRequest? ParseCurlCommand(string curlCommand, Guid environmentId, Guid? collectionId, string? customName)
+    private RestRequest? ParseCurlCommand(string curlCommand, Guid? collectionId, string? customName)
     {
         var request = new RestRequest
         {
             Id = Guid.NewGuid(),
-            EnvironmentId = environmentId,
             CollectionId = collectionId,
             CreatedAt = DateTime.UtcNow,
             Name = "Imported Request",

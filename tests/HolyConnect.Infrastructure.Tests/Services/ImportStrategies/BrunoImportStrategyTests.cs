@@ -36,7 +36,7 @@ get {
 }";
 
         // Act
-        var result = _strategy.Parse(brunoContent, environmentId, null, null);
+        var result = _strategy.Parse(brunoContent, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -44,7 +44,6 @@ get {
         Assert.Equal("Get Users", restRequest.Name);
         Assert.Equal("https://api.example.com/users", restRequest.Url);
         Assert.Equal(HttpMethod.Get, restRequest.Method);
-        Assert.Equal(environmentId, restRequest.EnvironmentId);
     }
 
     [Fact]
@@ -55,7 +54,7 @@ get {
         var emptyContent = "";
 
         // Act
-        var result = _strategy.Parse(emptyContent, environmentId, null, null);
+        var result = _strategy.Parse(emptyContent, null, null);
 
         // Assert
         Assert.Null(result);
@@ -83,7 +82,7 @@ body:json {
 }";
 
         // Act
-        var result = _strategy.Parse(brunoContent, environmentId, null, null);
+        var result = _strategy.Parse(brunoContent, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -111,7 +110,7 @@ get {
         var customName = "My Custom Request";
 
         // Act
-        var result = _strategy.Parse(brunoContent, environmentId, null, customName);
+        var result = _strategy.Parse(brunoContent, null, customName);
 
         // Assert
         Assert.NotNull(result);
@@ -139,7 +138,7 @@ auth:bearer {
 }";
 
         // Act
-        var result = _strategy.Parse(brunoContent, environmentId, null, null);
+        var result = _strategy.Parse(brunoContent, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -169,7 +168,7 @@ auth:basic {
 }";
 
         // Act
-        var result = _strategy.Parse(brunoContent, environmentId, null, null);
+        var result = _strategy.Parse(brunoContent, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -204,7 +203,7 @@ body:graphql {
 }";
 
         // Act
-        var result = _strategy.Parse(brunoContent, environmentId, null, null);
+        var result = _strategy.Parse(brunoContent, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -239,7 +238,7 @@ body:graphql {
 }";
 
         // Act
-        var result = _strategy.Parse(brunoContent, environmentId, null, null);
+        var result = _strategy.Parse(brunoContent, null, null);
 
         // Assert
         Assert.NotNull(result);

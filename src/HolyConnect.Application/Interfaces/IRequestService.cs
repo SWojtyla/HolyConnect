@@ -8,7 +8,6 @@ public interface IRequestService
     Task<IEnumerable<Request>> GetAllRequestsAsync();
     Task<Request?> GetRequestByIdAsync(Guid id);
     Task<IEnumerable<Request>> GetRequestsByCollectionIdAsync(Guid collectionId);
-    Task<IEnumerable<Request>> GetRequestsByEnvironmentIdAsync(Guid environmentId);
     Task<Request> UpdateRequestAsync(Request request);
     Task DeleteRequestAsync(Guid id);
     Task<RequestResponse> ExecuteRequestAsync(Request request);

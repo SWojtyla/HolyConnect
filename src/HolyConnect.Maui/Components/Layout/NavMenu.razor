@@ -1,28 +1,31 @@
-﻿@inject IEnvironmentService EnvironmentService
+﻿@inject ICollectionService CollectionService
+@inject IEnvironmentService EnvironmentService
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
 <MudNavMenu>
     <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Home</MudNavLink>
     
-    <MudNavGroup Title="Environments" Icon="@Icons.Material.Filled.Folder" Expanded="true">
-        @if (_environments != null && _environments.Any())
+    <MudNavGroup Title="Collections" Icon="@Icons.Material.Filled.Folder" Expanded="true">
+        @if (_collections != null && _collections.Any())
         {
-            @foreach (var env in _environments)
+            @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
             {
-                <MudNavLink Href="@($"/environment/{env.Id}")" Icon="@Icons.Material.Filled.Dns">
-                    @env.Name
+                <MudNavLink Href="@($"/collection/{collection.Id}")" Icon="@Icons.Material.Filled.Folder">
+                    @collection.Name
                 </MudNavLink>
             }
         }
         else
         {
-            <MudText Typo="Typo.body2" Class="ml-8 mt-2" Color="Color.Default">No environments</MudText>
+            <MudText Typo="Typo.body2" Class="ml-8 mt-2" Color="Color.Default">No collections</MudText>
         }
     </MudNavGroup>
     
     <MudDivider Class="my-2" />
     
+    <MudNavLink Href="/variables/matrix" Icon="@Icons.Material.Filled.GridOn">Variable Matrix</MudNavLink>
+    <MudNavLink Href="/environments" Icon="@Icons.Material.Filled.Dns">Manage Variables</MudNavLink>
     <MudNavLink Href="/import" Icon="@Icons.Material.Filled.Upload">Import</MudNavLink>
     <MudNavLink Href="/flows" Icon="@Icons.Material.Filled.AccountTree">Flows</MudNavLink>
     <MudNavLink Href="/git" Icon="@Icons.Material.Filled.Source">Git</MudNavLink>
@@ -32,12 +35,12 @@
 </MudNavMenu>
 
 @code {
-    private IEnumerable<Domain.Entities.Environment>? _environments;
+    private IEnumerable<Domain.Entities.Collection>? _collections;
 
     protected override async Task OnInitializedAsync()
     {
         NavigationManager.LocationChanged += OnLocationChanged;
-        await LoadEnvironments();
+        await LoadCollections();
     }
 
     private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
@@ -45,15 +48,15 @@
         try
         {
             // Reload list whenever navigation occurs (e.g., after create/save pages)
-            await LoadEnvironments();
+            await LoadCollections();
             StateHasChanged();
         }
         catch { }
     }
 
-    private async Task LoadEnvironments()
+    private async Task LoadCollections()
     {
-        _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+        _collections = await CollectionService.GetAllCollectionsAsync();
     }
 
     public void Dispose()

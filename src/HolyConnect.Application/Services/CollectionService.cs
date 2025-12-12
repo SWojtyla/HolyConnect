@@ -3,6 +3,9 @@ using HolyConnect.Domain.Entities;
 
 namespace HolyConnect.Application.Services;
 
+/// <summary>
+/// Service for managing collections (independent of environments).
+/// </summary>
 public class CollectionService : ICollectionService
 {
     private readonly IRepository<Collection> _collectionRepository;
@@ -16,14 +19,13 @@ public class CollectionService : ICollectionService
         _secretVariablesService = secretVariablesService;
     }
 
-    public async Task<Collection> CreateCollectionAsync(string name, Guid environmentId, Guid? parentCollectionId = null, string? description = null)
+    public async Task<Collection> CreateCollectionAsync(string name, Guid? parentCollectionId = null, string? description = null)
     {
         var collection = new Collection
         {
             Id = Guid.NewGuid(),
             Name = name,
             Description = description,
-            EnvironmentId = environmentId,
             ParentCollectionId = parentCollectionId,
             CreatedAt = DateTime.UtcNow
         };

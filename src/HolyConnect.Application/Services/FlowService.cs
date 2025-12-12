@@ -11,7 +11,7 @@ public class FlowService : IFlowService
 {
     private readonly IRepository<Flow> _flowRepository;
     private readonly IRepository<Request> _requestRepository;
-    private readonly IRepository<Domain.Entities.Environment> _environmentRepository;
+    private readonly IActiveEnvironmentService _activeEnvironmentService;
     private readonly IRepository<Collection> _collectionRepository;
     private readonly IRequestService _requestService;
     private readonly IVariableResolver _variableResolver;
@@ -19,14 +19,14 @@ public class FlowService : IFlowService
     public FlowService(
         IRepository<Flow> flowRepository,
         IRepository<Request> requestRepository,
-        IRepository<Domain.Entities.Environment> environmentRepository,
+        IActiveEnvironmentService activeEnvironmentService,
         IRepository<Collection> collectionRepository,
         IRequestService requestService,
         IVariableResolver variableResolver)
     {
         _flowRepository = flowRepository;
         _requestRepository = requestRepository;
-        _environmentRepository = environmentRepository;
+        _activeEnvironmentService = activeEnvironmentService;
         _collectionRepository = collectionRepository;
         _requestService = requestService;
         _variableResolver = variableResolver;
@@ -55,12 +55,6 @@ public class FlowService : IFlowService
     public async Task<Flow?> GetFlowByIdAsync(Guid id)
     {
         return await _flowRepository.GetByIdAsync(id);
-    }
-
-    public async Task<IEnumerable<Flow>> GetFlowsByEnvironmentIdAsync(Guid environmentId)
-    {
-        var allFlows = await _flowRepository.GetAllAsync();
-        return allFlows.Where(f => f.EnvironmentId == environmentId && f.CollectionId == null);
     }
 
     public async Task<IEnumerable<Flow>> GetFlowsByCollectionIdAsync(Guid collectionId)
@@ -97,11 +91,11 @@ public class FlowService : IFlowService
 
         try
         {
-            // Get environment for variable management
-            var environment = await _environmentRepository.GetByIdAsync(flow.EnvironmentId);
+            // Get active environment for variable management
+            var environment = await _activeEnvironmentService.GetActiveEnvironmentAsync();
             if (environment == null)
             {
-                throw new InvalidOperationException($"Environment with ID {flow.EnvironmentId} not found.");
+                throw new InvalidOperationException("No active environment set. Please select an environment before executing the flow.");
             }
 
             // Get collection if specified

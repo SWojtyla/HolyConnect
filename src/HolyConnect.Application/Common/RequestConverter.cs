@@ -205,8 +205,6 @@ public static class RequestConverter
         target.DisabledHeaders = new HashSet<string>(source.DisabledHeaders);
         target.CollectionId = source.CollectionId;
         target.Collection = source.Collection;
-        target.EnvironmentId = source.EnvironmentId;
-        target.Environment = source.Environment;
         target.CreatedAt = DateTime.UtcNow;
         target.AuthType = source.AuthType;
         target.BasicAuthUsername = source.BasicAuthUsername;

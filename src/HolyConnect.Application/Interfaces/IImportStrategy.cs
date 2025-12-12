@@ -16,9 +16,8 @@ public interface IImportStrategy
     /// Parse the input content and create a request
     /// </summary>
     /// <param name="content">The content to parse (curl command or file content)</param>
-    /// <param name="environmentId">Target environment ID</param>
     /// <param name="collectionId">Optional target collection ID</param>
     /// <param name="customName">Optional custom name for the request</param>
     /// <returns>The parsed request or null if parsing fails</returns>
-    Request? Parse(string content, Guid environmentId, Guid? collectionId, string? customName);
+    Request? Parse(string content, Guid? collectionId, string? customName);
 }

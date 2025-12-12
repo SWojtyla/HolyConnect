@@ -20,7 +20,6 @@ public class FlowTests
     {
         // Arrange
         var flowId = Guid.NewGuid();
-        var environmentId = Guid.NewGuid();
         var collectionId = Guid.NewGuid();
         var createdAt = DateTime.UtcNow;
 
@@ -30,7 +29,6 @@ public class FlowTests
             Id = flowId,
             Name = "Test Flow",
             Description = "Test Description",
-            EnvironmentId = environmentId,
             CollectionId = collectionId,
             CreatedAt = createdAt
         };
@@ -39,7 +37,6 @@ public class FlowTests
         Assert.Equal(flowId, flow.Id);
         Assert.Equal("Test Flow", flow.Name);
         Assert.Equal("Test Description", flow.Description);
-        Assert.Equal(environmentId, flow.EnvironmentId);
         Assert.Equal(collectionId, flow.CollectionId);
         Assert.Equal(createdAt, flow.CreatedAt);
     }

@@ -1,6 +1,5 @@
 @page "/import"
 @inject IImportService ImportService
-@inject IEnvironmentService EnvironmentService
 @inject ICollectionService CollectionService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -23,44 +22,25 @@
                     <MudSelectItem Value="ImportSource.Bruno">Bruno File (.bru)</MudSelectItem>
                 </MudSelect>
 
-                <!-- Environment Selection -->
+                <!-- Collection Selection (Optional) -->
                 <MudSelect T="Guid?" 
-                          Label="Target Environment" 
-                          Value="_selectedEnvironmentId"
-                          ValueChanged="OnEnvironmentChanged"
+                          Label="Target Collection (Optional)" 
+                          @bind-Value="_selectedCollectionId"
                           Variant="Variant.Outlined"
-                          Required="true"
-                          RequiredError="Please select an environment">
-                    @if (_environments != null)
+                          Clearable="true"
+                          HelperText="Import to a specific collection, or leave empty to import at root level">
+                    @if (_collections != null && _collections.Any())
                     {
-                        @foreach (var env in _environments)
+                        @foreach (var collection in _collections)
                         {
-                            <MudSelectItem Value="@((Guid?)env.Id)">@env.Name</MudSelectItem>
+                            <MudSelectItem Value="@((Guid?)collection.Id)">@collection.Name</MudSelectItem>
                         }
                     }
+                    else
+                    {
+                        <MudSelectItem Value="@((Guid?)null)" Disabled="true">No collections available</MudSelectItem>
+                    }
                 </MudSelect>
-
-                <!-- Collection Selection (Optional) -->
-                @if (_selectedEnvironmentId.HasValue)
-                {
-                    <MudSelect T="Guid?" 
-                              Label="Target Collection (Optional)" 
-                              @bind-Value="_selectedCollectionId"
-                              Variant="Variant.Outlined"
-                              Clearable="true">
-                        @if (_collections != null && _collections.Any())
-                        {
-                            @foreach (var collection in _collections)
-                            {
-                                <MudSelectItem Value="@((Guid?)collection.Id)">@collection.Name</MudSelectItem>
-                            }
-                        }
-                        else
-                        {
-                            <MudSelectItem Value="@((Guid?)null)" Disabled="true">No collections available</MudSelectItem>
-                        }
-                    </MudSelect>
-                }
 
                 <!-- curl Command Input -->
                 @if (_selectedSource == ImportSource.Curl)
@@ -344,11 +324,9 @@ body:graphql:vars {
 
 @code {
     private MudForm? _form;
-    private IEnumerable<Domain.Entities.Environment>? _environments;
     private IEnumerable<Collection>? _collections;
     
     private ImportSource _selectedSource = ImportSource.Curl;
-    private Guid? _selectedEnvironmentId;
     private Guid? _selectedCollectionId;
     private string _curlCommand = string.Empty;
     private string _brunoFileContent = string.Empty;
@@ -364,41 +342,12 @@ body:graphql:vars {
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadEnvironments();
+        await LoadCollections();
     }
 
-    private async Task OnEnvironmentChanged(Guid? environmentId)
+    private async Task LoadCollections()
     {
-        _selectedEnvironmentId = environmentId;
-        _selectedCollectionId = null; // Reset collection selection
-        
-        if (environmentId.HasValue)
-        {
-            await LoadCollections(environmentId.Value);
-        }
-        else
-        {
-            _collections = null;
-        }
-    }
-
-    private async Task LoadEnvironments()
-    {
-        _environments = await EnvironmentService.GetAllEnvironmentsAsync();
-        
-        // Auto-select first environment if only one exists
-        if (_environments != null && _environments.Count() == 1)
-        {
-            _selectedEnvironmentId = _environments.First().Id;
-            await LoadCollections(_selectedEnvironmentId.Value);
-        }
-    }
-
-    private async Task LoadCollections(Guid environmentId)
-    {
-        var allCollections = await CollectionService.GetAllCollectionsAsync();
-        _collections = allCollections.Where(c => c.EnvironmentId == environmentId);
-        
+        _collections = await CollectionService.GetAllCollectionsAsync();
         StateHasChanged();
     }
 
@@ -449,12 +398,6 @@ body:graphql:vars {
         if (!_form.IsValid)
             return;
 
-        if (!_selectedEnvironmentId.HasValue)
-        {
-            Snackbar.Add("Please select an environment", Severity.Error);
-            return;
-        }
-
         if (_selectedSource == ImportSource.Curl && string.IsNullOrWhiteSpace(_curlCommand))
         {
             Snackbar.Add("Please enter a curl command", Severity.Error);
@@ -487,17 +430,17 @@ body:graphql:vars {
 
             if (_selectedSource == ImportSource.Curl)
             {
-                result = await ImportService.ImportFromCurlAsync(_curlCommand, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
+                result = await ImportService.ImportFromCurlAsync(_curlCommand, _selectedCollectionId, _requestName);
             }
             else if (_selectedSource == ImportSource.Bruno)
             {
                 if (_importFolder)
                 {
-                    result = await ImportService.ImportFromBrunoFolderAsync(_brunoFolderPath, _selectedEnvironmentId.Value, _selectedCollectionId);
+                    result = await ImportService.ImportFromBrunoFolderAsync(_brunoFolderPath, _selectedCollectionId);
                 }
                 else
                 {
-                    result = await ImportService.ImportFromBrunoAsync(_brunoFileContent, _selectedEnvironmentId.Value, _selectedCollectionId, _requestName);
+                    result = await ImportService.ImportFromBrunoAsync(_brunoFileContent, _selectedCollectionId, _requestName);
                 }
             }
             else
@@ -524,9 +467,9 @@ body:graphql:vars {
                     }
                     Snackbar.Add(_resultMessage, Severity.Success);
                     
-                    // Navigate to the environment after a short delay
+                    // Navigate to home after a short delay
                     await Task.Delay(1500);
-                    NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}");
+                    NavigationManager.NavigateTo("/");
                 }
                 // Handle single file import results
                 else if (result.ImportedRequest != null)
@@ -534,9 +477,9 @@ body:graphql:vars {
                     _resultMessage = $"Successfully imported request: {result.ImportedRequest.Name}";
                     Snackbar.Add(_resultMessage, Severity.Success);
                     
-                    // Navigate to the imported request after a short delay
+                    // Navigate to home after a short delay
                     await Task.Delay(1500);
-                    NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}?requestId={result.ImportedRequest.Id}");
+                    NavigationManager.NavigateTo("/");
                 }
                 else
                 {

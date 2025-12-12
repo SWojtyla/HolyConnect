@@ -9,7 +9,7 @@ public class FlowServiceTests
 {
     private readonly Mock<IRepository<Flow>> _mockFlowRepository;
     private readonly Mock<IRepository<Request>> _mockRequestRepository;
-    private readonly Mock<IRepository<Domain.Entities.Environment>> _mockEnvironmentRepository;
+    private readonly Mock<IActiveEnvironmentService> _mockActiveEnvironmentService;
     private readonly Mock<IRepository<Collection>> _mockCollectionRepository;
     private readonly Mock<IRequestService> _mockRequestService;
     private readonly Mock<IVariableResolver> _mockVariableResolver;
@@ -19,7 +19,7 @@ public class FlowServiceTests
     {
         _mockFlowRepository = new Mock<IRepository<Flow>>();
         _mockRequestRepository = new Mock<IRepository<Request>>();
-        _mockEnvironmentRepository = new Mock<IRepository<Domain.Entities.Environment>>();
+        _mockActiveEnvironmentService = new Mock<IActiveEnvironmentService>();
         _mockCollectionRepository = new Mock<IRepository<Collection>>();
         _mockRequestService = new Mock<IRequestService>();
         _mockVariableResolver = new Mock<IVariableResolver>();
@@ -27,7 +27,7 @@ public class FlowServiceTests
         _service = new FlowService(
             _mockFlowRepository.Object,
             _mockRequestRepository.Object,
-            _mockEnvironmentRepository.Object,
+            _mockActiveEnvironmentService.Object,
             _mockCollectionRepository.Object,
             _mockRequestService.Object,
             _mockVariableResolver.Object);
@@ -41,9 +41,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Name = "Test Flow",
-            Description = "Test Description",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Description = "Test Description",            Steps = new List<FlowStep>
             {
                 new FlowStep { Order = 1, RequestId = Guid.NewGuid() },
                 new FlowStep { Order = 2, RequestId = Guid.NewGuid() }
@@ -108,29 +106,6 @@ public class FlowServiceTests
         Assert.NotNull(result);
         Assert.Equal(id, result.Id);
         Assert.Equal("Test Flow", result.Name);
-    }
-
-    [Fact]
-    public async Task GetFlowsByEnvironmentIdAsync_ShouldReturnEnvironmentFlows()
-    {
-        // Arrange
-        var environmentId = Guid.NewGuid();
-        var flows = new List<Flow>
-        {
-            new Flow { Id = Guid.NewGuid(), Name = "Flow 1", EnvironmentId = environmentId },
-            new Flow { Id = Guid.NewGuid(), Name = "Flow 2", EnvironmentId = environmentId, CollectionId = Guid.NewGuid() },
-            new Flow { Id = Guid.NewGuid(), Name = "Flow 3", EnvironmentId = Guid.NewGuid() }
-        };
-
-        _mockFlowRepository.Setup(r => r.GetAllAsync())
-            .ReturnsAsync(flows);
-
-        // Act
-        var result = await _service.GetFlowsByEnvironmentIdAsync(environmentId);
-
-        // Assert
-        Assert.Single(result); // Only Flow 1 should be returned (no collection ID)
-        Assert.Equal("Flow 1", result.First().Name);
     }
 
     [Fact]
@@ -215,9 +190,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Empty Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>()
+            Name = "Empty Flow",            Steps = new List<FlowStep>()
         };
 
         var environment = new Domain.Entities.Environment
@@ -228,7 +201,7 @@ public class FlowServiceTests
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId))
             .ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
 
         // Act
@@ -252,16 +225,12 @@ public class FlowServiceTests
         {
             Id = requestId,
             Name = "Test Request",
-            Url = "https://api.example.com/test",
-            EnvironmentId = environmentId
-        };
+            Url = "https://api.example.com/test",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Single Step Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Single Step Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -287,7 +256,7 @@ public class FlowServiceTests
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId))
             .ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId))
             .ReturnsAsync(request);
@@ -315,15 +284,13 @@ public class FlowServiceTests
         var request2Id = Guid.NewGuid();
         var flowId = Guid.NewGuid();
 
-        var request1 = new RestRequest { Id = request1Id, Name = "Request 1", EnvironmentId = environmentId };
-        var request2 = new RestRequest { Id = request2Id, Name = "Request 2", EnvironmentId = environmentId };
+        var request1 = new RestRequest { Id = request1Id, Name = "Request 1"};
+        var request2 = new RestRequest { Id = request2Id, Name = "Request 2"};
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Multi Step Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Multi Step Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -337,7 +304,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id)).ReturnsAsync(request2);
         _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
@@ -367,9 +334,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with Disabled Step",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with Disabled Step",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -388,7 +353,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
 
         // Act
         var result = await _service.ExecuteFlowAsync(flowId);
@@ -409,15 +374,13 @@ public class FlowServiceTests
         var request2Id = Guid.NewGuid();
         var flowId = Guid.NewGuid();
 
-        var request1 = new RestRequest { Id = request1Id, Name = "Failing Request", EnvironmentId = environmentId };
-        var request2 = new RestRequest { Id = request2Id, Name = "Success Request", EnvironmentId = environmentId };
+        var request1 = new RestRequest { Id = request1Id, Name = "Failing Request"};
+        var request2 = new RestRequest { Id = request2Id, Name = "Success Request"};
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with ContinueOnError",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with ContinueOnError",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true, ContinueOnError = true },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -431,7 +394,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id)).ReturnsAsync(request2);
         
@@ -460,14 +423,12 @@ public class FlowServiceTests
         var request2Id = Guid.NewGuid();
         var flowId = Guid.NewGuid();
 
-        var request1 = new RestRequest { Id = request1Id, Name = "Failing Request", EnvironmentId = environmentId };
+        var request1 = new RestRequest { Id = request1Id, Name = "Failing Request"};
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow Stopping on Error",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow Stopping on Error",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true, ContinueOnError = false },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -481,7 +442,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
         _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
             .ThrowsAsync(new Exception("Request failed"));
@@ -506,9 +467,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Cancellable Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Cancellable Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = Guid.NewGuid(), IsEnabled = true }
             }
@@ -521,7 +480,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
 
         var cts = new CancellationTokenSource();
         cts.Cancel(); // Cancel immediately
@@ -540,9 +499,7 @@ public class FlowServiceTests
         // Arrange
         var flow = new Flow
         {
-            Name = "Duplicate Flow",
-            EnvironmentId = Guid.NewGuid(),
-            Steps = new List<FlowStep>()
+            Name = "Duplicate Flow",            Steps = new List<FlowStep>()
         };
         _mockFlowRepository.Setup(r => r.AddAsync(It.IsAny<Flow>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{flow.Name}' already exists."));
@@ -561,9 +518,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = Guid.NewGuid(),
-            Name = "Duplicate Flow",
-            EnvironmentId = Guid.NewGuid(),
-            Steps = new List<FlowStep>()
+            Name = "Duplicate Flow",            Steps = new List<FlowStep>()
         };
         _mockFlowRepository.Setup(r => r.UpdateAsync(It.IsAny<Flow>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{flow.Name}' already exists."));
@@ -587,16 +542,12 @@ public class FlowServiceTests
         {
             Id = requestId,
             Name = "Failing Request",
-            Url = "https://api.example.com/notfound",
-            EnvironmentId = environmentId
-        };
+            Url = "https://api.example.com/notfound",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with 404",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with 404",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -624,7 +575,7 @@ public class FlowServiceTests
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId))
             .ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
             .ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId))
             .ReturnsAsync(request);
@@ -653,16 +604,12 @@ public class FlowServiceTests
         var request = new RestRequest
         {
             Id = requestId,
-            Name = "Server Error Request",
-            EnvironmentId = environmentId
-        };
+            Name = "Server Error Request",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with 500",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with 500",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -688,7 +635,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId)).ReturnsAsync(request);
         _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
             .ReturnsAsync(response);
@@ -712,15 +659,13 @@ public class FlowServiceTests
         var request2Id = Guid.NewGuid();
         var flowId = Guid.NewGuid();
 
-        var request1 = new RestRequest { Id = request1Id, Name = "Failing Request", EnvironmentId = environmentId };
-        var request2 = new RestRequest { Id = request2Id, Name = "Success Request", EnvironmentId = environmentId };
+        var request1 = new RestRequest { Id = request1Id, Name = "Failing Request"};
+        var request2 = new RestRequest { Id = request2Id, Name = "Success Request"};
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with Error and Continue",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with Error and Continue",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true, ContinueOnError = true },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -734,7 +679,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id)).ReturnsAsync(request2);
 
@@ -769,16 +714,12 @@ public class FlowServiceTests
         var request = new RestRequest
         {
             Id = requestId,
-            Name = "Test Request",
-            EnvironmentId = environmentId
-        };
+            Name = "Test Request",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Success Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Success Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -803,7 +744,7 @@ public class FlowServiceTests
         };
 
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
-        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync()).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId)).ReturnsAsync(request);
         _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
             .ReturnsAsync(response);

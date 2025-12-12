@@ -325,56 +325,11 @@
         _environment = await EnvironmentService.GetEnvironmentByIdAsync(EnvironmentId);
         if (_environment != null)
         {
-            var allCollections = await CollectionService.GetAllCollectionsAsync();
-            var environmentCollections = allCollections.Where(c => c.EnvironmentId == EnvironmentId).ToList();
-            
-            // Build collection hierarchy efficiently in a single pass
-            var collectionDict = new Dictionary<Guid, Collection>();
-            var rootCollections = new List<Collection>();
-            
-            // First pass: clear existing sub-collections and index all collections
-            foreach (var collection in environmentCollections)
-            {
-                collection.SubCollections.Clear();
-                collectionDict[collection.Id] = collection;
-            }
-            
-            // Second pass: build hierarchy and identify roots
-            foreach (var collection in environmentCollections)
-            {
-                if (collection.ParentCollectionId.HasValue)
-                {
-                    if (collectionDict.TryGetValue(collection.ParentCollectionId.Value, out var parent))
-                    {
-                        parent.SubCollections.Add(collection);
-                    }
-                }
-                else
-                {
-                    rootCollections.Add(collection);
-                }
-            }
-            
-            _collections = rootCollections;
-            
-            // Load requests for each collection (load once and group to avoid N+1 queries)
-            var allRequests = await RequestService.GetAllRequestsAsync();
-            var collectionIds = environmentCollections.Select(c => c.Id).ToHashSet();
-            var requestsByCollection = allRequests
-                .Where(r => r.CollectionId.HasValue && collectionIds.Contains(r.CollectionId.Value))
-                .GroupBy(r => r.CollectionId!.Value)
-                .ToDictionary(g => g.Key, g => g.ToList());
-            
-            foreach (var collection in environmentCollections)
-            {
-                collection.Requests = requestsByCollection.TryGetValue(collection.Id, out var requests) ? requests : new List<Request>();
-            }
-            
-            // Load environment-level requests (requests without a collection)
-            _environmentRequests = await RequestService.GetRequestsByEnvironmentIdAsync(EnvironmentId);
-            
-            // Load flows for this environment
-            _flows = await FlowService.GetFlowsByEnvironmentIdAsync(EnvironmentId);
+            // EnvironmentView now focuses on variables only
+            // Collections, requests, and flows are independent
+            _collections = new List<Collection>();
+            _environmentRequests = new List<Request>();
+            _flows = new List<Flow>();
         }
     }
 

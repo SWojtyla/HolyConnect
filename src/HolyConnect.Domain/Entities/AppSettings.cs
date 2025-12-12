@@ -8,6 +8,11 @@ public class AppSettings
     public ThemePreset Theme { get; set; } = ThemePreset.Default;
     public List<GitFolder> GitFolders { get; set; } = new();
     public Guid? ActiveGitFolderId { get; set; }
+    
+    /// <summary>
+    /// The globally active environment ID. All requests use this environment for variable resolution.
+    /// </summary>
+    public Guid? ActiveEnvironmentId { get; set; }
 }
 
 public enum RequestLayout

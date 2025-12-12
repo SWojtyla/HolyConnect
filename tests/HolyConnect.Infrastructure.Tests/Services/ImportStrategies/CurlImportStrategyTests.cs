@@ -28,15 +28,13 @@ public class CurlImportStrategyTests
         var curlCommand = "curl 'https://api.example.com/users'";
 
         // Act
-        var result = _strategy.Parse(curlCommand, environmentId, null, null);
+        var result = _strategy.Parse(curlCommand, null, null);
 
         // Assert
         Assert.NotNull(result);
         var restRequest = Assert.IsType<RestRequest>(result);
         Assert.Equal("https://api.example.com/users", restRequest.Url);
-        Assert.Equal(HttpMethod.Get, restRequest.Method);
-        Assert.Equal(environmentId, restRequest.EnvironmentId);
-    }
+        Assert.Equal(HttpMethod.Get, restRequest.Method);    }
 
     [Fact]
     public void Parse_WithInvalidCommand_ShouldReturnNull()
@@ -46,7 +44,7 @@ public class CurlImportStrategyTests
         var invalidCommand = "not a curl command";
 
         // Act
-        var result = _strategy.Parse(invalidCommand, environmentId, null, null);
+        var result = _strategy.Parse(invalidCommand, null, null);
 
         // Assert
         Assert.Null(result);
@@ -60,7 +58,7 @@ public class CurlImportStrategyTests
         var curlCommand = "curl -X POST 'https://api.example.com/users' -d '{\"name\":\"John\"}'";
 
         // Act
-        var result = _strategy.Parse(curlCommand, environmentId, null, null);
+        var result = _strategy.Parse(curlCommand, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -79,7 +77,7 @@ public class CurlImportStrategyTests
         var customName = "My Custom Request";
 
         // Act
-        var result = _strategy.Parse(curlCommand, environmentId, null, customName);
+        var result = _strategy.Parse(curlCommand, null, customName);
 
         // Assert
         Assert.NotNull(result);
@@ -95,7 +93,7 @@ public class CurlImportStrategyTests
         var curlCommand = "curl -u username:password 'https://api.example.com/protected'";
 
         // Act
-        var result = _strategy.Parse(curlCommand, environmentId, null, null);
+        var result = _strategy.Parse(curlCommand, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -113,7 +111,7 @@ public class CurlImportStrategyTests
         var curlCommand = "curl 'https://api.example.com/protected' -H 'Authorization: Bearer my-token'";
 
         // Act
-        var result = _strategy.Parse(curlCommand, environmentId, null, null);
+        var result = _strategy.Parse(curlCommand, null, null);
 
         // Assert
         Assert.NotNull(result);
@@ -130,7 +128,7 @@ public class CurlImportStrategyTests
         var curlCommand = "curl 'https://api.example.com/users' -H 'Content-Type: application/json' -H 'Accept: application/json'";
 
         // Act
-        var result = _strategy.Parse(curlCommand, environmentId, null, null);
+        var result = _strategy.Parse(curlCommand, null, null);
 
         // Assert
         Assert.NotNull(result);

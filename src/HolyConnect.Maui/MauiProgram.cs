@@ -190,6 +190,7 @@ public static class MauiProgram
         });
 
         // Add services
+        builder.Services.AddScoped<IActiveEnvironmentService, ActiveEnvironmentService>();
         builder.Services.AddScoped<IEnvironmentService, EnvironmentService>();
         builder.Services.AddScoped<ICollectionService, CollectionService>();
         builder.Services.AddScoped<IRequestService, RequestService>();
