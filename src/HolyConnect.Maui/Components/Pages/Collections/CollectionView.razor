@@ -117,7 +117,7 @@
         }
         else if (_selectedRequest != null)
         {
-            <RequestEditor Request="@_selectedRequest" OnRequestUpdated="HandleRequestUpdated" />
+            <RequestEditor Request="@_selectedRequest" OnSave="HandleRequestUpdated" />
         }
         else if (_collection != null)
         {
@@ -309,7 +309,8 @@
 
     private void CreateRequest()
     {
-        NavigationManager.NavigateTo($"/request/create?collectionId={(_selectedSubCollection?.Id ?? CollectionId)}");
+        var targetCollectionId = _selectedSubCollection?.Id ?? CollectionId;
+        NavigationManager.NavigateTo($"/collection/{targetCollectionId}/request/create");
     }
 
     private void CreateSubCollection()
