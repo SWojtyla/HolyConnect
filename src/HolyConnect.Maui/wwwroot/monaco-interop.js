@@ -3,6 +3,7 @@ window.monacoEditorInterop = {
     editors: {},
     completionProviders: {},
     hoverProviders: {},
+    inlayHintsProviders: {},
 
     // Initialize Monaco Editor
     initializeEditor: function (editorId, initialValue, language, theme, readOnly) {
@@ -278,6 +279,11 @@ window.monacoEditorInterop = {
             this.hoverProviders[editorId].dispose();
             delete this.hoverProviders[editorId];
         }
+
+        if (this.inlayHintsProviders[editorId]) {
+            this.inlayHintsProviders[editorId].dispose();
+            delete this.inlayHintsProviders[editorId];
+        }
     },
 
     // Trigger suggestions
@@ -384,6 +390,86 @@ window.monacoEditorInterop = {
             return true;
         } catch (error) {
             console.error('Error registering hover provider:', error);
+            return false;
+        }
+    },
+
+    // Register variable inlay hints provider
+    registerVariableInlayHintsProvider: function (editorId, dotNetHelper) {
+        try {
+            // Dispose existing provider if any
+            if (this.inlayHintsProviders[editorId]) {
+                this.inlayHintsProviders[editorId].dispose();
+                delete this.inlayHintsProviders[editorId];
+            }
+
+            if (!dotNetHelper) {
+                return false;
+            }
+
+            const editor = this.editors[editorId];
+            if (!editor) {
+                return false;
+            }
+
+            const model = editor.getModel();
+            if (!model) {
+                return false;
+            }
+
+            // Register inlay hints provider for the specific model language
+            const provider = monaco.languages.registerInlayHintsProvider(model.getLanguageId(), {
+                provideInlayHints: async function (hintModel, range, token) {
+                    // Only provide hints for this specific editor's model
+                    if (model !== hintModel) {
+                        return { hints: [], dispose: () => {} };
+                    }
+
+                    const hints = [];
+                    const variablePattern = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
+                    
+                    // Process each line in the visible range
+                    for (let lineNumber = range.startLineNumber; lineNumber <= range.endLineNumber; lineNumber++) {
+                        const line = hintModel.getLineContent(lineNumber);
+                        let match;
+                        
+                        // Find all variables in the line
+                        while ((match = variablePattern.exec(line)) !== null) {
+                            const variableName = match[1];
+                            const matchEnd = match.index + match[0].length;
+                            
+                            try {
+                                // Call back to .NET to get variable value
+                                const value = await dotNetHelper.invokeMethodAsync('GetVariableValue', variableName);
+                                
+                                if (value !== null && value !== undefined) {
+                                    // Add inlay hint after the variable
+                                    hints.push({
+                                        kind: monaco.languages.InlayHintKind.Type,
+                                        position: new monaco.Position(lineNumber, matchEnd + 1),
+                                        label: ` = ${value}`,
+                                        paddingLeft: true,
+                                        paddingRight: false,
+                                        tooltip: `Variable value from environment/collection`
+                                    });
+                                }
+                            } catch (error) {
+                                console.error('Error getting variable value for inlay hint:', error);
+                            }
+                        }
+                    }
+                    
+                    return {
+                        hints: hints,
+                        dispose: () => {}
+                    };
+                }
+            });
+
+            this.inlayHintsProviders[editorId] = provider;
+            return true;
+        } catch (error) {
+            console.error('Error registering inlay hints provider:', error);
             return false;
         }
     },

@@ -180,6 +180,88 @@ public class CodeEditorTests
         // Assert
         Assert.Null(result);
     }
+
+    [Fact]
+    public void GetVariableValue_WithValidVariable_ReturnsValue()
+    {
+        // Arrange
+        var mockResolver = new Mock<IVariableResolver>();
+        var environment = new Domain.Entities.Environment { Name = "Test" };
+        environment.Variables["apiUrl"] = "https://api.test.com";
+        
+        mockResolver.Setup(r => r.GetVariableValue("apiUrl", environment, null, null))
+                   .Returns("https://api.test.com");
+        
+        // Act
+        var result = GetVariableValue("apiUrl", environment, null, mockResolver.Object);
+        
+        // Assert
+        Assert.Equal("https://api.test.com", result);
+    }
+
+    [Fact]
+    public void GetVariableValue_WithCollectionVariable_ReturnsCollectionValue()
+    {
+        // Arrange
+        var mockResolver = new Mock<IVariableResolver>();
+        var environment = new Domain.Entities.Environment { Name = "Test" };
+        var collection = new Collection { Name = "TestCollection" };
+        
+        collection.Variables["token"] = "abc123";
+        
+        mockResolver.Setup(r => r.GetVariableValue("token", environment, collection, null))
+                   .Returns("abc123");
+        
+        // Act
+        var result = GetVariableValue("token", environment, collection, mockResolver.Object);
+        
+        // Assert
+        Assert.Equal("abc123", result);
+    }
+
+    [Fact]
+    public void GetVariableValue_WithMissingVariable_ReturnsNull()
+    {
+        // Arrange
+        var mockResolver = new Mock<IVariableResolver>();
+        var environment = new Domain.Entities.Environment { Name = "Test" };
+        
+        mockResolver.Setup(r => r.GetVariableValue("missing", environment, null, null))
+                   .Returns((string?)null);
+        
+        // Act
+        var result = GetVariableValue("missing", environment, null, mockResolver.Object);
+        
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void GetVariableValue_WithNullEnvironment_ReturnsNull()
+    {
+        // Arrange
+        var mockResolver = new Mock<IVariableResolver>();
+        
+        // Act
+        var result = GetVariableValue("anyVar", null, null, mockResolver.Object);
+        
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void GetVariableValue_WithEmptyVariableName_ReturnsNull()
+    {
+        // Arrange
+        var mockResolver = new Mock<IVariableResolver>();
+        var environment = new Domain.Entities.Environment { Name = "Test" };
+        
+        // Act
+        var result = GetVariableValue("", environment, null, mockResolver.Object);
+        
+        // Assert
+        Assert.Null(result);
+    }
     
     // Helper method that mimics the GetMonacoLanguage logic from CodeEditor.razor
     private static string GetMonacoLanguage(string bodyType)
@@ -214,5 +296,17 @@ public class CodeEditorTests
         {
             return $"`{variableName}` = **MISSING**";
         }
+    }
+
+    // Helper method that mimics the GetVariableValue logic from CodeEditor.razor
+    private static string? GetVariableValue(string variableName, Domain.Entities.Environment? environment, Collection? collection, IVariableResolver variableResolver)
+    {
+        if (environment == null || string.IsNullOrEmpty(variableName))
+        {
+            return null;
+        }
+
+        var value = variableResolver.GetVariableValue(variableName, environment, collection);
+        return value;
     }
 }

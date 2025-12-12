@@ -93,6 +93,13 @@
                             _editorId,
                             _dotNetHelper
                         );
+                        
+                        // Register variable inlay hints provider for inline value display
+                        await JSRuntime.InvokeVoidAsync(
+                            "monacoEditorInterop.registerVariableInlayHintsProvider",
+                            _editorId,
+                            _dotNetHelper
+                        );
                     }
                 }
             }
@@ -162,6 +169,13 @@
                     _editorId,
                     _dotNetHelper
                 );
+                
+                // Re-register inlay hints provider as well
+                await JSRuntime.InvokeVoidAsync(
+                    "monacoEditorInterop.registerVariableInlayHintsProvider",
+                    _editorId,
+                    _dotNetHelper
+                );
             }
         }
     }
@@ -192,6 +206,18 @@
         {
             return Task.FromResult<string?>($"`{variableName}` = **MISSING**");
         }
+    }
+
+    [JSInvokable]
+    public Task<string?> GetVariableValue(string variableName)
+    {
+        if (Environment == null || string.IsNullOrEmpty(variableName))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection);
+        return Task.FromResult(value);
     }
 
     public async Task FormatDocumentAsync()
