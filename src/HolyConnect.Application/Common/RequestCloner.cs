@@ -34,8 +34,6 @@ public static class RequestCloner
         target.DisabledHeaders = new HashSet<string>(source.DisabledHeaders);
         target.CollectionId = source.CollectionId;
         target.Collection = source.Collection;
-        target.EnvironmentId = source.EnvironmentId;
-        target.Environment = source.Environment;
         target.CreatedAt = source.CreatedAt;
         target.AuthType = source.AuthType;
         target.BasicAuthUsername = source.BasicAuthUsername;
