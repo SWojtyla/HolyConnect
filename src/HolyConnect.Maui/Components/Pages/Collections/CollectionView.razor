@@ -371,9 +371,20 @@
     {
         Task.Run(async () =>
         {
-            Snackbar.Add("Request saved", Severity.Success);
-            await LoadData();
-            await InvokeAsync(StateHasChanged);
+            try
+            {
+                if (_selectedRequest != null)
+                {
+                    await RequestService.UpdateRequestAsync(_selectedRequest);
+                    Snackbar.Add("Request saved", Severity.Success);
+                    await LoadData();
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error saving request: {ex.Message}", Severity.Error);
+            }
         });
     }
 
