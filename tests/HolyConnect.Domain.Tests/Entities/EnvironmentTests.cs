@@ -22,8 +22,6 @@ public class EnvironmentTests
         Assert.Equal("Test Description", environment.Description);
         Assert.NotNull(environment.Variables);
         Assert.Empty(environment.Variables);
-        Assert.NotNull(environment.Collections);
-        Assert.Empty(environment.Collections);
     }
 
     [Fact]
@@ -43,18 +41,14 @@ public class EnvironmentTests
     }
 
     [Fact]
-    public void Collections_ShouldBeModifiable()
+    public void DynamicVariables_ShouldBeInitializedAsEmptyList()
     {
-        // Arrange
+        // Arrange & Act
         var environment = new DomainEnvironment { Name = "Test" };
-        var collection = new Collection { Name = "Test Collection" };
-
-        // Act
-        environment.Collections.Add(collection);
 
         // Assert
-        Assert.Single(environment.Collections);
-        Assert.Equal("Test Collection", environment.Collections[0].Name);
+        Assert.NotNull(environment.DynamicVariables);
+        Assert.Empty(environment.DynamicVariables);
     }
 
     [Fact]
@@ -71,31 +65,7 @@ public class EnvironmentTests
         Assert.Equal(now, environment.CreatedAt);
     }
 
-    [Fact]
-    public void Requests_ShouldBeInitializedAsEmptyList()
-    {
-        // Arrange & Act
-        var environment = new DomainEnvironment { Name = "Test" };
 
-        // Assert
-        Assert.NotNull(environment.Requests);
-        Assert.Empty(environment.Requests);
-    }
-
-    [Fact]
-    public void Requests_ShouldBeModifiable()
-    {
-        // Arrange
-        var environment = new DomainEnvironment { Name = "Test" };
-        var request = new RestRequest { Name = "Test Request" };
-
-        // Act
-        environment.Requests.Add(request);
-
-        // Assert
-        Assert.Single(environment.Requests);
-        Assert.Equal("Test Request", environment.Requests[0].Name);
-    }
 
     [Fact]
     public void SecretVariableNames_ShouldBeInitializedAsEmptySet()

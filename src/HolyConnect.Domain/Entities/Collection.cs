@@ -1,5 +1,9 @@
 namespace HolyConnect.Domain.Entities;
 
+/// <summary>
+/// Represents a hierarchical collection for organizing requests.
+/// Collections are now independent of environments and only used for grouping requests.
+/// </summary>
 public class Collection
 {
     public Guid Id { get; set; }
@@ -12,7 +16,5 @@ public class Collection
     public Collection? ParentCollection { get; set; }
     public List<Collection> SubCollections { get; set; } = new();
     public List<Request> Requests { get; set; } = new();
-    public Guid EnvironmentId { get; set; }
-    public Environment? Environment { get; set; }
     public DateTime CreatedAt { get; set; }
 }

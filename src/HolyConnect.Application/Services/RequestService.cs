@@ -7,7 +7,9 @@ namespace HolyConnect.Application.Services;
 public class RequestService : IRequestService
 {
     private readonly IRepository<Request> _requestRepository;
-    private readonly IRepository<Domain.Entities.Environment> _environmentRepository;
+    private readonly IActiveEnvironmentService _activeEnvironmentService;
+    private readonly IEnvironmentService _environmentService;
+    private readonly ICollectionService _collectionService;
     private readonly IRepository<Collection> _collectionRepository;
     private readonly IEnumerable<IRequestExecutor> _executors;
     private readonly IVariableResolver _variableResolver;
@@ -16,7 +18,9 @@ public class RequestService : IRequestService
 
     public RequestService(
         IRepository<Request> requestRepository,
-        IRepository<Domain.Entities.Environment> environmentRepository,
+        IActiveEnvironmentService activeEnvironmentService,
+        IEnvironmentService environmentService,
+        ICollectionService collectionService,
         IRepository<Collection> collectionRepository,
         IEnumerable<IRequestExecutor> executors,
         IVariableResolver variableResolver,
@@ -24,7 +28,9 @@ public class RequestService : IRequestService
         IResponseValueExtractor? responseValueExtractor = null)
     {
         _requestRepository = requestRepository;
-        _environmentRepository = environmentRepository;
+        _activeEnvironmentService = activeEnvironmentService;
+        _environmentService = environmentService;
+        _collectionService = collectionService;
         _collectionRepository = collectionRepository;
         _executors = executors;
         _variableResolver = variableResolver;
@@ -55,12 +61,6 @@ public class RequestService : IRequestService
         return allRequests.Where(r => r.CollectionId == collectionId);
     }
 
-    public async Task<IEnumerable<Request>> GetRequestsByEnvironmentIdAsync(Guid environmentId)
-    {
-        var allRequests = await _requestRepository.GetAllAsync();
-        return allRequests.Where(r => r.EnvironmentId == environmentId && r.CollectionId == null);
-    }
-
     public async Task<Request> UpdateRequestAsync(Request request)
     {
         return await _requestRepository.UpdateAsync(request);
@@ -80,7 +80,7 @@ public class RequestService : IRequestService
             throw new NotSupportedException($"No executor found for request type: {request.Type}");
         }
 
-        // Resolve variables before execution
+        // Resolve variables before execution using active environment
         var resolvedRequest = await ResolveRequestVariablesAsync(request);
 
         var response = await executor.ExecuteAsync(resolvedRequest);
@@ -94,6 +94,7 @@ public class RequestService : IRequestService
         // Save to history if history service is available
         if (_historyService != null && response.SentRequest != null)
         {
+            var activeEnvId = await _activeEnvironmentService.GetActiveEnvironmentIdAsync();
             var historyEntry = new RequestHistoryEntry
             {
                 RequestName = request.Name,
@@ -101,7 +102,7 @@ public class RequestService : IRequestService
                 SentRequest = response.SentRequest,
                 Response = response,
                 RequestId = request.Id,
-                EnvironmentId = request.EnvironmentId,
+                EnvironmentId = activeEnvId,  // Store which environment was active during execution
                 CollectionId = request.CollectionId
             };
             
@@ -113,11 +114,11 @@ public class RequestService : IRequestService
 
     private async Task<Request> ResolveRequestVariablesAsync(Request request)
     {
-        // Load environment and collection
-        var environment = await _environmentRepository.GetByIdAsync(request.EnvironmentId);
+        // Load active environment
+        var environment = await _activeEnvironmentService.GetActiveEnvironmentAsync();
         if (environment == null)
         {
-            // Environment not found - this shouldn't happen for valid requests, but we'll continue without variable resolution
+            // No active environment - continue without variable resolution
             // Variables will remain as placeholders in the request
             return request;
         }
@@ -146,8 +147,8 @@ public class RequestService : IRequestService
             return;
         }
 
-        // Load environment and collection for variable saving
-        var environment = await _environmentRepository.GetByIdAsync(request.EnvironmentId);
+        // Load active environment for variable saving
+        var environment = await _activeEnvironmentService.GetActiveEnvironmentAsync();
         if (environment == null)
         {
             return;
@@ -180,11 +181,12 @@ public class RequestService : IRequestService
                         collection, 
                         extraction.SaveToCollection);
 
-                    // Update the repository to persist the changes
-                    await _environmentRepository.UpdateAsync(environment);
+                    // Persist the updated environment
+                    await _environmentService.UpdateEnvironmentAsync(environment);
+                    
                     if (collection != null && extraction.SaveToCollection)
                     {
-                        await _collectionRepository.UpdateAsync(collection);
+                        await _collectionService.UpdateCollectionAsync(collection);
                     }
                 }
             }

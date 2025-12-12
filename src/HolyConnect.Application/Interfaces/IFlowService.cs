@@ -23,11 +23,6 @@ public interface IFlowService
     Task<Flow?> GetFlowByIdAsync(Guid id);
     
     /// <summary>
-    /// Gets all flows for a specific environment.
-    /// </summary>
-    Task<IEnumerable<Flow>> GetFlowsByEnvironmentIdAsync(Guid environmentId);
-    
-    /// <summary>
     /// Gets all flows for a specific collection.
     /// </summary>
     Task<IEnumerable<Flow>> GetFlowsByCollectionIdAsync(Guid collectionId);

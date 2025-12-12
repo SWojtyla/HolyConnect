@@ -1,5 +1,9 @@
 namespace HolyConnect.Domain.Entities;
 
+/// <summary>
+/// Abstract base class for all request types.
+/// Requests are now independent of environments and only optionally belong to a collection.
+/// </summary>
 public abstract class Request
 {
     public Guid Id { get; set; }
@@ -11,8 +15,6 @@ public abstract class Request
     public List<DynamicVariable> DynamicVariables { get; set; } = new();
     public Guid? CollectionId { get; set; }
     public Collection? Collection { get; set; }
-    public Guid EnvironmentId { get; set; }
-    public Environment? Environment { get; set; }
     public DateTime CreatedAt { get; set; }
     public abstract RequestType Type { get; }
     public AuthenticationType AuthType { get; set; } = AuthenticationType.None;
