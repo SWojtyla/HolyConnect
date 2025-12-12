@@ -27,12 +27,50 @@ public class GitService : IGitService
         return repositoryPath ?? _getStoragePath();
     }
 
+    /// <summary>
+    /// Discovers the actual git repository path from a given path (which might be a subdirectory)
+    /// </summary>
+    /// <param name="path">Path to search from</param>
+    /// <returns>The repository root path, or the original path if no repository is found</returns>
+    private string? DiscoverRepositoryRoot(string path)
+    {
+        try
+        {
+            // First check if the path itself is a valid repository
+            if (Repository.IsValid(path))
+                return path;
+            
+            // Try to discover a repository in parent directories
+            var gitPath = Repository.Discover(path);
+            if (string.IsNullOrEmpty(gitPath))
+                return null;
+            
+            // Repository.Discover returns the path to the .git directory
+            // We need to get the working directory (parent of .git)
+            // For bare repositories, it returns the repository path itself
+            using var repo = new Repository(gitPath);
+            return repo.Info.WorkingDirectory?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) 
+                   ?? repo.Info.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public Task<bool> IsRepositoryAsync(string? repositoryPath = null)
     {
         try
         {
             var path = GetRepositoryPath(repositoryPath);
-            return Task.FromResult(Repository.IsValid(path));
+            
+            // First check if the path itself is a valid repository
+            if (Repository.IsValid(path))
+                return Task.FromResult(true);
+            
+            // If not, try to discover a repository in parent directories
+            var discoveredPath = Repository.Discover(path);
+            return Task.FromResult(!string.IsNullOrEmpty(discoveredPath));
         }
         catch
         {
@@ -45,10 +83,13 @@ public class GitService : IGitService
         try
         {
             var path = GetRepositoryPath(repositoryPath);
-            if (!Repository.IsValid(path))
+            
+            // Discover the actual repository root (handles subdirectories)
+            var repoRoot = DiscoverRepositoryRoot(path);
+            if (repoRoot == null)
                 return Task.FromResult<string?>(null);
 
-            using var repo = new Repository(path);
+            using var repo = new Repository(repoRoot);
             
             // Try to get name from remote URL first
             var remote = repo.Network.Remotes.FirstOrDefault();
@@ -67,8 +108,8 @@ public class GitService : IGitService
                 }
             }
 
-            // Fallback to directory name
-            var dirName = Path.GetFileName(path);
+            // Fallback to directory name of the repository root
+            var dirName = Path.GetFileName(repoRoot);
             return Task.FromResult<string?>(dirName);
         }
         catch

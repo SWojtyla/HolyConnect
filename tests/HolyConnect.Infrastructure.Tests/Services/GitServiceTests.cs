@@ -1211,4 +1211,111 @@ public class GitServiceTests : IDisposable
         // Assert
         Assert.Null(diff);
     }
+
+    [Fact]
+    public async Task IsRepositoryAsync_WithSubdirectoryOfGitRepo_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        
+        // Create a subdirectory
+        var subDir = Path.Combine(_testRepoPath, "subfolder", "nested");
+        Directory.CreateDirectory(subDir);
+
+        // Act
+        var isRepo = await _gitService.IsRepositoryAsync(subDir);
+
+        // Assert
+        Assert.True(isRepo);
+    }
+
+    [Fact]
+    public async Task IsRepositoryAsync_WithDeepSubdirectoryOfGitRepo_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        
+        // Create a deeply nested subdirectory
+        var deepSubDir = Path.Combine(_testRepoPath, "level1", "level2", "level3", "level4");
+        Directory.CreateDirectory(deepSubDir);
+
+        // Act
+        var isRepo = await _gitService.IsRepositoryAsync(deepSubDir);
+
+        // Assert
+        Assert.True(isRepo);
+    }
+
+    [Fact]
+    public async Task IsRepositoryAsync_WithDirectoryNotInGitRepo_ShouldReturnFalse()
+    {
+        // Arrange - Create a directory outside of any git repository
+        var nonRepoPath = Path.Combine(Path.GetTempPath(), $"HolyConnect_NonRepo_{Guid.NewGuid()}");
+        Directory.CreateDirectory(nonRepoPath);
+
+        try
+        {
+            // Act
+            var isRepo = await _gitService.IsRepositoryAsync(nonRepoPath);
+
+            // Assert
+            Assert.False(isRepo);
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(nonRepoPath))
+                Directory.Delete(nonRepoPath, true);
+        }
+    }
+
+    [Fact]
+    public async Task GetRepositoryNameAsync_WithSubdirectoryOfGitRepo_ShouldReturnRepoName()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+        
+        // Create a subdirectory
+        var subDir = Path.Combine(_testRepoPath, "data", "collections");
+        Directory.CreateDirectory(subDir);
+
+        // Act
+        var repoName = await _gitService.GetRepositoryNameAsync(subDir);
+
+        // Assert
+        Assert.NotNull(repoName);
+        // The name should be the root directory name, not the subdirectory
+        var expectedName = Path.GetFileName(_testRepoPath);
+        Assert.Equal(expectedName, repoName);
+    }
+
+    [Fact]
+    public async Task IsRepositoryAsync_WithGitRepoRoot_ShouldReturnTrue()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+
+        // Act
+        var isRepo = await _gitService.IsRepositoryAsync(_testRepoPath);
+
+        // Assert
+        Assert.True(isRepo);
+    }
+
+    [Fact]
+    public async Task GetRepositoryNameAsync_WithGitRepoRoot_ShouldReturnRepoName()
+    {
+        // Arrange
+        await _gitService.InitRepositoryAsync(_testRepoPath);
+        CreateInitialCommit();
+
+        // Act
+        var repoName = await _gitService.GetRepositoryNameAsync(_testRepoPath);
+
+        // Assert
+        Assert.NotNull(repoName);
+        var expectedName = Path.GetFileName(_testRepoPath);
+        Assert.Equal(expectedName, repoName);
+    }
 }
