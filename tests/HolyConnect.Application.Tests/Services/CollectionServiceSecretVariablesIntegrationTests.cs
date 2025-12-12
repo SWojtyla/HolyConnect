@@ -29,7 +29,6 @@ public class CollectionServiceSecretVariablesIntegrationTests
         {
             Id = Guid.NewGuid(),
             Name = "Test Collection",
-            EnvironmentId = Guid.NewGuid(),
             Variables = new Dictionary<string, string>
             {
                 { "BASE_URL", "https://example.com" },
@@ -94,7 +93,6 @@ public class CollectionServiceSecretVariablesIntegrationTests
         {
             Id = collectionId,
             Name = "Test Collection",
-            EnvironmentId = Guid.NewGuid(),
             Variables = new Dictionary<string, string>
             {
                 { "BASE_URL", "https://example.com" }
@@ -151,7 +149,6 @@ public class CollectionServiceSecretVariablesIntegrationTests
         {
             Id = Guid.NewGuid(),
             Name = "Test Collection",
-            EnvironmentId = Guid.NewGuid(),
             Variables = new Dictionary<string, string>
             {
                 { "BASE_URL", "https://example.com" },

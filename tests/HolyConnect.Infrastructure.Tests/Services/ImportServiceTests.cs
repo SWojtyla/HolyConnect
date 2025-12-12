@@ -80,7 +80,6 @@ public class ImportServiceTests
         Assert.NotNull(capturedRequest);
         Assert.Equal("https://api.example.com/users", capturedRequest.Url);
         Assert.Equal(Domain.Entities.HttpMethod.Get, capturedRequest.Method);
-        Assert.Equal(environmentId, capturedRequest.EnvironmentId);
         _mockRequestService.Verify(s => s.CreateRequestAsync(It.IsAny<Request>()), Times.Once);
     }
 
@@ -213,7 +212,7 @@ public class ImportServiceTests
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _service.ImportFromCurlAsync(curlCommand, environmentId, collectionId);
+        var result = await _service.ImportFromCurlAsync(curlCommand, collectionId);
 
         // Assert
         Assert.True(result.Success);
@@ -389,7 +388,7 @@ public class ImportServiceTests
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _service.ImportFromCurlAsync(curlCommand, environmentId, null, customName);
+        var result = await _service.ImportFromCurlAsync(curlCommand, null, customName);
 
         // Assert
         Assert.True(result.Success);
@@ -471,7 +470,6 @@ get {
         Assert.Equal("Get Users List", capturedRequest.Name);
         Assert.Equal("https://api.example.com/users", capturedRequest.Url);
         Assert.Equal(Domain.Entities.HttpMethod.Get, capturedRequest.Method);
-        Assert.Equal(environmentId, capturedRequest.EnvironmentId);
         _mockRequestService.Verify(s => s.CreateRequestAsync(It.IsAny<Request>()), Times.Once);
     }
 
@@ -833,7 +831,7 @@ get {
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _service.ImportFromBrunoAsync(brunoContent, environmentId, null, customName);
+        var result = await _service.ImportFromBrunoAsync(brunoContent, null, customName);
 
         // Assert
         Assert.True(result.Success);
@@ -863,7 +861,7 @@ get {
             .ReturnsAsync((Request r) => r);
 
         // Act
-        var result = await _service.ImportFromBrunoAsync(brunoContent, environmentId, collectionId);
+        var result = await _service.ImportFromBrunoAsync(brunoContent, collectionId);
 
         // Assert
         Assert.True(result.Success);

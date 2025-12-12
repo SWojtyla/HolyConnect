@@ -255,9 +255,7 @@ public class RequestServiceTests
         var result = await _service.CreateRequestAsync(request);
 
         // Assert
-        Assert.NotNull(capturedRequest);
-        Assert.Equal(environmentId, capturedRequest.EnvironmentId);
-        Assert.Null(capturedRequest.CollectionId);
+        Assert.NotNull(capturedRequest);        Assert.Null(capturedRequest.CollectionId);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Request>()), Times.Once);
     }
 
@@ -436,9 +434,7 @@ public class RequestServiceTests
         Assert.NotNull(capturedHistoryEntry);
         Assert.Equal("Test Request", capturedHistoryEntry.RequestName);
         Assert.Equal(RequestType.Rest, capturedHistoryEntry.RequestType);
-        Assert.Equal(requestId, capturedHistoryEntry.RequestId);
-        Assert.Equal(environmentId, capturedHistoryEntry.EnvironmentId);
-        Assert.Equal(collectionId, capturedHistoryEntry.CollectionId);
+        Assert.Equal(requestId, capturedHistoryEntry.RequestId);        Assert.Equal(collectionId, capturedHistoryEntry.CollectionId);
         Assert.Equal(200, capturedHistoryEntry.Response.StatusCode);
         mockHistoryService.Verify(h => h.AddHistoryEntryAsync(It.IsAny<RequestHistoryEntry>()), Times.Once);
     }

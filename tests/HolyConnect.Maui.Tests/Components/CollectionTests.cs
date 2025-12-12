@@ -276,39 +276,6 @@ public class CollectionTests
     }
 
     [Fact]
-    public void Collection_CanBeAssociatedWithEnvironment()
-    {
-        // Arrange
-        var environmentId = Guid.NewGuid();
-        var collection = new Collection
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test"
-        };
-
-        // Act
-        collection.EnvironmentId = environmentId;
-
-        // Assert
-        Assert.Equal(environmentId, collection.EnvironmentId);
-    }
-
-    [Fact]
-    public void Collection_CanHaveEmptyEnvironmentId()
-    {
-        // Arrange & Act
-        var collection = new Collection
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test",
-            EnvironmentId = Guid.Empty
-        };
-
-        // Assert
-        Assert.Equal(Guid.Empty, collection.EnvironmentId);
-    }
-
-    [Fact]
     public void Collection_SupportsHierarchicalStructure()
     {
         // Arrange

@@ -129,24 +129,6 @@ public class FlowEntityTests
     }
 
     [Fact]
-    public void Flow_CanBeAssociatedWithEnvironment()
-    {
-        // Arrange
-        var environmentId = Guid.NewGuid();
-        var flow = new Flow
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Flow"
-        };
-
-        // Act
-        flow.EnvironmentId = environmentId;
-
-        // Assert
-        Assert.Equal(environmentId, flow.EnvironmentId);
-    }
-
-    [Fact]
     public void Flow_SupportsRemovingSteps()
     {
         // Arrange
