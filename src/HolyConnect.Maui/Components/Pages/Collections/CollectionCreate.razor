@@ -158,7 +158,7 @@
             
             var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
             Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
-            NavigationManager.NavigateTo("/");
+            NavigationManager.NavigateTo(EnvironmentId.HasValue ? $"/environment/{EnvironmentId}" : "/");
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
         {
@@ -173,6 +173,6 @@
 
     private void Cancel()
     {
-        NavigationManager.NavigateTo("/");
+        NavigationManager.NavigateTo(EnvironmentId.HasValue ? $"/environment/{EnvironmentId}" : "/");
     }
 }
