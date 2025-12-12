@@ -47,6 +47,7 @@
     private string _editorId = $"monaco-editor-{Guid.NewGuid()}";
     private DotNetObjectReference<CodeEditor>? _dotNetHelper;
     private bool _isInitialized;
+    private bool _isDisposed;
     private string _currentTheme = "vs-dark";
     private string _currentLanguage = "json";
 
@@ -144,7 +145,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_isInitialized)
+        if (_isInitialized && !_isDisposed)
         {
             // Update value if changed externally
             var currentValue = await JSRuntime.InvokeAsync<string?>("monacoEditorInterop.getValue", _editorId);
@@ -232,6 +233,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        _isDisposed = true;
+        
         if (_isInitialized)
         {
             try
