@@ -2,6 +2,7 @@
 @using HolyConnect.Domain.Entities
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
+@inject IActiveEnvironmentService ActiveEnvironmentService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -117,7 +118,10 @@
         }
         else if (_selectedRequest != null)
         {
-            <RequestEditor Request="@_selectedRequest" OnSave="HandleRequestUpdated" />
+            <RequestEditor Request="@_selectedRequest" 
+                         Environment="@_activeEnvironment" 
+                         Collection="@_selectedRequestCollection"
+                         OnSave="HandleRequestUpdated" />
         }
         else if (_collection != null)
         {
@@ -206,10 +210,13 @@
     public Guid CollectionId { get; set; }
 
     private Domain.Entities.Collection? _collection;
+    private IEnumerable<Domain.Entities.Collection>? _allCollections;
     private IEnumerable<Domain.Entities.Collection>? _subCollections;
     private IEnumerable<Domain.Entities.Request>? _collectionRequests;
     private Domain.Entities.Collection? _selectedSubCollection;
     private Domain.Entities.Request? _selectedRequest;
+    private Domain.Entities.Collection? _selectedRequestCollection;
+    private Domain.Entities.Environment? _activeEnvironment;
 
     protected override async Task OnInitializedAsync()
     {
@@ -242,11 +249,14 @@
             return;
         }
 
-        var allCollections = await CollectionService.GetAllCollectionsAsync();
-        _subCollections = allCollections.Where(c => c.ParentCollectionId == CollectionId);
+        _allCollections = await CollectionService.GetAllCollectionsAsync();
+        _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId);
         
         var allRequests = await RequestService.GetAllRequestsAsync();
         _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId);
+        
+        // Load the active environment for variable resolution
+        _activeEnvironment = await ActiveEnvironmentService.GetActiveEnvironmentAsync();
     }
 
     private void SelectSubCollection(Domain.Entities.Collection collection)
@@ -260,7 +270,34 @@
     {
         _selectedRequest = request;
         _selectedSubCollection = null;
+        
+        // Find the collection for this request
+        _selectedRequestCollection = null;
+        if (request.CollectionId.HasValue && _allCollections != null)
+        {
+            _selectedRequestCollection = FindCollectionById(_allCollections, request.CollectionId.Value);
+        }
+        
         StateHasChanged();
+    }
+    
+    private Domain.Entities.Collection? FindCollectionById(IEnumerable<Domain.Entities.Collection> collections, Guid id)
+    {
+        foreach (var collection in collections)
+        {
+            if (collection.Id == id)
+            {
+                return collection;
+            }
+            
+            var found = FindCollectionById(collection.SubCollections, id);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        
+        return null;
     }
 
     private void EditCollection()
