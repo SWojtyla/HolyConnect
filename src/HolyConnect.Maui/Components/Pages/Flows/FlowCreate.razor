@@ -1,7 +1,6 @@
 @page "/flow/create"
 @using Microsoft.AspNetCore.WebUtilities
 @inject IFlowService FlowService
-@inject IEnvironmentService EnvironmentService
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
 @inject NavigationManager NavigationManager
@@ -41,39 +40,21 @@
                                          AdornmentIcon="@Icons.Material.Filled.Description"
                                          Placeholder="Describe what this flow does" />
 
-                            <MudSelect Value="_selectedEnvironmentId"
-                                      ValueChanged="OnEnvironmentChanged"
-                                      Label="Environment" 
-                                      Required="true"
-                                      RequiredError="Environment is required"
+                            <MudSelect @bind-Value="_selectedCollectionId" 
+                                      Label="Collection (Optional)" 
                                       T="Guid?"
+                                      Clearable="true"
                                       Variant="Variant.Outlined"
                                       Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.CloudQueue">
-                                @if (_environments != null)
+                                      AdornmentIcon="@Icons.Material.Filled.Folder">
+                                @if (_collections != null)
                                 {
-                                    @foreach (var env in _environments)
-                                    {
-                                        <MudSelectItem Value="@((Guid?)env.Id)">@env.Name</MudSelectItem>
-                                    }
-                                }
-                            </MudSelect>
-
-                            @if (_selectedEnvironmentId.HasValue && _collections != null)
-                            {
-                                <MudSelect @bind-Value="_selectedCollectionId" 
-                                          Label="Collection (Optional)" 
-                                          T="Guid?"
-                                          Clearable="true"
-                                          Variant="Variant.Outlined"
-                                          Adornment="Adornment.Start"
-                                          AdornmentIcon="@Icons.Material.Filled.Folder">
                                     @foreach (var col in _collections)
                                     {
                                         <MudSelectItem Value="@((Guid?)col.Id)">@col.Name</MudSelectItem>
                                     }
-                                </MudSelect>
-                            }
+                                }
+                            </MudSelect>
 
                             <MudDivider Class="my-2" />
 
@@ -156,7 +137,7 @@
                       StartIcon="@Icons.Material.Filled.Add"
                       OnClick="AddStep"
                       Size="Size.Medium"
-                      Disabled="@(!_selectedEnvironmentId.HasValue || _availableRequests == null || !_availableRequests.Any())">
+                      Disabled="@(_availableRequests == null || !_availableRequests.Any())">
                 Add Step
             </MudButton>
                         </MudStack>
@@ -185,9 +166,6 @@
 </MudContainer>
 
 @code {
-    [SupplyParameterFromQuery(Name = "environmentId")]
-    public Guid? EnvironmentIdParam { get; set; }
-
     [SupplyParameterFromQuery(Name = "collectionId")]
     public Guid? CollectionIdParam { get; set; }
 
@@ -195,9 +173,7 @@
     private bool _isValid;
     private string _flowName = string.Empty;
     private string? _flowDescription;
-    private Guid? _selectedEnvironmentId;
     private Guid? _selectedCollectionId;
-    private List<Domain.Entities.Environment>? _environments;
     private List<Collection>? _collections;
     private List<Request>? _availableRequests;
     private List<FlowStep> _steps = new();
@@ -205,13 +181,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _environments = (await EnvironmentService.GetAllEnvironmentsAsync()).ToList();
-        
-        if (EnvironmentIdParam.HasValue)
-        {
-            _selectedEnvironmentId = EnvironmentIdParam;
-            await LoadEnvironmentData();
-        }
+        await LoadData();
         
         if (CollectionIdParam.HasValue)
         {
@@ -219,31 +189,7 @@
         }
     }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        if (_selectedEnvironmentId.HasValue)
-        {
-            await LoadEnvironmentData();
-        }
-    }
-
-    private async Task OnEnvironmentChanged(Guid? environmentId)
-    {
-        _selectedEnvironmentId = environmentId;
-        _selectedCollectionId = null; // Reset collection selection
-        if (_selectedEnvironmentId.HasValue)
-        {
-            await LoadEnvironmentData();
-        }
-        else
-        {
-            _collections = null;
-            _availableRequests = null;
-        }
-        StateHasChanged();
-    }
-
-    private async Task LoadEnvironmentData()
+    private async Task LoadData()
     {
         // Load all collections
         var allCollections = await CollectionService.GetAllCollectionsAsync();
@@ -332,7 +278,7 @@
         // Trigger validation on the form and rely on the bound _isValid flag
         await _form.Validate();
 
-        if (!_isValid || !_selectedEnvironmentId.HasValue || !_steps.Any())
+        if (!_isValid || !_steps.Any())
         {
             return;
         }
@@ -349,7 +295,7 @@
 
             await FlowService.CreateFlowAsync(flow);
             Snackbar.Add("Flow created successfully!", Severity.Success);
-            NavigationManager.NavigateTo("/");
+            NavigationManager.NavigateTo("/flows");
         }
         catch (Exception ex)
         {
@@ -359,13 +305,6 @@
 
     private void Cancel()
     {
-        if (_selectedEnvironmentId.HasValue)
-        {
-            NavigationManager.NavigateTo($"/environment/{_selectedEnvironmentId.Value}");
-        }
-        else
-        {
-            NavigationManager.NavigateTo("/");
-        }
+        NavigationManager.NavigateTo("/flows");
     }
 }

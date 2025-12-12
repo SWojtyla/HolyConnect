@@ -143,4 +143,72 @@ public class FlowsPageTests
         Assert.Equal("Updated Flow", result.Name);
         mockFlowService.Verify(s => s.UpdateFlowAsync(It.IsAny<Flow>()), Times.Once);
     }
+
+    [Fact]
+    public async Task GetFlowByIdAsync_ForViewPage_ReturnsFlowDetails()
+    {
+        // Arrange
+        var mockFlowService = new Mock<IFlowService>();
+        var flowId = Guid.NewGuid();
+        var requestId1 = Guid.NewGuid();
+        var requestId2 = Guid.NewGuid();
+        var testFlow = new Flow
+        {
+            Id = flowId,
+            Name = "View Test Flow",
+            Description = "Flow for view page testing",
+            CollectionId = Guid.NewGuid(),
+            Steps = new List<FlowStep>
+            {
+                new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = requestId1, IsEnabled = true, ContinueOnError = false },
+                new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = requestId2, IsEnabled = true, ContinueOnError = true, DelayBeforeExecutionMs = 1000 }
+            },
+            CreatedAt = DateTime.UtcNow.AddHours(-2)
+        };
+
+        mockFlowService
+            .Setup(s => s.GetFlowByIdAsync(flowId))
+            .ReturnsAsync(testFlow);
+
+        // Act
+        var result = await mockFlowService.Object.GetFlowByIdAsync(flowId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(flowId, result.Id);
+        Assert.Equal("View Test Flow", result.Name);
+        Assert.Equal("Flow for view page testing", result.Description);
+        Assert.Equal(2, result.Steps.Count);
+        Assert.Contains(result.Steps, s => s.ContinueOnError);
+        Assert.Contains(result.Steps, s => s.DelayBeforeExecutionMs.HasValue);
+    }
+
+    [Fact]
+    public async Task ExecuteFlowAsync_WithEnvironmentId_CallsServiceWithCorrectParameters()
+    {
+        // Arrange
+        var mockFlowService = new Mock<IFlowService>();
+        var flowId = Guid.NewGuid();
+        var environmentId = Guid.NewGuid();
+        var expectedResult = new FlowExecutionResult
+        {
+            FlowId = flowId,
+            FlowName = "Test Flow",
+            Status = FlowExecutionStatus.Completed,
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow.AddSeconds(5)
+        };
+
+        mockFlowService
+            .Setup(s => s.ExecuteFlowAsync(flowId, environmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResult);
+
+        // Act
+        var result = await mockFlowService.Object.ExecuteFlowAsync(flowId, environmentId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(FlowExecutionStatus.Completed, result.Status);
+        mockFlowService.Verify(s => s.ExecuteFlowAsync(flowId, environmentId, It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
