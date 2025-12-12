@@ -1,5 +1,6 @@
 @page "/collection/create"
 @page "/collection/{ParentCollectionId:guid}/subcollection/create"
+@page "/environment/{EnvironmentId:guid}/collection/create"
 @inject ICollectionService CollectionService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -117,6 +118,9 @@
 @code {
     [Parameter]
     public Guid? ParentCollectionId { get; set; }
+    
+    [Parameter]
+    public Guid? EnvironmentId { get; set; }
 
     private string _name = string.Empty;
     private string _description = string.Empty;
