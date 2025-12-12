@@ -1,5 +1,6 @@
 @inject IVariableResolver VariableResolver
 @inject NavigationManager NavigationManager
+@inject IDialogService DialogService
 
 <MudTextField @bind-Value="@CurrentValue"
               Label="@Label"
@@ -107,7 +108,7 @@
         }
     }
 
-    private void ShowVariableInfo()
+    private async void ShowVariableInfo()
     {
         if (string.IsNullOrEmpty(Value) || !ContainsVariables || Environment == null)
         {
@@ -121,11 +122,14 @@
         {
             var varValue = VariableResolver.GetVariableValue(varName, Environment, Collection);
             var source = Collection?.Variables.ContainsKey(varName) == true ? "Collection" : "Environment";
-            info.Add($"{varName} = {varValue ?? "MISSING"} (from {source})");
+            var displayValue = varValue ?? "MISSING";
+            info.Add($"<strong>{varName}</strong> = {displayValue} <em>(from {source})</em>");
         }
 
-        // We can't show a dialog here without DialogService, so just update helper text
-        HelperText = string.Join(", ", info);
-        StateHasChanged();
+        var message = string.Join("<br/>", info);
+        await DialogService.ShowMessageBox(
+            "Variable Values",
+            new MarkupString(message),
+            options: new DialogOptions { MaxWidth = MaxWidth.Medium });
     }
 }

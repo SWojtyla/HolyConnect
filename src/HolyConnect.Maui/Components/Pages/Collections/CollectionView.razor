@@ -371,6 +371,7 @@
     {
         Task.Run(async () =>
         {
+            Snackbar.Add("Request saved", Severity.Success);
             await LoadData();
             await InvokeAsync(StateHasChanged);
         });
