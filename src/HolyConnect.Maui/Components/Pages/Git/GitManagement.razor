@@ -1,6 +1,5 @@
 @page "/git"
 @inject IGitService GitService
-@inject IGitFolderService GitFolderService
 @inject SettingsService SettingsService
 @inject ISnackbar Snackbar
 @inject MudBlazor.IDialogService DialogService
@@ -501,7 +500,6 @@
     private bool _commitHistoryExpanded = false;
     private bool _isSecretsTracked = false;
     private bool _isHistoryTracked = false;
-    private string? _repositoryPath; // Path to the active git folder or default storage path
 
     private const int COMMIT_HISTORY_MAX_COUNT = 50;
 
@@ -512,11 +510,7 @@
 
     private async Task CheckRepository()
     {
-        // Get the active git folder path if one is configured
-        var activeFolder = await GitFolderService.GetActiveAsync();
-        _repositoryPath = activeFolder?.Path;
-        
-        _isRepository = await GitService.IsRepositoryAsync(_repositoryPath);
+        _isRepository = await GitService.IsRepositoryAsync();
         if (_isRepository)
         {
             await LoadRepositoryInfo();
@@ -525,7 +519,7 @@
 
     private async Task LoadRepositoryInfo()
     {
-        _currentBranch = await GitService.GetCurrentBranchAsync(_repositoryPath);
+        _currentBranch = await GitService.GetCurrentBranchAsync();
         _branches = (await GitService.GetBranchesAsync()).ToList();
         _selectedBranch = _currentBranch;
         _status = await GitService.GetStatusAsync();

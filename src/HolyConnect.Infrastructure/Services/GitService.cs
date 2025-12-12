@@ -16,15 +16,35 @@ public class GitService : IGitService
     private const string GITIGNORE_SECRETS_FILES = "*secrets*.json";
     private const string GITIGNORE_HISTORY_FOLDER = "history/";
     private readonly Func<string> _getStoragePath;
+    private readonly IGitFolderService? _gitFolderService;
 
-    public GitService(Func<string> getStoragePath)
+    public GitService(Func<string> getStoragePath, IGitFolderService? gitFolderService = null)
     {
         _getStoragePath = getStoragePath;
+        _gitFolderService = gitFolderService;
     }
 
     private string GetRepositoryPath(string? repositoryPath = null)
     {
-        return repositoryPath ?? _getStoragePath();
+        if (repositoryPath != null)
+            return repositoryPath;
+        
+        // Check if there's an active Git folder configured
+        if (_gitFolderService != null)
+        {
+            try
+            {
+                var activeFolder = _gitFolderService.GetActiveAsync().GetAwaiter().GetResult();
+                if (activeFolder != null)
+                    return activeFolder.Path;
+            }
+            catch
+            {
+                // Fall back to storage path if there's an error getting active folder
+            }
+        }
+        
+        return _getStoragePath();
     }
 
     /// <summary>

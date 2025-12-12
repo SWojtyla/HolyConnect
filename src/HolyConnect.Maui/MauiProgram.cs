@@ -199,8 +199,8 @@ public static class MauiProgram
         builder.Services.AddScoped<IVariableResolver>(sp => 
             new VariableResolver(sp.GetRequiredService<IDataGeneratorService>()));
         builder.Services.AddScoped<IRequestHistoryService, RequestHistoryService>();
-        builder.Services.AddScoped<IGitService>(sp => new GitService(GetStoragePathSafe));
         builder.Services.AddScoped<IGitFolderService, GitFolderService>();
+        builder.Services.AddScoped<IGitService>(sp => new GitService(GetStoragePathSafe, sp.GetRequiredService<IGitFolderService>()));
         builder.Services.AddScoped<IResponseValueExtractor, ResponseValueExtractor>();
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IGraphQLSchemaService, GraphQLSchemaService>();
