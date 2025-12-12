@@ -1,0 +1,185 @@
+@page "/environments"
+@inject IEnvironmentService EnvironmentService
+@inject IActiveEnvironmentService ActiveEnvironmentService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <div>
+                <MudText Typo="Typo.h4">Manage Variables</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Create and manage environments for different deployment targets (dev, staging, prod, etc.)
+                </MudText>
+            </div>
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      StartIcon="@Icons.Material.Filled.Add"
+                      OnClick="CreateEnvironment">
+                New Environment
+            </MudButton>
+        </MudStack>
+
+        @if (_environments == null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (!_environments.Any())
+        {
+            <MudAlert Severity="Severity.Info">
+                No environments yet. Create your first environment to manage variables across different deployment targets.
+            </MudAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="3">
+                @foreach (var env in _environments)
+                {
+                    <MudItem xs="12" md="6" lg="4">
+                        <MudCard Elevation="2" Class="environment-card">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudIcon Icon="@Icons.Material.Filled.Dns" 
+                                                    Color="@(env.Id == _activeEnvironmentId ? Color.Success : Color.Default)" />
+                                            <MudText Typo="Typo.h6">@env.Name</MudText>
+                                        </MudStack>
+                                        @if (env.Id == _activeEnvironmentId)
+                                        {
+                                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                                        }
+                                    </MudStack>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (!string.IsNullOrWhiteSpace(env.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                                        @env.Description
+                                    </MudText>
+                                }
+                                <MudStack Spacing="2">
+                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" />
+                                        <MudText Typo="Typo.body2">
+                                            <strong>@env.Variables.Count</strong> variable(s)
+                                        </MudText>
+                                    </MudStack>
+                                    @if (env.SecretVariableNames.Any())
+                                    {
+                                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                                            <MudText Typo="Typo.body2">
+                                                <strong>@env.SecretVariableNames.Count</strong> secret(s)
+                                            </MudText>
+                                        </MudStack>
+                                    }
+                                </MudStack>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" Class="flex-grow-1">
+                                    <MudButton Variant="Variant.Text" 
+                                             Color="Color.Primary"
+                                             StartIcon="@Icons.Material.Filled.Edit"
+                                             OnClick="@(() => EditEnvironment(env.Id))">
+                                        Edit
+                                    </MudButton>
+                                    @if (env.Id != _activeEnvironmentId)
+                                    {
+                                        <MudButton Variant="Variant.Text" 
+                                                 Color="Color.Success"
+                                                 StartIcon="@Icons.Material.Filled.CheckCircle"
+                                                 OnClick="@(() => SetActiveEnvironment(env.Id))">
+                                            Set Active
+                                        </MudButton>
+                                    }
+                                    <MudButton Variant="Variant.Text" 
+                                             Color="Color.Error"
+                                             StartIcon="@Icons.Material.Filled.Delete"
+                                             OnClick="@(() => DeleteEnvironment(env))">
+                                        Delete
+                                    </MudButton>
+                                </MudStack>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private IEnumerable<Domain.Entities.Environment>? _environments;
+    private Guid? _activeEnvironmentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+        _activeEnvironmentId = await ActiveEnvironmentService.GetActiveEnvironmentIdAsync();
+    }
+
+    private void CreateEnvironment()
+    {
+        NavigationManager.NavigateTo("/environment/create");
+    }
+
+    private void EditEnvironment(Guid environmentId)
+    {
+        NavigationManager.NavigateTo($"/environment/{environmentId}/edit");
+    }
+
+    private async Task SetActiveEnvironment(Guid environmentId)
+    {
+        await ActiveEnvironmentService.SetActiveEnvironmentIdAsync(environmentId);
+        _activeEnvironmentId = environmentId;
+        Snackbar.Add("Active environment updated", Severity.Success);
+        StateHasChanged();
+    }
+
+    private async Task DeleteEnvironment(Domain.Entities.Environment environment)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Environment",
+            $"Are you sure you want to delete the environment '{environment.Name}'? This cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                await EnvironmentService.DeleteEnvironmentAsync(environment.Id);
+                
+                // If deleting active environment, clear it
+                if (environment.Id == _activeEnvironmentId)
+                {
+                    await ActiveEnvironmentService.SetActiveEnvironmentIdAsync(null);
+                }
+                
+                await LoadData();
+                Snackbar.Add($"Environment '{environment.Name}' deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting environment: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}
+
+<style>
+    .environment-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+</style>
