@@ -47,6 +47,7 @@
     private string _editorId = $"monaco-editor-{Guid.NewGuid()}";
     private DotNetObjectReference<CodeEditor>? _dotNetHelper;
     private bool _isInitialized;
+    private bool _isDisposed;
     private string _currentTheme = "vs-dark";
     private string _currentLanguage = "json";
 
@@ -90,6 +91,13 @@
                     {
                         await JSRuntime.InvokeVoidAsync(
                             "monacoEditorInterop.registerVariableHoverProvider",
+                            _editorId,
+                            _dotNetHelper
+                        );
+                        
+                        // Register variable inlay hints provider for inline value display
+                        await JSRuntime.InvokeVoidAsync(
+                            "monacoEditorInterop.registerVariableInlayHintsProvider",
                             _editorId,
                             _dotNetHelper
                         );
@@ -137,7 +145,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_isInitialized)
+        if (_isInitialized && !_isDisposed)
         {
             // Update value if changed externally
             var currentValue = await JSRuntime.InvokeAsync<string?>("monacoEditorInterop.getValue", _editorId);
@@ -155,13 +163,27 @@
             }
 
             // Re-register hover provider if environment is available
-            if (Environment != null && _dotNetHelper != null)
+            if (Environment != null && _dotNetHelper != null && !_isDisposed)
             {
-                await JSRuntime.InvokeVoidAsync(
-                    "monacoEditorInterop.registerVariableHoverProvider",
-                    _editorId,
-                    _dotNetHelper
-                );
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync(
+                        "monacoEditorInterop.registerVariableHoverProvider",
+                        _editorId,
+                        _dotNetHelper
+                    );
+                    
+                    // Re-register inlay hints provider as well
+                    await JSRuntime.InvokeVoidAsync(
+                        "monacoEditorInterop.registerVariableInlayHintsProvider",
+                        _editorId,
+                        _dotNetHelper
+                    );
+                }
+                catch (Exception ex) when (ex is ObjectDisposedException || ex is TaskCanceledException)
+                {
+                    // Component is being disposed, ignore the error
+                }
             }
         }
     }
@@ -181,7 +203,7 @@
             return Task.FromResult<string?>(null);
         }
 
-        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection);
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, null);
         
         if (value != null)
         {
@@ -194,6 +216,20 @@
         }
     }
 
+    [JSInvokable]
+    public Task<string?> GetVariableValue(string variableName)
+    {
+        if (Environment == null || string.IsNullOrEmpty(variableName))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        // Request is null because we're only resolving variables from environment and collection context
+        // Request-specific variables would require access to the current Request object
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, null);
+        return Task.FromResult(value);
+    }
+
     public async Task FormatDocumentAsync()
     {
         if (_isInitialized)
@@ -204,6 +240,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        _isDisposed = true;
+        
         if (_isInitialized)
         {
             try

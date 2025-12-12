@@ -50,6 +50,7 @@
     private string _editorId = $"monaco-editor-{Guid.NewGuid()}";
     private DotNetObjectReference<GraphQLCodeEditor>? _dotNetHelper;
     private bool _isInitialized;
+    private bool _isDisposed;
     private string? _lastUrl;
     private string _currentTheme = "vs-dark";
 
@@ -93,6 +94,13 @@
                             _editorId,
                             _dotNetHelper
                         );
+                        
+                        // Register variable inlay hints provider for inline value display
+                        await JSRuntime.InvokeVoidAsync(
+                            "monacoEditorInterop.registerVariableInlayHintsProvider",
+                            _editorId,
+                            _dotNetHelper
+                        );
                     }
 
                     // Load schema if URL is available
@@ -130,7 +138,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_isInitialized)
+        if (_isInitialized && !_isDisposed)
         {
             // Update value if changed externally
             var currentValue = await JSRuntime.InvokeAsync<string?>("monacoEditorInterop.getValue", _editorId);
@@ -140,13 +148,27 @@
             }
 
             // Re-register hover provider if environment is available
-            if (Environment != null && _dotNetHelper != null)
+            if (Environment != null && _dotNetHelper != null && !_isDisposed)
             {
-                await JSRuntime.InvokeVoidAsync(
-                    "monacoEditorInterop.registerVariableHoverProvider",
-                    _editorId,
-                    _dotNetHelper
-                );
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync(
+                        "monacoEditorInterop.registerVariableHoverProvider",
+                        _editorId,
+                        _dotNetHelper
+                    );
+                    
+                    // Re-register inlay hints provider as well
+                    await JSRuntime.InvokeVoidAsync(
+                        "monacoEditorInterop.registerVariableInlayHintsProvider",
+                        _editorId,
+                        _dotNetHelper
+                    );
+                }
+                catch (Exception ex) when (ex is ObjectDisposedException || ex is TaskCanceledException)
+                {
+                    // Component is being disposed, ignore the error
+                }
             }
 
             // Reload schema if URL changed
@@ -173,7 +195,8 @@
             return Task.FromResult<string?>(null);
         }
 
-        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection);
+        // Pass Request to support request-level dynamic variables
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, Request);
         
         if (value != null)
         {
@@ -184,6 +207,19 @@
         {
             return Task.FromResult<string?>($"`{variableName}` = **MISSING**");
         }
+    }
+
+    [JSInvokable]
+    public Task<string?> GetVariableValue(string variableName)
+    {
+        if (Environment == null || string.IsNullOrEmpty(variableName))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        // Pass Request to support request-level dynamic variables
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, Request);
+        return Task.FromResult(value);
     }
 
     private async Task LoadSchemaAsync()
@@ -252,6 +288,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        _isDisposed = true;
+        
         if (_isInitialized)
         {
             try
