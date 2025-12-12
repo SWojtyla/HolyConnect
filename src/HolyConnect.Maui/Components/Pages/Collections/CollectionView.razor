@@ -210,6 +210,7 @@
     public Guid CollectionId { get; set; }
 
     private Domain.Entities.Collection? _collection;
+    private IEnumerable<Domain.Entities.Collection>? _allCollections;
     private IEnumerable<Domain.Entities.Collection>? _subCollections;
     private IEnumerable<Domain.Entities.Request>? _collectionRequests;
     private Domain.Entities.Collection? _selectedSubCollection;
@@ -248,8 +249,8 @@
             return;
         }
 
-        var allCollections = await CollectionService.GetAllCollectionsAsync();
-        _subCollections = allCollections.Where(c => c.ParentCollectionId == CollectionId);
+        _allCollections = await CollectionService.GetAllCollectionsAsync();
+        _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId);
         
         var allRequests = await RequestService.GetAllRequestsAsync();
         _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId);
@@ -265,19 +266,38 @@
         StateHasChanged();
     }
 
-    private async void SelectRequest(Domain.Entities.Request request)
+    private void SelectRequest(Domain.Entities.Request request)
     {
         _selectedRequest = request;
         _selectedSubCollection = null;
         
         // Find the collection for this request
         _selectedRequestCollection = null;
-        if (request.CollectionId.HasValue)
+        if (request.CollectionId.HasValue && _allCollections != null)
         {
-            _selectedRequestCollection = await CollectionService.GetCollectionByIdAsync(request.CollectionId.Value);
+            _selectedRequestCollection = FindCollectionById(_allCollections, request.CollectionId.Value);
         }
         
         StateHasChanged();
+    }
+    
+    private Domain.Entities.Collection? FindCollectionById(IEnumerable<Domain.Entities.Collection> collections, Guid id)
+    {
+        foreach (var collection in collections)
+        {
+            if (collection.Id == id)
+            {
+                return collection;
+            }
+            
+            var found = FindCollectionById(collection.SubCollections, id);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        
+        return null;
     }
 
     private void EditCollection()
