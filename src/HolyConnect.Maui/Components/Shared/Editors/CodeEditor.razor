@@ -163,20 +163,27 @@
             }
 
             // Re-register hover provider if environment is available
-            if (Environment != null && _dotNetHelper != null)
+            if (Environment != null && _dotNetHelper != null && !_isDisposed)
             {
-                await JSRuntime.InvokeVoidAsync(
-                    "monacoEditorInterop.registerVariableHoverProvider",
-                    _editorId,
-                    _dotNetHelper
-                );
-                
-                // Re-register inlay hints provider as well
-                await JSRuntime.InvokeVoidAsync(
-                    "monacoEditorInterop.registerVariableInlayHintsProvider",
-                    _editorId,
-                    _dotNetHelper
-                );
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync(
+                        "monacoEditorInterop.registerVariableHoverProvider",
+                        _editorId,
+                        _dotNetHelper
+                    );
+                    
+                    // Re-register inlay hints provider as well
+                    await JSRuntime.InvokeVoidAsync(
+                        "monacoEditorInterop.registerVariableInlayHintsProvider",
+                        _editorId,
+                        _dotNetHelper
+                    );
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Component is being disposed, ignore the error
+                }
             }
         }
     }
