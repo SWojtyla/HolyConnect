@@ -15,6 +15,7 @@ public class FlowService : IFlowService
     private readonly IRepository<Collection> _collectionRepository;
     private readonly IRequestService _requestService;
     private readonly IVariableResolver _variableResolver;
+    private readonly IRepository<Domain.Entities.Environment> _environmentRepository;
 
     public FlowService(
         IRepository<Flow> flowRepository,
@@ -22,7 +23,8 @@ public class FlowService : IFlowService
         IActiveEnvironmentService activeEnvironmentService,
         IRepository<Collection> collectionRepository,
         IRequestService requestService,
-        IVariableResolver variableResolver)
+        IVariableResolver variableResolver,
+        IRepository<Domain.Entities.Environment> environmentRepository)
     {
         _flowRepository = flowRepository;
         _requestRepository = requestRepository;
@@ -30,6 +32,7 @@ public class FlowService : IFlowService
         _collectionRepository = collectionRepository;
         _requestService = requestService;
         _variableResolver = variableResolver;
+        _environmentRepository = environmentRepository;
     }
 
     public async Task<Flow> CreateFlowAsync(Flow flow)
@@ -73,12 +76,19 @@ public class FlowService : IFlowService
         await _flowRepository.DeleteAsync(id);
     }
 
-    public async Task<FlowExecutionResult> ExecuteFlowAsync(Guid flowId, CancellationToken cancellationToken = default)
+    public async Task<FlowExecutionResult> ExecuteFlowAsync(Guid flowId, Guid environmentId, CancellationToken cancellationToken = default)
     {
         var flow = await _flowRepository.GetByIdAsync(flowId);
         if (flow == null)
         {
             throw new InvalidOperationException($"Flow with ID {flowId} not found.");
+        }
+
+        // Get the specified environment
+        var environment = await _environmentRepository.GetByIdAsync(environmentId);
+        if (environment == null)
+        {
+            throw new InvalidOperationException($"Environment with ID {environmentId} not found.");
         }
 
         var result = new FlowExecutionResult
@@ -91,12 +101,6 @@ public class FlowService : IFlowService
 
         try
         {
-            // Get active environment for variable management
-            var environment = await _activeEnvironmentService.GetActiveEnvironmentAsync();
-            if (environment == null)
-            {
-                throw new InvalidOperationException("No active environment set. Please select an environment before executing the flow.");
-            }
 
             // Get collection if specified
             Collection? collection = null;

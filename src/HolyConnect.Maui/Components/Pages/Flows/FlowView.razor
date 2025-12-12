@@ -1,0 +1,200 @@
+@page "/flow/{FlowId:guid}/view"
+@inject IFlowService FlowService
+@inject IRequestService RequestService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_flow != null)
+    {
+        <MudPaper Elevation="0" Class="pa-6">
+            <MudStack Spacing="4">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Large" Color="Color.Success" />
+                        <div>
+                            <MudText Typo="Typo.h4">@_flow.Name</MudText>
+                            @if (!string.IsNullOrEmpty(_flow.Description))
+                            {
+                                <MudText Typo="Typo.body1" Color="Color.Secondary">@_flow.Description</MudText>
+                            }
+                        </div>
+                    </MudStack>
+                    <MudStack Row="true" Spacing="2">
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Primary" 
+                                  StartIcon="@Icons.Material.Filled.Edit"
+                                  OnClick="EditFlow">
+                            Edit
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" 
+                                  Color="Color.Success" 
+                                  StartIcon="@Icons.Material.Filled.PlayArrow"
+                                  OnClick="ExecuteFlow">
+                            Execute
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+
+                <MudDivider />
+
+                <MudGrid>
+                    @if (_flow.CollectionId.HasValue)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Collection</MudText>
+                            <MudChip T="string" Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Info">
+                                Collection
+                            </MudChip>
+                        </MudItem>
+                    }
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Created</MudText>
+                        <MudText Typo="Typo.body1">@_flow.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Total Steps</MudText>
+                        <MudText Typo="Typo.body1">@_flow.Steps.Count step@(_flow.Steps.Count != 1 ? "s" : "")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Enabled Steps</MudText>
+                        <MudText Typo="Typo.body1">@_flow.Steps.Count(s => s.IsEnabled) / @_flow.Steps.Count</MudText>
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider />
+
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.List" Color="Color.Info" />
+                    <MudText Typo="Typo.h6" Color="Color.Info">Flow Steps</MudText>
+                </MudStack>
+
+                @if (_flow.Steps.Any())
+                {
+                    <MudList T="string">
+                        @foreach (var step in _flow.Steps.OrderBy(s => s.Order))
+                        {
+                            <MudListItem T="string" Class="mb-2">
+                                <MudPaper Class="pa-4" Outlined="true" Elevation="0">
+                                    <MudStack Spacing="2">
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudText Typo="Typo.h6" Color="Color.Primary">Step @step.Order</MudText>
+                                                @if (!step.IsEnabled)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Disabled</MudChip>
+                                                }
+                                            </MudStack>
+                                            @if (step.ContinueOnError)
+                                            {
+                                                <MudChip T="string" Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Warning">
+                                                    Continue on Error
+                                                </MudChip>
+                                            }
+                                        </MudStack>
+
+                                        @if (_requestsById.TryGetValue(step.RequestId, out var request))
+                                        {
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" Color="Color.Info" />
+                                                <MudText Typo="Typo.body1"><strong>@request.Name</strong></MudText>
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@request.Type</MudChip>
+                                            </MudStack>
+                                            
+                                            @if (!string.IsNullOrEmpty(request.Url))
+                                            {
+                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Http" Size="Size.Small" Color="Color.Secondary" />
+                                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="text-break">@request.Url</MudText>
+                                                </MudStack>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                                Request not found (ID: @step.RequestId.ToString().Substring(0, 8)...)
+                                            </MudAlert>
+                                        }
+
+                                        @if (step.DelayBeforeExecutionMs.HasValue && step.DelayBeforeExecutionMs.Value > 0)
+                                        {
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" Color="Color.Info" />
+                                                <MudText Typo="Typo.body2" Color="Color.Info">
+                                                    Delay: @step.DelayBeforeExecutionMs.Value ms before execution
+                                                </MudText>
+                                            </MudStack>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">
+                        This flow has no steps configured. Edit the flow to add steps.
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+    else if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 18.75rem;">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <MudText Typo="Typo.body1">Loading flow...</MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">Flow not found</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid FlowId { get; set; }
+
+    private Flow? _flow;
+    private Dictionary<Guid, Request> _requestsById = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        try
+        {
+            _flow = await FlowService.GetFlowByIdAsync(FlowId);
+            if (_flow == null)
+            {
+                Snackbar.Add("Flow not found", Severity.Error);
+                return;
+            }
+
+            // Load all requests for displaying step details
+            var allRequests = await RequestService.GetAllRequestsAsync();
+            _requestsById = allRequests.ToDictionary(r => r.Id, r => r);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void EditFlow()
+    {
+        NavigationManager.NavigateTo($"/flow/{FlowId}/edit");
+    }
+
+    private void ExecuteFlow()
+    {
+        NavigationManager.NavigateTo($"/flow/{FlowId}/execute");
+    }
+}

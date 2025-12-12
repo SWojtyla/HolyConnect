@@ -1,5 +1,6 @@
 @page "/flow/{FlowId:guid}/execute"
 @inject IFlowService FlowService
+@inject IEnvironmentService EnvironmentService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @implements IDisposable
@@ -16,14 +17,40 @@
                         <MudText Typo="Typo.body1" Color="Color.Secondary">@_flow.Description</MudText>
                     }
                 </div>
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Primary" 
-                          StartIcon="@Icons.Material.Filled.PlayArrow"
-                          OnClick="ExecuteFlow"
-                          Disabled="@_isExecuting">
-                    @(_isExecuting ? "Executing..." : "Execute Flow")
-                </MudButton>
             </MudStack>
+
+            <MudCard Class="mb-4" Elevation="2">
+                <MudCardContent>
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Select Environment</MudText>
+                        <MudSelect @bind-Value="_selectedEnvironmentId" 
+                                  Label="Environment" 
+                                  Required="true"
+                                  T="Guid?"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.CloudQueue">
+                            @if (_environments != null)
+                            {
+                                @foreach (var env in _environments)
+                                {
+                                    <MudSelectItem Value="@((Guid?)env.Id)">@env.Name</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
+                    </MudStack>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              StartIcon="@Icons.Material.Filled.PlayArrow"
+                              OnClick="ExecuteFlow"
+                              Disabled="@(_isExecuting || !_selectedEnvironmentId.HasValue)"
+                              Class="ml-4 mb-4">
+                        @(_isExecuting ? "Executing..." : "Execute Flow")
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
 
             @if (_executionResult != null)
             {
@@ -160,10 +187,13 @@
     private FlowExecutionResult? _executionResult;
     private bool _isExecuting;
     private CancellationTokenSource? _cancellationTokenSource;
+    private List<Domain.Entities.Environment>? _environments;
+    private Guid? _selectedEnvironmentId;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadFlow();
+        await LoadEnvironments();
     }
 
     private async Task LoadFlow()
@@ -172,13 +202,23 @@
         if (_flow == null)
         {
             Snackbar.Add("Flow not found", Severity.Error);
-            NavigationManager.NavigateTo("/");
+            NavigationManager.NavigateTo("/flows");
+        }
+    }
+
+    private async Task LoadEnvironments()
+    {
+        _environments = (await EnvironmentService.GetAllEnvironmentsAsync()).ToList();
+        // Set default to first environment if available
+        if (_environments.Any())
+        {
+            _selectedEnvironmentId = _environments.First().Id;
         }
     }
 
     private async Task ExecuteFlow()
     {
-        if (_flow == null || _isExecuting) return;
+        if (_flow == null || _isExecuting || !_selectedEnvironmentId.HasValue) return;
 
         try
         {
@@ -188,7 +228,7 @@
 
             Snackbar.Add("Executing flow...", Severity.Info);
 
-            _executionResult = await FlowService.ExecuteFlowAsync(FlowId, _cancellationTokenSource.Token);
+            _executionResult = await FlowService.ExecuteFlowAsync(FlowId, _selectedEnvironmentId.Value, _cancellationTokenSource.Token);
 
             if (_executionResult.Status == FlowExecutionStatus.Completed)
             {

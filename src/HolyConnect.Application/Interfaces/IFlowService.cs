@@ -41,5 +41,8 @@ public interface IFlowService
     /// Executes a flow, running all enabled steps in sequence.
     /// Variables extracted from each step are made available to subsequent steps.
     /// </summary>
-    Task<FlowExecutionResult> ExecuteFlowAsync(Guid flowId, CancellationToken cancellationToken = default);
+    /// <param name="flowId">The ID of the flow to execute</param>
+    /// <param name="environmentId">The ID of the environment to use for execution</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task<FlowExecutionResult> ExecuteFlowAsync(Guid flowId, Guid environmentId, CancellationToken cancellationToken = default);
 }
