@@ -286,7 +286,7 @@
 
     private void NavigateToEnvironment(Guid id)
     {
-        NavigationManager.NavigateTo($"/environment/{id}");
+        NavigationManager.NavigateTo("/environments");
     }
 
     private async Task RenameEnvironment(Domain.Entities.Environment environment)
@@ -313,7 +313,7 @@
     {
         var parameters = new DialogParameters
         {
-            ["ContentText"] = $"Are you sure you want to delete the environment '{environment.Name}'? This will also delete all collections and requests within it. This action cannot be undone.",
+            ["ContentText"] = $"Are you sure you want to delete the environment '{environment.Name}'? This will delete all variables stored in this environment. This action cannot be undone.",
             ["ButtonText"] = "Delete",
             ["Color"] = Color.Error
         };
