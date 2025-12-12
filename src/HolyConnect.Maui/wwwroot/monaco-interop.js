@@ -433,6 +433,9 @@ window.monacoEditorInterop = {
                         const line = hintModel.getLineContent(lineNumber);
                         let match;
                         
+                        // Reset lastIndex to avoid issues with global regex across multiple lines
+                        variablePattern.lastIndex = 0;
+                        
                         // Find all variables in the line
                         while ((match = variablePattern.exec(line)) !== null) {
                             const variableName = match[1];
