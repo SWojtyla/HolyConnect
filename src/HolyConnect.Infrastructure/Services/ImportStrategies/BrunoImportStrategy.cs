@@ -11,7 +11,7 @@ public class BrunoImportStrategy : IImportStrategy
 {
     public ImportSource Source => ImportSource.Bruno;
 
-    public Request? Parse(string content, Guid environmentId, Guid? collectionId, string? customName)
+    public Request? Parse(string content, Guid? collectionId, string? customName)
     {
         try
         {
@@ -23,7 +23,7 @@ public class BrunoImportStrategy : IImportStrategy
                 return null;
             }
 
-            return ParseBrunoFile(content, environmentId, collectionId, customName);
+            return ParseBrunoFile(content, collectionId, customName);
         }
         catch
         {
@@ -31,7 +31,7 @@ public class BrunoImportStrategy : IImportStrategy
         }
     }
 
-    private Request? ParseBrunoFile(string brunoFileContent, Guid environmentId, Guid? collectionId, string? customName)
+    private Request? ParseBrunoFile(string brunoFileContent, Guid? collectionId, string? customName)
     {
         try
         {
@@ -49,11 +49,11 @@ public class BrunoImportStrategy : IImportStrategy
             
             if (isGraphQL)
             {
-                return ParseBrunoGraphQLRequest(sections, environmentId, collectionId, requestName);
+                return ParseBrunoGraphQLRequest(sections, collectionId, requestName);
             }
             else
             {
-                return ParseBrunoRestRequest(sections, environmentId, collectionId, requestName);
+                return ParseBrunoRestRequest(sections, collectionId, requestName);
             }
         }
         catch
@@ -146,12 +146,11 @@ public class BrunoImportStrategy : IImportStrategy
         return (name, type);
     }
 
-    private RestRequest ParseBrunoRestRequest(Dictionary<string, string> sections, Guid environmentId, Guid? collectionId, string requestName)
+    private RestRequest ParseBrunoRestRequest(Dictionary<string, string> sections, Guid? collectionId, string requestName)
     {
         var request = new RestRequest
         {
             Id = Guid.NewGuid(),
-            EnvironmentId = environmentId,
             CollectionId = collectionId,
             CreatedAt = DateTime.UtcNow,
             Name = requestName,
@@ -184,12 +183,11 @@ public class BrunoImportStrategy : IImportStrategy
         return request;
     }
 
-    private GraphQLRequest ParseBrunoGraphQLRequest(Dictionary<string, string> sections, Guid environmentId, Guid? collectionId, string requestName)
+    private GraphQLRequest ParseBrunoGraphQLRequest(Dictionary<string, string> sections, Guid? collectionId, string requestName)
     {
         var request = new GraphQLRequest
         {
             Id = Guid.NewGuid(),
-            EnvironmentId = environmentId,
             CollectionId = collectionId,
             CreatedAt = DateTime.UtcNow,
             Name = requestName,

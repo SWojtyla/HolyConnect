@@ -27,7 +27,7 @@ public class ImportService : IImportService
         return _importStrategies.Any(s => s.Source == source);
     }
 
-    public async Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid environmentId, Guid? collectionId = null, string? customName = null)
+    public async Task<ImportResult> ImportFromCurlAsync(string curlCommand, Guid? collectionId = null, string? customName = null)
     {
         var result = new ImportResult();
 
@@ -40,7 +40,7 @@ public class ImportService : IImportService
                 return result;
             }
 
-            var request = strategy.Parse(curlCommand, environmentId, collectionId, customName);
+            var request = strategy.Parse(curlCommand, collectionId, customName);
             
             if (request == null)
             {
@@ -62,7 +62,7 @@ public class ImportService : IImportService
         return result;
     }
 
-    public async Task<ImportResult> ImportFromBrunoAsync(string brunoFileContent, Guid environmentId, Guid? collectionId = null, string? customName = null)
+    public async Task<ImportResult> ImportFromBrunoAsync(string brunoFileContent, Guid? collectionId = null, string? customName = null)
     {
         var result = new ImportResult();
 
@@ -75,7 +75,7 @@ public class ImportService : IImportService
                 return result;
             }
 
-            var request = strategy.Parse(brunoFileContent, environmentId, collectionId, customName);
+            var request = strategy.Parse(brunoFileContent, collectionId, customName);
             
             if (request == null)
             {
@@ -97,7 +97,7 @@ public class ImportService : IImportService
         return result;
     }
 
-    public async Task<ImportResult> ImportFromBrunoFolderAsync(string folderPath, Guid environmentId, Guid? parentCollectionId = null)
+    public async Task<ImportResult> ImportFromBrunoFolderAsync(string folderPath, Guid? parentCollectionId = null)
     {
         var result = new ImportResult();
 
@@ -119,7 +119,7 @@ public class ImportService : IImportService
             }
 
             // Process the folder recursively
-            await ProcessFolderAsync(folderPath, environmentId, parentCollectionId, strategy, result);
+            await ProcessFolderAsync(folderPath, parentCollectionId, strategy, result);
 
             // Determine final success status based on results
             if (result.TotalFilesProcessed == 0)
@@ -153,7 +153,6 @@ public class ImportService : IImportService
 
     private async Task ProcessFolderAsync(
         string folderPath, 
-        Guid environmentId, 
         Guid? parentCollectionId, 
         IImportStrategy strategy,
         ImportResult result)
@@ -172,7 +171,6 @@ public class ImportService : IImportService
             {
                 folderCollection = await _collectionService.CreateCollectionAsync(
                     folderName,
-                    environmentId,
                     parentCollectionId,
                     $"Imported from folder: {folderPath}");
                 
@@ -195,7 +193,7 @@ public class ImportService : IImportService
                 var fileContent = await File.ReadAllTextAsync(filePath);
                 var fileName = Path.GetFileNameWithoutExtension(filePath);
                 
-                var request = strategy.Parse(fileContent, environmentId, folderCollection?.Id, fileName);
+                var request = strategy.Parse(fileContent, folderCollection?.Id, fileName);
                 
                 if (request == null)
                 {
@@ -221,7 +219,7 @@ public class ImportService : IImportService
         {
             // Use the newly created collection as parent for subfolders, or the original parent if no collection was created
             var effectiveParentId = folderCollection?.Id ?? parentCollectionId;
-            await ProcessFolderAsync(subFolder, environmentId, effectiveParentId, strategy, result);
+            await ProcessFolderAsync(subFolder, effectiveParentId, strategy, result);
         }
     }
 }
