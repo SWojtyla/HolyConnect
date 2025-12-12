@@ -9,7 +9,7 @@ public class FlowServiceTests
 {
     private readonly Mock<IRepository<Flow>> _mockFlowRepository;
     private readonly Mock<IRepository<Request>> _mockRequestRepository;
-    private readonly Mock<IRepository<Domain.Entities.Environment>> _mockEnvironmentRepository;
+    private readonly Mock<IActiveEnvironmentService> _mockActiveEnvironmentService;
     private readonly Mock<IRepository<Collection>> _mockCollectionRepository;
     private readonly Mock<IRequestService> _mockRequestService;
     private readonly Mock<IVariableResolver> _mockVariableResolver;
@@ -19,7 +19,7 @@ public class FlowServiceTests
     {
         _mockFlowRepository = new Mock<IRepository<Flow>>();
         _mockRequestRepository = new Mock<IRepository<Request>>();
-        _mockEnvironmentRepository = new Mock<IRepository<Domain.Entities.Environment>>();
+        _mockActiveEnvironmentService = new Mock<IActiveEnvironmentService>();
         _mockCollectionRepository = new Mock<IRepository<Collection>>();
         _mockRequestService = new Mock<IRequestService>();
         _mockVariableResolver = new Mock<IVariableResolver>();
@@ -27,7 +27,7 @@ public class FlowServiceTests
         _service = new FlowService(
             _mockFlowRepository.Object,
             _mockRequestRepository.Object,
-            _mockEnvironmentRepository.Object,
+            _mockActiveEnvironmentService.Object,
             _mockCollectionRepository.Object,
             _mockRequestService.Object,
             _mockVariableResolver.Object);
@@ -41,9 +41,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Name = "Test Flow",
-            Description = "Test Description",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Description = "Test Description",            Steps = new List<FlowStep>
             {
                 new FlowStep { Order = 1, RequestId = Guid.NewGuid() },
                 new FlowStep { Order = 2, RequestId = Guid.NewGuid() }
@@ -215,9 +213,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Empty Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>()
+            Name = "Empty Flow",            Steps = new List<FlowStep>()
         };
 
         var environment = new Domain.Entities.Environment
@@ -252,16 +248,12 @@ public class FlowServiceTests
         {
             Id = requestId,
             Name = "Test Request",
-            Url = "https://api.example.com/test",
-            EnvironmentId = environmentId
-        };
+            Url = "https://api.example.com/test",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Single Step Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Single Step Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -321,9 +313,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Multi Step Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Multi Step Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -367,9 +357,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with Disabled Step",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with Disabled Step",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -415,9 +403,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with ContinueOnError",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with ContinueOnError",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true, ContinueOnError = true },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -465,9 +451,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow Stopping on Error",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow Stopping on Error",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true, ContinueOnError = false },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -506,9 +490,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Cancellable Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Cancellable Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = Guid.NewGuid(), IsEnabled = true }
             }
@@ -540,9 +522,7 @@ public class FlowServiceTests
         // Arrange
         var flow = new Flow
         {
-            Name = "Duplicate Flow",
-            EnvironmentId = Guid.NewGuid(),
-            Steps = new List<FlowStep>()
+            Name = "Duplicate Flow",            Steps = new List<FlowStep>()
         };
         _mockFlowRepository.Setup(r => r.AddAsync(It.IsAny<Flow>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{flow.Name}' already exists."));
@@ -561,9 +541,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = Guid.NewGuid(),
-            Name = "Duplicate Flow",
-            EnvironmentId = Guid.NewGuid(),
-            Steps = new List<FlowStep>()
+            Name = "Duplicate Flow",            Steps = new List<FlowStep>()
         };
         _mockFlowRepository.Setup(r => r.UpdateAsync(It.IsAny<Flow>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{flow.Name}' already exists."));
@@ -587,16 +565,12 @@ public class FlowServiceTests
         {
             Id = requestId,
             Name = "Failing Request",
-            Url = "https://api.example.com/notfound",
-            EnvironmentId = environmentId
-        };
+            Url = "https://api.example.com/notfound",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with 404",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with 404",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -653,16 +627,12 @@ public class FlowServiceTests
         var request = new RestRequest
         {
             Id = requestId,
-            Name = "Server Error Request",
-            EnvironmentId = environmentId
-        };
+            Name = "Server Error Request",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with 500",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with 500",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {
@@ -718,9 +688,7 @@ public class FlowServiceTests
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Flow with Error and Continue",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Flow with Error and Continue",            Steps = new List<FlowStep>
             {
                 new FlowStep { Id = Guid.NewGuid(), Order = 1, RequestId = request1Id, IsEnabled = true, ContinueOnError = true },
                 new FlowStep { Id = Guid.NewGuid(), Order = 2, RequestId = request2Id, IsEnabled = true }
@@ -769,16 +737,12 @@ public class FlowServiceTests
         var request = new RestRequest
         {
             Id = requestId,
-            Name = "Test Request",
-            EnvironmentId = environmentId
-        };
+            Name = "Test Request",        };
 
         var flow = new Flow
         {
             Id = flowId,
-            Name = "Success Flow",
-            EnvironmentId = environmentId,
-            Steps = new List<FlowStep>
+            Name = "Success Flow",            Steps = new List<FlowStep>
             {
                 new FlowStep
                 {

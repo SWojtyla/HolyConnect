@@ -24,7 +24,6 @@ public class CollectionServiceTests
     public async Task CreateCollectionAsync_ShouldCreateCollectionWithCorrectProperties()
     {
         // Arrange
-        var environmentId = Guid.NewGuid();
         var name = "Test Collection";
         var description = "Test Description";
         Collection? capturedCollection = null;
@@ -34,12 +33,11 @@ public class CollectionServiceTests
             .ReturnsAsync((Collection c) => c);
 
         // Act
-        var result = await _service.CreateCollectionAsync(name, environmentId, null, description);
+        var result = await _service.CreateCollectionAsync(name, null, description);
 
         // Assert
         Assert.NotNull(capturedCollection);
         Assert.NotEqual(Guid.Empty, capturedCollection.Id);
-        Assert.Equal(environmentId, capturedCollection.EnvironmentId);
         Assert.Equal(name, capturedCollection.Name);
         Assert.Equal(description, capturedCollection.Description);
         Assert.True(capturedCollection.CreatedAt > DateTime.MinValue);
@@ -128,7 +126,6 @@ public class CollectionServiceTests
     public async Task CreateCollectionAsync_ShouldCreateSubCollectionWithParentId()
     {
         // Arrange
-        var environmentId = Guid.NewGuid();
         var parentCollectionId = Guid.NewGuid();
         var name = "Sub-Collection";
         var description = "Test Sub-Collection";
@@ -139,12 +136,11 @@ public class CollectionServiceTests
             .ReturnsAsync((Collection c) => c);
 
         // Act
-        var result = await _service.CreateCollectionAsync(name, environmentId, parentCollectionId, description);
+        var result = await _service.CreateCollectionAsync(name, parentCollectionId, description);
 
         // Assert
         Assert.NotNull(capturedCollection);
         Assert.NotEqual(Guid.Empty, capturedCollection.Id);
-        Assert.Equal(environmentId, capturedCollection.EnvironmentId);
         Assert.Equal(parentCollectionId, capturedCollection.ParentCollectionId);
         Assert.Equal(name, capturedCollection.Name);
         Assert.Equal(description, capturedCollection.Description);
@@ -155,7 +151,6 @@ public class CollectionServiceTests
     public async Task CreateCollectionAsync_ShouldCreateRootCollectionWithNullParentId()
     {
         // Arrange
-        var environmentId = Guid.NewGuid();
         var name = "Root Collection";
         Collection? capturedCollection = null;
 
@@ -164,12 +159,11 @@ public class CollectionServiceTests
             .ReturnsAsync((Collection c) => c);
 
         // Act
-        var result = await _service.CreateCollectionAsync(name, environmentId, null, null);
+        var result = await _service.CreateCollectionAsync(name, null, null);
 
         // Assert
         Assert.NotNull(capturedCollection);
         Assert.Null(capturedCollection.ParentCollectionId);
-        Assert.Equal(environmentId, capturedCollection.EnvironmentId);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Collection>()), Times.Once);
     }
 
@@ -181,7 +175,6 @@ public class CollectionServiceTests
         {
             Id = Guid.NewGuid(),
             Name = "Test Collection",
-            EnvironmentId = Guid.NewGuid(),
             Variables = new Dictionary<string, string>
             {
                 { "API_URL", "https://api.staging.com" },
@@ -210,7 +203,6 @@ public class CollectionServiceTests
         {
             Id = Guid.NewGuid(),
             Name = "Test Collection",
-            EnvironmentId = Guid.NewGuid(),
             Variables = new Dictionary<string, string>
             {
                 { "OLD_VAR", "old_value" }
@@ -238,14 +230,13 @@ public class CollectionServiceTests
     public async Task CreateCollectionAsync_WithDuplicateName_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var environmentId = Guid.NewGuid();
         var name = "Duplicate Collection";
         _mockRepository.Setup(r => r.AddAsync(It.IsAny<Collection>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{name}' already exists."));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateCollectionAsync(name, environmentId));
+            () => _service.CreateCollectionAsync(name));
         Assert.Contains("already exists", exception.Message);
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Collection>()), Times.Once);
     }
@@ -257,8 +248,7 @@ public class CollectionServiceTests
         var collection = new Collection
         {
             Id = Guid.NewGuid(),
-            Name = "Duplicate Collection",
-            EnvironmentId = Guid.NewGuid()
+            Name = "Duplicate Collection"
         };
         _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Collection>()))
             .ThrowsAsync(new InvalidOperationException($"An entity with the name '{collection.Name}' already exists."));
