@@ -2,6 +2,7 @@
 @using HolyConnect.Domain.Entities
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
+@inject IActiveEnvironmentService ActiveEnvironmentService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -117,7 +118,10 @@
         }
         else if (_selectedRequest != null)
         {
-            <RequestEditor Request="@_selectedRequest" OnSave="HandleRequestUpdated" />
+            <RequestEditor Request="@_selectedRequest" 
+                         Environment="@_activeEnvironment" 
+                         Collection="@_collection"
+                         OnSave="HandleRequestUpdated" />
         }
         else if (_collection != null)
         {
@@ -210,6 +214,7 @@
     private IEnumerable<Domain.Entities.Request>? _collectionRequests;
     private Domain.Entities.Collection? _selectedSubCollection;
     private Domain.Entities.Request? _selectedRequest;
+    private Domain.Entities.Environment? _activeEnvironment;
 
     protected override async Task OnInitializedAsync()
     {
@@ -247,6 +252,9 @@
         
         var allRequests = await RequestService.GetAllRequestsAsync();
         _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId);
+        
+        // Load the active environment for variable resolution
+        _activeEnvironment = await ActiveEnvironmentService.GetActiveEnvironmentAsync();
     }
 
     private void SelectSubCollection(Domain.Entities.Collection collection)
