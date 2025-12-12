@@ -120,7 +120,7 @@
         {
             <RequestEditor Request="@_selectedRequest" 
                          Environment="@_activeEnvironment" 
-                         Collection="@_collection"
+                         Collection="@_selectedRequestCollection"
                          OnSave="HandleRequestUpdated" />
         }
         else if (_collection != null)
@@ -214,6 +214,7 @@
     private IEnumerable<Domain.Entities.Request>? _collectionRequests;
     private Domain.Entities.Collection? _selectedSubCollection;
     private Domain.Entities.Request? _selectedRequest;
+    private Domain.Entities.Collection? _selectedRequestCollection;
     private Domain.Entities.Environment? _activeEnvironment;
 
     protected override async Task OnInitializedAsync()
@@ -264,10 +265,18 @@
         StateHasChanged();
     }
 
-    private void SelectRequest(Domain.Entities.Request request)
+    private async void SelectRequest(Domain.Entities.Request request)
     {
         _selectedRequest = request;
         _selectedSubCollection = null;
+        
+        // Find the collection for this request
+        _selectedRequestCollection = null;
+        if (request.CollectionId.HasValue)
+        {
+            _selectedRequestCollection = await CollectionService.GetCollectionByIdAsync(request.CollectionId.Value);
+        }
+        
         StateHasChanged();
     }
 
