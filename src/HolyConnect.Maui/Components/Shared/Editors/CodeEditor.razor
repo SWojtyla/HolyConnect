@@ -216,6 +216,8 @@
             return Task.FromResult<string?>(null);
         }
 
+        // Request is null because we're only resolving variables from environment and collection context
+        // Request-specific variables would require access to the current Request object
         var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, null);
         return Task.FromResult(value);
     }

@@ -187,7 +187,8 @@
             return Task.FromResult<string?>(null);
         }
 
-        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, null);
+        // Pass Request to support request-level dynamic variables
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, Request);
         
         if (value != null)
         {
@@ -208,7 +209,8 @@
             return Task.FromResult<string?>(null);
         }
 
-        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, null);
+        // Pass Request to support request-level dynamic variables
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, Request);
         return Task.FromResult(value);
     }
 

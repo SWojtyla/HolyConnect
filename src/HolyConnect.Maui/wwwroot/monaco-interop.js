@@ -448,7 +448,7 @@ window.monacoEditorInterop = {
                                 if (value !== null && value !== undefined) {
                                     // Add inlay hint after the variable
                                     hints.push({
-                                        kind: monaco.languages.InlayHintKind.Type,
+                                        kind: monaco.languages.InlayHintKind.Parameter,
                                         position: new monaco.Position(lineNumber, matchEnd + 1),
                                         label: ` = ${value}`,
                                         paddingLeft: true,
