@@ -285,7 +285,7 @@ public class CodeEditorTests
             return null;
         }
 
-        var value = variableResolver.GetVariableValue(variableName, environment, collection);
+        var value = variableResolver.GetVariableValue(variableName, environment, collection, null);
         
         if (value != null)
         {

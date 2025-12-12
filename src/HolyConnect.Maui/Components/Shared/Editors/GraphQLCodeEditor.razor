@@ -187,7 +187,7 @@
             return Task.FromResult<string?>(null);
         }
 
-        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection);
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection, null);
         
         if (value != null)
         {
