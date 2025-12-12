@@ -22,7 +22,11 @@
                 </MudButton>
             </MudStack>
             <div style="flex: 1; overflow: hidden;">
-                <GraphQLCodeEditor @bind-Value="Request.Query" Request="@Request" Height="100%" />
+                <GraphQLCodeEditor @bind-Value="Request.Query" 
+                                   Request="@Request" 
+                                   Height="100%"
+                                   Environment="@Environment"
+                                   Collection="@Collection" />
             </div>
         </div>
     </MudTabPanel>

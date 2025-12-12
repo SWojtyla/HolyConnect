@@ -1,7 +1,9 @@
+@using HolyConnect.Domain.Entities
 @inject IJSRuntime JSRuntime
 @inject IGraphQLSchemaService SchemaService
 @inject IDialogService DialogService
 @inject SettingsService SettingsService
+@inject IVariableResolver VariableResolver
 @implements IAsyncDisposable
 
 <MudPaper Elevation="2" Class="pa-0" Style="@(string.IsNullOrEmpty(Height) ? "height: 25rem;" : $"height: {Height};")">
@@ -38,6 +40,12 @@
 
     [Parameter]
     public string? Theme { get; set; }
+
+    [Parameter]
+    public Domain.Entities.Environment? Environment { get; set; }
+
+    [Parameter]
+    public Collection? Collection { get; set; }
 
     private string _editorId = $"monaco-editor-{Guid.NewGuid()}";
     private DotNetObjectReference<GraphQLCodeEditor>? _dotNetHelper;
@@ -76,6 +84,16 @@
                         _editorId,
                         _dotNetHelper
                     );
+
+                    // Register variable hover provider if environment is available
+                    if (Environment != null)
+                    {
+                        await JSRuntime.InvokeVoidAsync(
+                            "monacoEditorInterop.registerVariableHoverProvider",
+                            _editorId,
+                            _dotNetHelper
+                        );
+                    }
 
                     // Load schema if URL is available
                     if (Request != null && !string.IsNullOrWhiteSpace(Request.Url))
@@ -121,6 +139,16 @@
                 await JSRuntime.InvokeVoidAsync("monacoEditorInterop.setValue", _editorId, Value ?? string.Empty);
             }
 
+            // Re-register hover provider if environment is available
+            if (Environment != null && _dotNetHelper != null)
+            {
+                await JSRuntime.InvokeVoidAsync(
+                    "monacoEditorInterop.registerVariableHoverProvider",
+                    _editorId,
+                    _dotNetHelper
+                );
+            }
+
             // Reload schema if URL changed
             if (Request != null && Request.Url != _lastUrl)
             {
@@ -135,6 +163,27 @@
     {
         Value = value;
         await ValueChanged.InvokeAsync(value);
+    }
+
+    [JSInvokable]
+    public Task<string?> GetVariableHoverInfo(string variableName)
+    {
+        if (Environment == null || string.IsNullOrEmpty(variableName))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        var value = VariableResolver.GetVariableValue(variableName, Environment, Collection);
+        
+        if (value != null)
+        {
+            var source = Collection?.Variables.ContainsKey(variableName) == true ? "Collection" : "Environment";
+            return Task.FromResult<string?>($"`{variableName}` = **{value}** _(from {source})_");
+        }
+        else
+        {
+            return Task.FromResult<string?>($"`{variableName}` = **MISSING**");
+        }
     }
 
     private async Task LoadSchemaAsync()

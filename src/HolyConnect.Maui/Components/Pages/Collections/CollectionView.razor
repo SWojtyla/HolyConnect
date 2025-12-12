@@ -265,7 +265,7 @@
 
     private void EditCollection()
     {
-        NavigationManager.NavigateTo($"/collection/edit/{_collection!.Id}");
+        NavigationManager.NavigateTo($"/collection/{_collection!.Id}/edit");
     }
 
     private async Task DeleteCollection()

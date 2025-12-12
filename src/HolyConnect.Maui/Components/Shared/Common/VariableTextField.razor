@@ -108,7 +108,7 @@
         }
     }
 
-    private async void ShowVariableInfo()
+    private async Task ShowVariableInfo()
     {
         if (string.IsNullOrEmpty(Value) || !ContainsVariables || Environment == null)
         {

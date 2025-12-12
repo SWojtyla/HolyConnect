@@ -2,6 +2,7 @@
 window.monacoEditorInterop = {
     editors: {},
     completionProviders: {},
+    hoverProviders: {},
 
     // Initialize Monaco Editor
     initializeEditor: function (editorId, initialValue, language, theme, readOnly) {
@@ -272,6 +273,11 @@ window.monacoEditorInterop = {
             this.completionProviders[editorId].dispose();
             delete this.completionProviders[editorId];
         }
+
+        if (this.hoverProviders[editorId]) {
+            this.hoverProviders[editorId].dispose();
+            delete this.hoverProviders[editorId];
+        }
     },
 
     // Trigger suggestions
@@ -287,6 +293,98 @@ window.monacoEditorInterop = {
         const editor = this.editors[editorId];
         if (editor) {
             editor.getAction('editor.action.formatDocument').run();
+        }
+    },
+
+    // Register variable hover provider
+    registerVariableHoverProvider: function (editorId, dotNetHelper) {
+        try {
+            // Dispose existing provider if any
+            if (this.hoverProviders[editorId]) {
+                this.hoverProviders[editorId].dispose();
+                delete this.hoverProviders[editorId];
+            }
+
+            if (!dotNetHelper) {
+                return false;
+            }
+
+            const editor = this.editors[editorId];
+            if (!editor) {
+                return false;
+            }
+
+            const model = editor.getModel();
+            if (!model) {
+                return false;
+            }
+
+            // Register hover provider for the specific model language
+            const provider = monaco.languages.registerHoverProvider(model.getLanguageId(), {
+                provideHover: async function (hoverModel, position) {
+                    // Only provide hover for this specific editor's model
+                    if (model !== hoverModel) {
+                        return null;
+                    }
+
+                    // Check if we're hovering over a variable pattern {{ variableName }}
+                    const line = hoverModel.getLineContent(position.lineNumber);
+                    const beforeCursor = line.substring(0, position.column - 1);
+                    const afterCursor = line.substring(position.column - 1);
+                    
+                    // Look for {{ and }} around the cursor position
+                    const variablePattern = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
+                    let match;
+                    let foundVariable = null;
+                    
+                    // Search for variable patterns in the line
+                    while ((match = variablePattern.exec(line)) !== null) {
+                        const matchStart = match.index + 1; // +1 for 1-based column
+                        const matchEnd = match.index + match[0].length + 1;
+                        
+                        // Check if cursor is within this variable
+                        if (position.column >= matchStart && position.column <= matchEnd) {
+                            foundVariable = {
+                                name: match[1],
+                                start: matchStart,
+                                end: matchEnd
+                            };
+                            break;
+                        }
+                    }
+                    
+                    if (foundVariable) {
+                        // Call back to .NET to get variable value
+                        try {
+                            const result = await dotNetHelper.invokeMethodAsync('GetVariableHoverInfo', foundVariable.name);
+                            if (result) {
+                                return {
+                                    range: new monaco.Range(
+                                        position.lineNumber,
+                                        foundVariable.start,
+                                        position.lineNumber,
+                                        foundVariable.end
+                                    ),
+                                    contents: [
+                                        { value: '**Variable**' },
+                                        { value: result }
+                                    ]
+                                };
+                            }
+                        } catch (error) {
+                            console.error('Error getting variable hover info:', error);
+                        }
+                    }
+                    
+                    return null;
+                }
+            });
+
+            this.hoverProviders[editorId] = provider;
+            return true;
+        } catch (error) {
+            console.error('Error registering hover provider:', error);
+            return false;
         }
     },
 
