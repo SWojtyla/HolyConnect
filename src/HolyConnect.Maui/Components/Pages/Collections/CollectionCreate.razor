@@ -1,4 +1,4 @@
-@page "/environment/{EnvironmentId:guid}/collection/create"
+@page "/collection/create"
 @page "/collection/{ParentCollectionId:guid}/subcollection/create"
 @inject ICollectionService CollectionService
 @inject NavigationManager NavigationManager
@@ -116,9 +116,6 @@
 
 @code {
     [Parameter]
-    public Guid? EnvironmentId { get; set; }
-
-    [Parameter]
     public Guid? ParentCollectionId { get; set; }
 
     private string _name = string.Empty;
@@ -145,32 +142,7 @@
     {
         try
         {
-            Guid targetEnvironmentId;
-            
-            // Determine the environment ID
-            if (ParentCollectionId.HasValue)
-            {
-                var parentCollection = await CollectionService.GetCollectionByIdAsync(ParentCollectionId.Value);
-                if (parentCollection == null)
-                {
-                    Snackbar.Add("The parent collection could not be found. It may have been deleted.", Severity.Error);
-                    NavigationManager.NavigateTo("/");
-                    return;
-                }
-                targetEnvironmentId = parentCollection.EnvironmentId;
-            }
-            else if (EnvironmentId.HasValue)
-            {
-                targetEnvironmentId = EnvironmentId.Value;
-            }
-            else
-            {
-                Snackbar.Add("Unable to create collection: no environment or parent collection specified. Please try again.", Severity.Error);
-                NavigationManager.NavigateTo("/");
-                return;
-            }
-
-            var collection = await CollectionService.CreateCollectionAsync(_name, targetEnvironmentId, ParentCollectionId, _description);
+            var collection = await CollectionService.CreateCollectionAsync(_name, ParentCollectionId, _description);
             
             // Add variables to collection
             foreach (var variable in _variables.Where(v => !string.IsNullOrWhiteSpace(v.Key)))
@@ -182,7 +154,7 @@
             
             var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
             Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
-            NavigationManager.NavigateTo($"/environment/{targetEnvironmentId}");
+            NavigationManager.NavigateTo("/");
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
         {
@@ -195,24 +167,8 @@
         }
     }
 
-    private async Task Cancel()
+    private void Cancel()
     {
-        if (ParentCollectionId.HasValue)
-        {
-            var parentCollection = await CollectionService.GetCollectionByIdAsync(ParentCollectionId.Value);
-            if (parentCollection != null)
-            {
-                NavigationManager.NavigateTo($"/environment/{parentCollection.EnvironmentId}");
-                return;
-            }
-        }
-        
-        if (EnvironmentId.HasValue)
-        {
-            NavigationManager.NavigateTo($"/environment/{EnvironmentId.Value}");
-            return;
-        }
-        
         NavigationManager.NavigateTo("/");
     }
 }
