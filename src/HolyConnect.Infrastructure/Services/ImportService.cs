@@ -204,7 +204,7 @@ public class ImportService : IImportService
                 }
                 
                 // Add summary for debugging
-                if (result.TotalFilesProcessed == 0 && result.ImportedRequests.Count == 0 && result.ImportedCollections.Count > 0)
+                if (result.TotalFilesProcessed == 0 && result.ImportedCollections.Count > 0)
                 {
                     result.Warnings.Add($"Import summary: {result.ImportedCollections.Count} collection(s) created, {result.ImportedEnvironments.Count} environment(s) imported, but no request files were found or processed. Check that your .bru request files are in the subfolders.");
                 }
