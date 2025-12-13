@@ -1,5 +1,6 @@
 @page "/collection/{CollectionId:guid}"
 @using HolyConnect.Domain.Entities
+@using HolyConnect.Application.Common
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
 @inject IActiveEnvironmentService ActiveEnvironmentService
@@ -249,7 +250,15 @@
             return;
         }
 
-        _allCollections = await CollectionService.GetAllCollectionsAsync();
+        var allCollections = await CollectionService.GetAllCollectionsAsync();
+        
+        // Build hierarchy to populate SubCollections navigation property
+        var hierarchicalCollections = CollectionHierarchyHelper.BuildHierarchy(allCollections);
+        
+        // Flatten back to get all collections with populated SubCollections
+        _allCollections = CollectionHierarchyHelper.FlattenHierarchy(hierarchicalCollections);
+        
+        // Find direct subcollections of the current collection
         _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId);
         
         var allRequests = await RequestService.GetAllRequestsAsync();
