@@ -117,10 +117,22 @@
 @code {
     [Parameter]
     public Guid? ParentCollectionId { get; set; }
+    
+    [SupplyParameterFromQuery(Name = "parentId")]
+    public Guid? ParentIdFromQuery { get; set; }
 
     private string _name = string.Empty;
     private string _description = string.Empty;
     private List<VariableModel> _variables = new();
+    
+    protected override void OnParametersSet()
+    {
+        // If ParentCollectionId is not set from the route, try to get it from the query parameter
+        if (!ParentCollectionId.HasValue && ParentIdFromQuery.HasValue)
+        {
+            ParentCollectionId = ParentIdFromQuery;
+        }
+    }
 
     private class VariableModel
     {
@@ -154,7 +166,16 @@
             
             var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
             Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
-            NavigationManager.NavigateTo("/");
+            
+            // Navigate back to parent collection if creating a sub-collection, otherwise go home
+            if (ParentCollectionId.HasValue)
+            {
+                NavigationManager.NavigateTo($"/collection/{ParentCollectionId.Value}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/");
+            }
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
         {
@@ -169,6 +190,14 @@
 
     private void Cancel()
     {
-        NavigationManager.NavigateTo("/");
+        // Navigate back to parent collection if canceling sub-collection creation, otherwise go home
+        if (ParentCollectionId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/collection/{ParentCollectionId.Value}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/");
+        }
     }
 }

@@ -27,11 +27,20 @@ public interface IImportService
     Task<ImportResult> ImportFromBrunoAsync(string brunoFileContent, Guid? collectionId = null, string? customName = null);
     
     /// <summary>
+    /// Import an environment from Bruno environment file (.bru file from environments/ folder)
+    /// </summary>
+    /// <param name="brunoEnvironmentContent">The Bruno environment file content</param>
+    /// <param name="environmentName">Name for the environment</param>
+    /// <returns>Import result containing the imported environment or error details</returns>
+    Task<ImportResult> ImportFromBrunoEnvironmentAsync(string brunoEnvironmentContent, string environmentName);
+    
+    /// <summary>
     /// Import multiple requests from a Bruno folder and its subfolders
+    /// Also imports environments from environments/ subfolder if present
     /// </summary>
     /// <param name="folderPath">The path to the folder containing Bruno files</param>
     /// <param name="parentCollectionId">Optional parent collection ID. If not provided, a root collection will be created</param>
-    /// <returns>Import result containing all imported requests and collections</returns>
+    /// <returns>Import result containing all imported requests, collections, and environments</returns>
     Task<ImportResult> ImportFromBrunoFolderAsync(string folderPath, Guid? parentCollectionId = null);
     
     /// <summary>

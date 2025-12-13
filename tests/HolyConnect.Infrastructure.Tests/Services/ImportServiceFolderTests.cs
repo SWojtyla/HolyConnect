@@ -10,6 +10,7 @@ public class ImportServiceFolderTests : IDisposable
 {
     private readonly Mock<IRequestService> _mockRequestService;
     private readonly Mock<ICollectionService> _mockCollectionService;
+    private readonly Mock<IEnvironmentService> _mockEnvironmentService;
     private readonly ImportService _importService;
     private readonly string _testFolderPath;
 
@@ -17,13 +18,14 @@ public class ImportServiceFolderTests : IDisposable
     {
         _mockRequestService = new Mock<IRequestService>();
         _mockCollectionService = new Mock<ICollectionService>();
+        _mockEnvironmentService = new Mock<IEnvironmentService>();
         
         var strategies = new List<IImportStrategy>
         {
             new BrunoImportStrategy()
         };
 
-        _importService = new ImportService(_mockRequestService.Object, _mockCollectionService.Object, strategies);
+        _importService = new ImportService(_mockRequestService.Object, _mockCollectionService.Object, _mockEnvironmentService.Object, strategies);
         
         // Create a temporary test folder structure
         _testFolderPath = Path.Combine(Path.GetTempPath(), $"bruno_test_{Guid.NewGuid()}");
@@ -371,5 +373,492 @@ body:graphql {
         Assert.Equal(2, result.ImportedRequests.Count);
         Assert.Contains(result.ImportedRequests, r => r is RestRequest);
         Assert.Contains(result.ImportedRequests, r => r is GraphQLRequest);
+    }
+
+    [Fact]
+    public async Task ImportFromBrunoFolderAsync_WithEnvironmentsFolder_ShouldImportEnvironments()
+    {
+        // Arrange
+        var environmentsPath = Path.Combine(_testFolderPath, "environments");
+        Directory.CreateDirectory(environmentsPath);
+        
+        var devEnvContent = @"
+vars {
+  baseUrl: http://localhost:3000
+  apiKey: dev-key-123
+}
+
+vars:secret [
+  apiKey
+]";
+        
+        var prodEnvContent = @"
+vars {
+  baseUrl: https://api.production.com
+  apiKey: prod-key-456
+}
+
+vars:secret [
+  apiKey
+]";
+        
+        await File.WriteAllTextAsync(Path.Combine(environmentsPath, "development.bru"), devEnvContent);
+        await File.WriteAllTextAsync(Path.Combine(environmentsPath, "production.bru"), prodEnvContent);
+
+        _mockEnvironmentService
+            .Setup(s => s.CreateEnvironmentAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, string? desc) => new Domain.Entities.Environment 
+            { 
+                Id = Guid.NewGuid(), 
+                Name = name,
+                Description = desc,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        _mockEnvironmentService
+            .Setup(s => s.UpdateEnvironmentAsync(It.IsAny<Domain.Entities.Environment>()))
+            .ReturnsAsync((Domain.Entities.Environment env) => env);
+
+        // Act
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal(2, result.ImportedEnvironments.Count);
+        
+        var devEnv = result.ImportedEnvironments.FirstOrDefault(e => e.Name == "development");
+        Assert.NotNull(devEnv);
+        Assert.Equal("http://localhost:3000", devEnv.Variables["baseUrl"]);
+        Assert.Equal("dev-key-123", devEnv.Variables["apiKey"]);
+        Assert.Contains("apiKey", devEnv.SecretVariableNames);
+        
+        var prodEnv = result.ImportedEnvironments.FirstOrDefault(e => e.Name == "production");
+        Assert.NotNull(prodEnv);
+        Assert.Equal("https://api.production.com", prodEnv.Variables["baseUrl"]);
+        Assert.Equal("prod-key-456", prodEnv.Variables["apiKey"]);
+        Assert.Contains("apiKey", prodEnv.SecretVariableNames);
+    }
+
+    [Fact]
+    public async Task ImportFromBrunoFolderAsync_WithCollectionBru_ShouldImportCollectionVariables()
+    {
+        // Arrange
+        var collectionBruContent = @"
+vars {
+  collectionVar1: value1
+  sharedEndpoint: /api/v1
+}
+
+vars:secret [
+  collectionVar1
+]";
+        
+        await File.WriteAllTextAsync(Path.Combine(_testFolderPath, "collection.bru"), collectionBruContent);
+        
+        var brunoContent = @"
+meta {
+  name: Test Request
+  type: http
+}
+
+get {
+  url: https://api.example.com/test
+}";
+        
+        await File.WriteAllTextAsync(Path.Combine(_testFolderPath, "test.bru"), brunoContent);
+
+        var collectionId = Guid.NewGuid();
+        var mockCollection = new Collection 
+        { 
+            Id = collectionId, 
+            Name = Path.GetFileName(_testFolderPath),
+            Variables = new Dictionary<string, string>(),
+            SecretVariableNames = new HashSet<string>()
+        };
+        
+        _mockCollectionService
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()))
+            .ReturnsAsync(mockCollection);
+
+        _mockCollectionService
+            .Setup(s => s.UpdateCollectionAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        _mockRequestService
+            .Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Single(result.ImportedCollections);
+        
+        // Verify collection variables were parsed and updated
+        _mockCollectionService.Verify(s => s.UpdateCollectionAsync(
+            It.Is<Collection>(c => 
+                c.Variables.ContainsKey("collectionVar1") && 
+                c.Variables["collectionVar1"] == "value1" &&
+                c.Variables.ContainsKey("sharedEndpoint") &&
+                c.Variables["sharedEndpoint"] == "/api/v1" &&
+                c.SecretVariableNames.Contains("collectionVar1")
+            )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ImportFromBrunoFolderAsync_WithBrunoJson_ShouldUseCollectionName()
+    {
+        // Arrange
+        var brunoJsonContent = @"{
+  ""version"": ""1"",
+  ""name"": ""My API Collection"",
+  ""type"": ""collection""
+}";
+        
+        await File.WriteAllTextAsync(Path.Combine(_testFolderPath, "bruno.json"), brunoJsonContent);
+        
+        var brunoContent = @"
+meta {
+  name: Test Request
+  type: http
+}
+
+get {
+  url: https://api.example.com/test
+}";
+        
+        await File.WriteAllTextAsync(Path.Combine(_testFolderPath, "test.bru"), brunoContent);
+
+        var mockCollection = new Collection { Id = Guid.NewGuid(), Name = "My API Collection" };
+        
+        _mockCollectionService
+            .Setup(s => s.CreateCollectionAsync("My API Collection", null, It.IsAny<string>()))
+            .ReturnsAsync(mockCollection);
+
+        _mockRequestService
+            .Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
+
+        // Assert
+        Assert.True(result.Success);
+        _mockCollectionService.Verify(s => s.CreateCollectionAsync("My API Collection", null, It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ImportFromBrunoFolderAsync_WithEnvironmentsAndRequests_ShouldImportBoth()
+    {
+        // Arrange
+        var environmentsPath = Path.Combine(_testFolderPath, "environments");
+        Directory.CreateDirectory(environmentsPath);
+        
+        var envContent = @"
+vars {
+  baseUrl: http://localhost:3000
+}";
+        
+        await File.WriteAllTextAsync(Path.Combine(environmentsPath, "dev.bru"), envContent);
+        
+        var brunoContent = @"
+meta {
+  name: Test Request
+  type: http
+}
+
+get {
+  url: {{baseUrl}}/test
+}";
+        
+        await File.WriteAllTextAsync(Path.Combine(_testFolderPath, "test.bru"), brunoContent);
+
+        var collectionId = Guid.NewGuid();
+        _mockCollectionService
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), null, It.IsAny<string>()))
+            .ReturnsAsync(new Collection { Id = collectionId, Name = "Test" });
+
+        _mockEnvironmentService
+            .Setup(s => s.CreateEnvironmentAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, string? desc) => new Domain.Entities.Environment 
+            { 
+                Id = Guid.NewGuid(), 
+                Name = name,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        _mockEnvironmentService
+            .Setup(s => s.UpdateEnvironmentAsync(It.IsAny<Domain.Entities.Environment>()))
+            .ReturnsAsync((Domain.Entities.Environment env) => env);
+
+        _mockRequestService
+            .Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Single(result.ImportedEnvironments);
+        Assert.Single(result.ImportedRequests);
+        Assert.Single(result.ImportedCollections);
+    }
+
+    [Fact]
+    public async Task ImportFromBrunoFolderAsync_CompleteStructure_ShouldImportEverythingCorrectly()
+    {
+        // This is an integration test verifying the complete Bruno import workflow
+        // including environments, collection variables, and nested folder structure
+        
+        // Arrange - Create complete Bruno folder structure
+        var testPath = Path.Combine(Path.GetTempPath(), $"bruno_integration_{Guid.NewGuid()}");
+        Directory.CreateDirectory(testPath);
+        var environmentsPath = Path.Combine(testPath, "environments");
+        Directory.CreateDirectory(environmentsPath);
+        var apiV1Path = Path.Combine(testPath, "api", "v1");
+        Directory.CreateDirectory(apiV1Path);
+
+        try
+        {
+            // Create environments
+            await File.WriteAllTextAsync(Path.Combine(environmentsPath, "dev.bru"), @"
+vars {
+  baseUrl: http://localhost:3000
+  apiKey: dev-key
+}
+
+vars:secret [
+  apiKey
+]");
+
+            await File.WriteAllTextAsync(Path.Combine(environmentsPath, "prod.bru"), @"
+vars {
+  baseUrl: https://api.prod.com
+  apiKey: prod-key
+}
+
+vars:secret [
+  apiKey
+]");
+
+            // Create bruno.json for collection name
+            await File.WriteAllTextAsync(Path.Combine(testPath, "bruno.json"), @"{
+  ""version"": ""1"",
+  ""name"": ""Integration Test API"",
+  ""type"": ""collection""
+}");
+
+            // Create collection.bru for collection variables
+            await File.WriteAllTextAsync(Path.Combine(testPath, "collection.bru"), @"
+vars {
+  sharedVar: shared-value
+  endpoint: /api
+}
+
+vars:secret [
+  sharedVar
+]");
+
+            // Create request files
+            await File.WriteAllTextAsync(Path.Combine(apiV1Path, "get-user.bru"), @"
+meta {
+  name: Get User
+  type: http
+}
+
+get {
+  url: {{baseUrl}}{{endpoint}}/v1/users/123
+}
+
+headers {
+  Authorization: Bearer {{apiKey}}
+}");
+
+            await File.WriteAllTextAsync(Path.Combine(apiV1Path, "create-user.bru"), @"
+meta {
+  name: Create User
+  type: http
+}
+
+post {
+  url: {{baseUrl}}{{endpoint}}/v1/users
+}
+
+body:json {
+  {
+    ""name"": ""Test User""
+  }
+}");
+
+            // Setup mocks
+            _mockEnvironmentService
+                .Setup(s => s.CreateEnvironmentAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync((string name, string? desc) => new Domain.Entities.Environment 
+                { 
+                    Id = Guid.NewGuid(), 
+                    Name = name,
+                    Description = desc,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+            _mockEnvironmentService
+                .Setup(s => s.UpdateEnvironmentAsync(It.IsAny<Domain.Entities.Environment>()))
+                .ReturnsAsync((Domain.Entities.Environment env) => env);
+
+            _mockCollectionService
+                .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string>()))
+                .ReturnsAsync((string name, Guid? parentId, string? desc) => new Collection 
+                { 
+                    Id = Guid.NewGuid(), 
+                    Name = name,
+                    ParentCollectionId = parentId,
+                    Description = desc,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+            _mockCollectionService
+                .Setup(s => s.UpdateCollectionAsync(It.IsAny<Collection>()))
+                .ReturnsAsync((Collection c) => c);
+
+            _mockRequestService
+                .Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+                .ReturnsAsync((Request r) => r);
+
+            // Act
+            var result = await _importService.ImportFromBrunoFolderAsync(testPath);
+
+            // Assert
+            Assert.True(result.Success, $"Import failed: {result.ErrorMessage}");
+            
+            // Verify environments
+            Assert.Equal(2, result.ImportedEnvironments.Count);
+            var devEnv = result.ImportedEnvironments.FirstOrDefault(e => e.Name == "dev");
+            Assert.NotNull(devEnv);
+            Assert.Equal("http://localhost:3000", devEnv.Variables["baseUrl"]);
+            Assert.Equal("dev-key", devEnv.Variables["apiKey"]);
+            Assert.Contains("apiKey", devEnv.SecretVariableNames);
+
+            // Verify collections (root + api + v1)
+            Assert.Equal(3, result.ImportedCollections.Count);
+            var rootCollection = result.ImportedCollections.FirstOrDefault(c => c.Name == "Integration Test API");
+            Assert.NotNull(rootCollection);
+            
+            // Verify collection variables were parsed
+            _mockCollectionService.Verify(s => s.UpdateCollectionAsync(
+                It.Is<Collection>(c => 
+                    c.Variables.ContainsKey("sharedVar") &&
+                    c.Variables["sharedVar"] == "shared-value" &&
+                    c.Variables.ContainsKey("endpoint") &&
+                    c.Variables["endpoint"] == "/api" &&
+                    c.SecretVariableNames.Contains("sharedVar")
+                )), Times.AtLeastOnce);
+
+            // Verify requests
+            Assert.Equal(2, result.SuccessfulImports);
+            Assert.Equal(2, result.ImportedRequests.Count);
+            Assert.Empty(result.Warnings);
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(testPath))
+            {
+                Directory.Delete(testPath, true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ImportFromBrunoFolderAsync_WithDeeplyNestedSubfolders_ShouldImportAllRequests()
+    {
+        // This test reproduces the issue where requests in deeply nested subfolders are not imported
+        // Structure: root/Providers/SMS/send-sms.bru and root/Providers/Email/send-email.bru
+        
+        // Arrange
+        var environmentsPath = Path.Combine(_testFolderPath, "environments");
+        Directory.CreateDirectory(environmentsPath);
+        
+        var providersPath = Path.Combine(_testFolderPath, "Providers");
+        var smsPath = Path.Combine(providersPath, "SMS");
+        var emailPath = Path.Combine(providersPath, "Email");
+        Directory.CreateDirectory(smsPath);
+        Directory.CreateDirectory(emailPath);
+
+        // Create environment
+        await File.WriteAllTextAsync(Path.Combine(environmentsPath, "dev.bru"), @"
+vars {
+  baseUrl: http://localhost:3000
+}");
+
+        // Create requests in nested subfolders
+        await File.WriteAllTextAsync(Path.Combine(smsPath, "send-sms.bru"), @"
+meta {
+  name: Send SMS
+  type: http
+}
+
+post {
+  url: {{baseUrl}}/sms/send
+}");
+
+        await File.WriteAllTextAsync(Path.Combine(emailPath, "send-email.bru"), @"
+meta {
+  name: Send Email
+  type: http
+}
+
+post {
+  url: {{baseUrl}}/email/send
+}");
+
+        // Setup mocks
+        _mockEnvironmentService
+            .Setup(s => s.CreateEnvironmentAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, string? desc) => new Domain.Entities.Environment 
+            { 
+                Id = Guid.NewGuid(), 
+                Name = name,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        _mockEnvironmentService
+            .Setup(s => s.UpdateEnvironmentAsync(It.IsAny<Domain.Entities.Environment>()))
+            .ReturnsAsync((Domain.Entities.Environment env) => env);
+
+        _mockCollectionService
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, Guid? parentId, string? desc) => new Collection 
+            { 
+                Id = Guid.NewGuid(), 
+                Name = name,
+                ParentCollectionId = parentId,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        _mockCollectionService
+            .Setup(s => s.UpdateCollectionAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        _mockRequestService
+            .Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Single(result.ImportedEnvironments);
+        
+        // Should have imported both requests from nested subfolders
+        Assert.Equal(2, result.SuccessfulImports);
+        Assert.Equal(2, result.ImportedRequests.Count);
+        Assert.Equal(0, result.FailedImports);
+        
+        // Verify we have a "Send SMS" and "Send Email" request
+        Assert.Contains(result.ImportedRequests, r => r.Name.Contains("SMS") || r.Name.Contains("sms"));
+        Assert.Contains(result.ImportedRequests, r => r.Name.Contains("Email") || r.Name.Contains("email"));
     }
 }
