@@ -13,6 +13,7 @@ public class RequestServiceTests
     private readonly Mock<ICollectionService> _mockCollectionService;
     private readonly Mock<IRepository<Collection>> _mockCollectionRepository;
     private readonly Mock<IRequestExecutor> _mockExecutor;
+    private readonly Mock<IRequestExecutorFactory> _mockExecutorFactory;
     private readonly Mock<IVariableResolver> _mockVariableResolver;
     private readonly RequestService _service;
 
@@ -24,15 +25,20 @@ public class RequestServiceTests
         _mockCollectionService = new Mock<ICollectionService>();
         _mockCollectionRepository = new Mock<IRepository<Collection>>();
         _mockExecutor = new Mock<IRequestExecutor>();
+        _mockExecutorFactory = new Mock<IRequestExecutorFactory>();
         _mockVariableResolver = new Mock<IVariableResolver>();
-        var executors = new List<IRequestExecutor> { _mockExecutor.Object };
+        
+        // Setup factory to return mock executor
+        _mockExecutorFactory.Setup(f => f.GetExecutor(It.IsAny<Request>()))
+            .Returns(_mockExecutor.Object);
+        
         _service = new RequestService(
             _mockRepository.Object,
             _mockActiveEnvironmentService.Object,
             _mockEnvironmentService.Object,
             _mockCollectionService.Object,
             _mockCollectionRepository.Object,
-            executors,
+            _mockExecutorFactory.Object,
             _mockVariableResolver.Object);
     }
 
@@ -191,8 +197,6 @@ public class RequestServiceTests
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
-        _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
-            .Returns(true);
         _mockExecutor.Setup(e => e.ExecuteAsync(It.IsAny<Request>()))
             .ReturnsAsync(expectedResponse);
 
@@ -202,7 +206,7 @@ public class RequestServiceTests
         // Assert
         Assert.Equal(200, result.StatusCode);
         Assert.Equal("Success", result.Body);
-        _mockExecutor.Verify(e => e.CanExecute(It.IsAny<Request>()), Times.Once);
+        _mockExecutorFactory.Verify(f => f.GetExecutor(It.IsAny<Request>()), Times.Once);
         _mockExecutor.Verify(e => e.ExecuteAsync(It.IsAny<Request>()), Times.Once);
     }
 
@@ -226,8 +230,10 @@ public class RequestServiceTests
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
-        _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
-            .Returns(false);
+        
+        // Setup factory to throw exception when no executor is found
+        _mockExecutorFactory.Setup(f => f.GetExecutor(It.IsAny<Request>()))
+            .Throws(new NotSupportedException($"No executor found for request type: {request.Type}"));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<NotSupportedException>(() => _service.ExecuteRequestAsync(request));
@@ -408,13 +414,17 @@ public class RequestServiceTests
             .Callback<RequestHistoryEntry>(entry => capturedHistoryEntry = entry)
             .Returns(Task.CompletedTask);
         
+        var mockExecutorFactoryForHistory = new Mock<IRequestExecutorFactory>();
+        mockExecutorFactoryForHistory.Setup(f => f.GetExecutor(It.IsAny<Request>()))
+            .Returns(_mockExecutor.Object);
+        
         var serviceWithHistory = new RequestService(
             _mockRepository.Object,
             _mockActiveEnvironmentService.Object,
             _mockEnvironmentService.Object,
             _mockCollectionService.Object,
             _mockCollectionRepository.Object,
-            new List<IRequestExecutor> { _mockExecutor.Object },
+            mockExecutorFactoryForHistory.Object,
             _mockVariableResolver.Object,
             mockHistoryService.Object);
         

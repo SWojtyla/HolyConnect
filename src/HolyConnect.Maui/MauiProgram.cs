@@ -193,6 +193,7 @@ public static class MauiProgram
         builder.Services.AddScoped<IActiveEnvironmentService, ActiveEnvironmentService>();
         builder.Services.AddScoped<IEnvironmentService, EnvironmentService>();
         builder.Services.AddScoped<ICollectionService, CollectionService>();
+        builder.Services.AddScoped<IRequestExecutorFactory, RequestExecutorFactory>();
         builder.Services.AddScoped<IRequestService, RequestService>();
         builder.Services.AddScoped<IFlowService, FlowService>();
         builder.Services.AddScoped<IFormatterService, FormatterService>();
