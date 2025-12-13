@@ -7,17 +7,13 @@ namespace HolyConnect.Application.Services;
 /// <summary>
 /// Service for managing collections (independent of environments).
 /// </summary>
-public class CollectionService : ICollectionService
+public class CollectionService : CrudServiceBase<Collection>, ICollectionService
 {
-    private readonly IRepository<Collection> _collectionRepository;
-    private readonly ISecretVariablesService _secretVariablesService;
-
     public CollectionService(
         IRepository<Collection> collectionRepository,
         ISecretVariablesService secretVariablesService)
+        : base(collectionRepository, secretVariablesService)
     {
-        _collectionRepository = collectionRepository;
-        _secretVariablesService = secretVariablesService;
     }
 
     public async Task<Collection> CreateCollectionAsync(string name, Guid? parentCollectionId = null, string? description = null)
@@ -31,51 +27,64 @@ public class CollectionService : ICollectionService
             CreatedAt = DateTime.UtcNow
         };
 
-        return await _collectionRepository.AddAsync(collection);
+        return await Repository.AddAsync(collection);
     }
 
     public async Task<IEnumerable<Collection>> GetAllCollectionsAsync()
     {
-        return await _collectionRepository.GetAllAsync();
+        return await GetAllAsync();
     }
 
     public async Task<Collection?> GetCollectionByIdAsync(Guid id)
     {
-        var collection = await _collectionRepository.GetByIdAsync(id);
-        if (collection != null)
-        {
-            // Load secret variable values and merge them into the Variables dictionary
-            await SecretVariableHelper.LoadAndMergeSecretsAsync(
-                id,
-                collection.Variables,
-                _secretVariablesService.GetCollectionSecretsAsync);
-        }
-        return collection;
+        return await GetByIdAsync(id);
     }
 
     public async Task<Collection> UpdateCollectionAsync(Collection collection)
     {
-        // Separate secret and non-secret variables
-        var separated = SecretVariableHelper.SeparateVariables(
-            collection.Variables,
-            collection.SecretVariableNames);
-        
-        // Save secrets separately
-        await _secretVariablesService.SaveCollectionSecretsAsync(collection.Id, separated.SecretVariables);
-        
-        // Update collection with only non-secret variables
-        collection.Variables = separated.NonSecretVariables;
-        var result = await _collectionRepository.UpdateAsync(collection);
-        
-        // Restore all variables (including secrets) for the returned object
-        SecretVariableHelper.MergeSecretVariables(result.Variables, separated.SecretVariables);
-        
-        return result;
+        return await UpdateAsync(collection);
     }
 
     public async Task DeleteCollectionAsync(Guid id)
     {
-        await _secretVariablesService.DeleteCollectionSecretsAsync(id);
-        await _collectionRepository.DeleteAsync(id);
+        await DeleteAsync(id);
+    }
+
+    protected override Guid GetEntityId(Collection entity)
+    {
+        return entity.Id;
+    }
+
+    protected override Dictionary<string, string> GetEntityVariables(Collection entity)
+    {
+        return entity.Variables;
+    }
+
+    protected override void SetEntityVariables(Collection entity, Dictionary<string, string> variables)
+    {
+        entity.Variables = variables;
+    }
+
+    protected override HashSet<string> GetEntitySecretNames(Collection entity)
+    {
+        return entity.SecretVariableNames;
+    }
+
+    protected override async Task LoadAndMergeSecretsAsync(Guid id, Collection entity)
+    {
+        await SecretVariableHelper.LoadAndMergeSecretsAsync(
+            id,
+            entity.Variables,
+            SecretVariablesService.GetCollectionSecretsAsync);
+    }
+
+    protected override async Task SaveSecretsAsync(Guid id, Dictionary<string, string> secrets)
+    {
+        await SecretVariablesService.SaveCollectionSecretsAsync(id, secrets);
+    }
+
+    protected override async Task DeleteSecretsAsync(Guid id)
+    {
+        await SecretVariablesService.DeleteCollectionSecretsAsync(id);
     }
 }
