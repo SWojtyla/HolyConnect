@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 
@@ -5,17 +6,17 @@ namespace HolyConnect.Application.Services;
 
 /// <summary>
 /// Factory for selecting the appropriate request executor based on request type.
-/// Caches executors for better performance.
+/// Caches executors for better performance in a thread-safe manner.
 /// </summary>
 public class RequestExecutorFactory : IRequestExecutorFactory
 {
     private readonly IEnumerable<IRequestExecutor> _executors;
-    private readonly Dictionary<Type, IRequestExecutor> _executorCache;
+    private readonly ConcurrentDictionary<Type, IRequestExecutor> _executorCache;
 
     public RequestExecutorFactory(IEnumerable<IRequestExecutor> executors)
     {
         _executors = executors ?? throw new ArgumentNullException(nameof(executors));
-        _executorCache = new Dictionary<Type, IRequestExecutor>();
+        _executorCache = new ConcurrentDictionary<Type, IRequestExecutor>();
     }
 
     public IRequestExecutor GetExecutor(Request request)
@@ -27,23 +28,17 @@ public class RequestExecutorFactory : IRequestExecutorFactory
 
         var requestType = request.GetType();
 
-        // Check cache first
-        if (_executorCache.TryGetValue(requestType, out var cachedExecutor))
+        // GetOrAdd is thread-safe and ensures the factory function is only called once per key
+        return _executorCache.GetOrAdd(requestType, _ =>
         {
-            return cachedExecutor;
-        }
+            var executor = _executors.FirstOrDefault(e => e.CanExecute(request));
 
-        // Find executor that can handle this request type
-        var executor = _executors.FirstOrDefault(e => e.CanExecute(request));
+            if (executor == null)
+            {
+                throw new NotSupportedException($"No executor found for request type: {request.Type}");
+            }
 
-        if (executor == null)
-        {
-            throw new NotSupportedException($"No executor found for request type: {request.Type}");
-        }
-
-        // Cache the executor for this request type
-        _executorCache[requestType] = executor;
-
-        return executor;
+            return executor;
+        });
     }
 }
