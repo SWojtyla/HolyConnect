@@ -191,4 +191,24 @@ public class CollectionHierarchyHelperTests
         Assert.Single(resultRoot.SubCollections);
         Assert.Equal("Child", resultRoot.SubCollections.First().Name);
     }
+
+    [Fact]
+    public void BuildHierarchy_WithDuplicateIds_ShouldTakeFirstOccurrence()
+    {
+        // Arrange
+        var duplicateId = Guid.NewGuid();
+        
+        var collections = new List<Collection>
+        {
+            new Collection { Id = duplicateId, Name = "First", ParentCollectionId = null },
+            new Collection { Id = duplicateId, Name = "Duplicate", ParentCollectionId = null }
+        };
+
+        // Act
+        var result = CollectionHierarchyHelper.BuildHierarchy(collections);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("First", result.First().Name);
+    }
 }

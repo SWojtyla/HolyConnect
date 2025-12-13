@@ -16,16 +16,20 @@ public static class CollectionHierarchyHelper
     public static List<Collection> BuildHierarchy(IEnumerable<Collection> collections)
     {
         var collectionList = collections.ToList();
-        var collectionDict = collectionList.ToDictionary(c => c.Id);
+        
+        // Use GroupBy to handle potential duplicates, taking the first occurrence
+        var collectionDict = collectionList
+            .GroupBy(c => c.Id)
+            .ToDictionary(g => g.Key, g => g.First());
         
         // Clear existing subcollections to avoid duplicates
-        foreach (var collection in collectionList)
+        foreach (var collection in collectionDict.Values)
         {
             collection.SubCollections = new List<Collection>();
         }
         
         // Build the hierarchy by populating SubCollections
-        foreach (var collection in collectionList)
+        foreach (var collection in collectionDict.Values)
         {
             if (collection.ParentCollectionId.HasValue && 
                 collectionDict.TryGetValue(collection.ParentCollectionId.Value, out var parent))
@@ -35,7 +39,7 @@ public static class CollectionHierarchyHelper
         }
         
         // Return only root-level collections (those without a parent)
-        return collectionList.Where(c => !c.ParentCollectionId.HasValue).ToList();
+        return collectionDict.Values.Where(c => !c.ParentCollectionId.HasValue).ToList();
     }
     
     /// <summary>
