@@ -211,4 +211,85 @@ public class CollectionHierarchyHelperTests
         Assert.Single(result);
         Assert.Equal("First", result.First().Name);
     }
+
+    [Fact]
+    public void PopulateRequests_WithRequestsInCollections_ShouldPopulateRequestsProperty()
+    {
+        // Arrange
+        var collection1Id = Guid.NewGuid();
+        var collection2Id = Guid.NewGuid();
+        
+        var collections = new List<Collection>
+        {
+            new Collection { Id = collection1Id, Name = "Collection1", ParentCollectionId = null },
+            new Collection { Id = collection2Id, Name = "Collection2", ParentCollectionId = null }
+        };
+        
+        var requests = new List<Request>
+        {
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request1", CollectionId = collection1Id },
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request2", CollectionId = collection1Id },
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request3", CollectionId = collection2Id }
+        };
+
+        // Act
+        CollectionHierarchyHelper.PopulateRequests(collections, requests);
+
+        // Assert
+        var col1 = collections.First(c => c.Id == collection1Id);
+        var col2 = collections.First(c => c.Id == collection2Id);
+        
+        Assert.Equal(2, col1.Requests.Count);
+        Assert.Single(col2.Requests);
+        Assert.All(col1.Requests, r => Assert.Equal(collection1Id, r.CollectionId));
+        Assert.All(col2.Requests, r => Assert.Equal(collection2Id, r.CollectionId));
+    }
+
+    [Fact]
+    public void PopulateRequests_WithCollectionWithoutRequests_ShouldHaveEmptyList()
+    {
+        // Arrange
+        var collectionId = Guid.NewGuid();
+        
+        var collections = new List<Collection>
+        {
+            new Collection { Id = collectionId, Name = "EmptyCollection", ParentCollectionId = null }
+        };
+        
+        var requests = new List<Request>();
+
+        // Act
+        CollectionHierarchyHelper.PopulateRequests(collections, requests);
+
+        // Assert
+        var collection = collections.First();
+        Assert.NotNull(collection.Requests);
+        Assert.Empty(collection.Requests);
+    }
+
+    [Fact]
+    public void PopulateRequests_WithRequestsWithoutCollectionId_ShouldNotIncludeOrphans()
+    {
+        // Arrange
+        var collectionId = Guid.NewGuid();
+        
+        var collections = new List<Collection>
+        {
+            new Collection { Id = collectionId, Name = "Collection", ParentCollectionId = null }
+        };
+        
+        var requests = new List<Request>
+        {
+            new RestRequest { Id = Guid.NewGuid(), Name = "Request1", CollectionId = collectionId },
+            new RestRequest { Id = Guid.NewGuid(), Name = "OrphanRequest", CollectionId = null }
+        };
+
+        // Act
+        CollectionHierarchyHelper.PopulateRequests(collections, requests);
+
+        // Assert
+        var collection = collections.First();
+        Assert.Single(collection.Requests);
+        Assert.Equal("Request1", collection.Requests.First().Name);
+    }
 }

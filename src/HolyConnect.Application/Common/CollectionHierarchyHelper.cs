@@ -43,6 +43,26 @@ public static class CollectionHierarchyHelper
     }
     
     /// <summary>
+    /// Populates the Requests navigation property for each collection in the hierarchy.
+    /// </summary>
+    /// <param name="collections">Collections to populate</param>
+    /// <param name="requests">All requests to assign to collections</param>
+    public static void PopulateRequests(IEnumerable<Collection> collections, IEnumerable<Request> requests)
+    {
+        var requestsByCollectionId = requests
+            .Where(r => r.CollectionId.HasValue)
+            .GroupBy(r => r.CollectionId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        
+        foreach (var collection in collections)
+        {
+            collection.Requests = requestsByCollectionId.TryGetValue(collection.Id, out var collectionRequests)
+                ? collectionRequests
+                : new List<Request>();
+        }
+    }
+    
+    /// <summary>
     /// Gets all collections in a hierarchy including descendants.
     /// </summary>
     /// <param name="rootCollections">Root-level collections with hierarchy populated</param>
