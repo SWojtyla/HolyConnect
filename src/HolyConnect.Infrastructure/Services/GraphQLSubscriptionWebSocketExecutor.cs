@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using HolyConnect.Infrastructure.Common;
 using System.Net.WebSockets;
 using System.Text;
@@ -28,13 +27,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             throw new ArgumentException("Request must be of type GraphQLRequest", nameof(request));
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        var response = new RequestResponse
-        {
-            Timestamp = DateTime.UtcNow,
-            IsStreaming = true
-        };
-
+        var builder = RequestResponseBuilder.CreateStreaming();
         ClientWebSocket? webSocket = null;
 
         try
@@ -72,17 +65,14 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                 QueryParameters = new Dictionary<string, string>()
             };
 
-            response.SentRequest = sentRequest;
+            builder.WithSentRequest(sentRequest);
 
             // Add warning about failed headers if any
             if (failedHeaders.Count > 0)
             {
-                response.StreamEvents.Add(new StreamEvent
-                {
-                    Timestamp = DateTime.UtcNow,
-                    Data = $"Warning: Failed to set {failedHeaders.Count} header(s): {string.Join(", ", failedHeaders)}",
-                    EventType = "warning"
-                });
+                builder.AddStreamEvent(
+                    $"Warning: Failed to set {failedHeaders.Count} header(s): {string.Join(", ", failedHeaders)}",
+                    "warning");
             }
 
             // Convert HTTP/HTTPS URL to WS/WSS
@@ -90,26 +80,19 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             var uri = new Uri(wsUrl);
             await webSocket.ConnectAsync(uri, CancellationToken.None);
 
-            stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = 101;
-            response.StatusMessage = "WebSocket connection established";
+            builder.StopTiming()
+                .WithStatus(101, "WebSocket connection established");
 
             // Send connection_init message (graphql-transport-ws protocol)
             await WebSocketHelper.SendJsonMessageAsync(webSocket, new { type = "connection_init" });
-            response.StreamEvents.Add(new StreamEvent
-            {
-                Timestamp = DateTime.UtcNow,
-                Data = "Sent: connection_init",
-                EventType = "sent"
-            });
+            builder.AddStreamEvent("Sent: connection_init", "sent");
 
             // Wait for connection_ack
-            var ackReceived = await WaitForConnectionAck(webSocket, response);
+            var ackReceived = await WaitForConnectionAck(webSocket, builder);
             if (!ackReceived)
             {
-                response.StatusMessage = "Failed to receive connection_ack";
-                return response;
+                builder.WithStatus(101, "Failed to receive connection_ack");
+                return builder.Build();
             }
 
             // Send subscribe message
@@ -121,12 +104,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             };
 
             await WebSocketHelper.SendJsonMessageAsync(webSocket, subscribeMessage);
-            response.StreamEvents.Add(new StreamEvent
-            {
-                Timestamp = DateTime.UtcNow,
-                Data = $"Sent: subscribe with query",
-                EventType = "sent"
-            });
+            builder.AddStreamEvent($"Sent: subscribe with query", "sent");
 
             // Receive subscription events
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(DefaultTimeoutSeconds));
@@ -157,12 +135,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                             "Client closing",
                             CancellationToken.None);
 
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = "Connection closed by server",
-                            EventType = "close"
-                        });
+                        builder.AddStreamEvent("Connection closed by server", "close");
                         break;
                     }
 
@@ -173,67 +146,42 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                     if (messageType == "next")
                     {
                         var data = messageObj["payload"]?.ToString(Formatting.Indented) ?? fullMessage;
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = data,
-                            EventType = "data"
-                        });
+                        builder.AddStreamEvent(data, "data");
                     }
                     else if (messageType == "complete")
                     {
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = "Subscription completed",
-                            EventType = "complete"
-                        });
+                        builder.AddStreamEvent("Subscription completed", "complete");
                         break;
                     }
                     else if (messageType == "error")
                     {
                         var errors = messageObj["payload"]?.ToString(Formatting.Indented) ?? fullMessage;
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = $"Error: {errors}",
-                            EventType = "error"
-                        });
+                        builder.AddStreamEvent($"Error: {errors}", "error");
                     }
                     else
                     {
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = fullMessage,
-                            EventType = messageType ?? "unknown"
-                        });
+                        builder.AddStreamEvent(fullMessage, messageType ?? "unknown");
                     }
                 }
                 catch (OperationCanceledException)
                 {
-                    response.StreamEvents.Add(new StreamEvent
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        Data = "Timeout reached, closing connection",
-                        EventType = "timeout"
-                    });
+                    builder.AddStreamEvent("Timeout reached, closing connection", "timeout");
                     break;
                 }
             }
 
             // Build response body from all events
-            ResponseHelper.FinalizeStreamingResponse(response);
+            builder.FinalizeStreaming();
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
+            builder.WithException(ex);
         }
         finally
         {
             if (webSocket != null)
             {
+                var response = builder.Build();
                 if (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseReceived)
                 {
                     try
@@ -244,12 +192,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                     catch (Exception ex)
                     {
                         // Ignore errors when sending complete message, but log to response for diagnostics
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = $"Warning: Failed to send complete message: {ex.Message}",
-                            EventType = "warning"
-                        });
+                        builder.AddStreamEvent($"Warning: Failed to send complete message: {ex.Message}", "warning");
                     }
                 }
                 await WebSocketHelper.SafeCloseAsync(webSocket, response);
@@ -257,10 +200,10 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             }
         }
 
-        return response;
+        return builder.Build();
     }
 
-    private async Task<bool> WaitForConnectionAck(ClientWebSocket webSocket, RequestResponse response)
+    private async Task<bool> WaitForConnectionAck(ClientWebSocket webSocket, RequestResponseBuilder builder)
     {
         var buffer = new byte[MaxBufferSize];
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -275,12 +218,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             var messageObj = JObject.Parse(message);
             var messageType = messageObj["type"]?.ToString();
 
-            response.StreamEvents.Add(new StreamEvent
-            {
-                Timestamp = DateTime.UtcNow,
-                Data = $"Received: {messageType}",
-                EventType = "received"
-            });
+            builder.AddStreamEvent($"Received: {messageType}", "received");
 
             return messageType == "connection_ack";
         }
