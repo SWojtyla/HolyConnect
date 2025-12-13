@@ -122,7 +122,7 @@
             <RequestEditor Request="@_selectedRequest" 
                          Environment="@_activeEnvironment" 
                          Collection="@_selectedRequestCollection"
-                         OnSave="HandleRequestUpdated" />
+                         OnSave="HandleRequestSaved" />
         }
         else if (_collection != null)
         {
@@ -408,16 +408,76 @@
         }
     }
 
-    private void HandleCollectionUpdated()
+    private void HandleCollectionUpdated((Guid CollectionId, string NewName, bool IsDelete) updateInfo)
     {
         Task.Run(async () =>
         {
-            await LoadData();
-            await InvokeAsync(StateHasChanged);
+            try
+            {
+                if (updateInfo.IsDelete)
+                {
+                    await CollectionService.DeleteCollectionAsync(updateInfo.CollectionId);
+                    Snackbar.Add("Collection deleted", Severity.Success);
+                }
+                else if (!string.IsNullOrWhiteSpace(updateInfo.NewName))
+                {
+                    var collection = await CollectionService.GetCollectionByIdAsync(updateInfo.CollectionId);
+                    if (collection != null)
+                    {
+                        collection.Name = updateInfo.NewName;
+                        await CollectionService.UpdateCollectionAsync(collection);
+                        Snackbar.Add("Collection renamed", Severity.Success);
+                    }
+                }
+                
+                await LoadData();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating collection: {ex.Message}", Severity.Error);
+            }
         });
     }
 
-    private void HandleRequestUpdated()
+    private void HandleRequestUpdated((Guid RequestId, string NewName, bool IsDelete) updateInfo)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                if (updateInfo.IsDelete)
+                {
+                    await RequestService.DeleteRequestAsync(updateInfo.RequestId);
+                    Snackbar.Add("Request deleted", Severity.Success);
+                    
+                    if (_selectedRequest?.Id == updateInfo.RequestId)
+                    {
+                        _selectedRequest = null;
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(updateInfo.NewName))
+                {
+                    var request = await RequestService.GetRequestByIdAsync(updateInfo.RequestId);
+                    if (request != null)
+                    {
+                        request.Name = updateInfo.NewName;
+                        await RequestService.UpdateRequestAsync(request);
+                        Snackbar.Add("Request renamed", Severity.Success);
+                    }
+                }
+                
+                await LoadData();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating request: {ex.Message}", Severity.Error);
+            }
+        });
+    }
+    
+    private void HandleRequestSaved()
     {
         Task.Run(async () =>
         {
