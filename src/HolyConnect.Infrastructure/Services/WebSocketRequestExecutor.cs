@@ -150,7 +150,8 @@ public class WebSocketRequestExecutor : IRequestExecutor
             }
         }
 
-        return response ?? builder.Build();
+        // Response is guaranteed to be set in the finally block if webSocket was created
+        return response!;
     }
 
 }

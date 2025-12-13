@@ -205,7 +205,8 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             }
         }
 
-        return response ?? builder.Build();
+        // Response is guaranteed to be set in the finally block if webSocket was created
+        return response!;
     }
 
     private async Task<bool> WaitForConnectionAck(ClientWebSocket webSocket, RequestResponseBuilder builder)
