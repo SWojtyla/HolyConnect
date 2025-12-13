@@ -29,6 +29,7 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
 
         var builder = RequestResponseBuilder.CreateStreaming();
         ClientWebSocket? webSocket = null;
+        RequestResponse? response = null;
 
         try
         {
@@ -195,13 +196,13 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                     }
                 }
                 
-                var response = builder.Build();
+                response = builder.Build();
                 await WebSocketHelper.SafeCloseAsync(webSocket, response);
                 webSocket.Dispose();
             }
         }
 
-        return builder.Build();
+        return response ?? builder.Build();
     }
 
     private async Task<bool> WaitForConnectionAck(ClientWebSocket webSocket, RequestResponseBuilder builder)
