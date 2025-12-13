@@ -166,117 +166,191 @@ public class FlowService : IFlowService
         Dictionary<string, string> flowVariables,
         CancellationToken cancellationToken)
     {
-        var stepResult = new FlowStepResult
-        {
-            StepId = step.Id,
-            StepOrder = step.Order,
-            StartedAt = DateTime.UtcNow,
-            Status = FlowStepStatus.Running
-        };
+        var stepResult = CreateStepResult(step);
 
         try
         {
             // Check if step is enabled
             if (!step.IsEnabled)
             {
-                stepResult.Status = FlowStepStatus.Skipped;
-                stepResult.CompletedAt = DateTime.UtcNow;
-                return stepResult;
+                return MarkStepAsSkipped(stepResult);
             }
 
             // Apply delay if specified
-            if (step.DelayBeforeExecutionMs.HasValue && step.DelayBeforeExecutionMs.Value > 0)
-            {
-                await Task.Delay(step.DelayBeforeExecutionMs.Value, cancellationToken);
-            }
+            await ApplyStepDelayAsync(step, cancellationToken);
 
             // Get the request
-            var request = await _requestRepository.GetByIdAsync(step.RequestId);
-            if (request == null)
-            {
-                throw new InvalidOperationException($"Request with ID {step.RequestId} not found.");
-            }
+            var request = await GetStepRequestAsync(step, stepResult);
 
-            stepResult.RequestName = request.Name;
-            stepResult.RequestId = request.Id;
-
-            // Temporarily update environment/collection variables with flow variables
-            var originalEnvVariables = new Dictionary<string, string>(environment.Variables);
-            var originalCollectionVariables = collection != null 
-                ? new Dictionary<string, string>(collection.Variables) 
-                : null;
-
-            try
-            {
-                // Merge flow variables into environment (temporary)
-                foreach (var kvp in flowVariables)
-                {
-                    environment.Variables[kvp.Key] = kvp.Value;
-                }
-
-                // Execute the request
-                var response = await _requestService.ExecuteRequestAsync(request);
-                stepResult.Response = response;
-
-                // Extract the current state of variables after request execution
-                // (RequestService may have updated them through ResponseExtractions)
-                foreach (var kvp in environment.Variables)
-                {
-                    flowVariables[kvp.Key] = kvp.Value;
-                }
-                if (collection != null)
-                {
-                    foreach (var kvp in collection.Variables)
-                    {
-                        flowVariables[kvp.Key] = kvp.Value;
-                    }
-                }
-
-                // Check if the response status code indicates success
-                if (HttpStatusCodeHelper.IsSuccessStatusCode(response.StatusCode))
-                {
-                    stepResult.Status = FlowStepStatus.Success;
-                }
-                else if (response.StatusCode == 0)
-                {
-                    // Status code 0 indicates an error (network error, exception, etc.)
-                    // This should be handled as a failure
-                    throw new HttpRequestException($"Request failed: {response.StatusMessage}");
-                }
-                else
-                {
-                    // Non-success HTTP status codes (4xx, 5xx, etc.) should be treated as failures
-                    throw new HttpRequestException($"Request failed with status code {response.StatusCode}: {response.StatusMessage}");
-                }
-            }
-            finally
-            {
-                // Restore original variables
-                environment.Variables = originalEnvVariables;
-                if (collection != null && originalCollectionVariables != null)
-                {
-                    collection.Variables = originalCollectionVariables;
-                }
-            }
+            // Execute request with temporary variable context
+            await ExecuteRequestWithVariablesAsync(
+                request, 
+                stepResult, 
+                environment, 
+                collection, 
+                flowVariables);
 
             stepResult.CompletedAt = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
-            stepResult.ErrorMessage = ex.Message;
-            
-            if (step.ContinueOnError)
-            {
-                stepResult.Status = FlowStepStatus.FailedContinued;
-            }
-            else
-            {
-                stepResult.Status = FlowStepStatus.Failed;
-            }
-            
-            stepResult.CompletedAt = DateTime.UtcNow;
+            HandleStepError(stepResult, step, ex);
         }
 
         return stepResult;
+    }
+
+    private FlowStepResult CreateStepResult(FlowStep step)
+    {
+        return new FlowStepResult
+        {
+            StepId = step.Id,
+            StepOrder = step.Order,
+            StartedAt = DateTime.UtcNow,
+            Status = FlowStepStatus.Running
+        };
+    }
+
+    private FlowStepResult MarkStepAsSkipped(FlowStepResult stepResult)
+    {
+        stepResult.Status = FlowStepStatus.Skipped;
+        stepResult.CompletedAt = DateTime.UtcNow;
+        return stepResult;
+    }
+
+    private async Task ApplyStepDelayAsync(FlowStep step, CancellationToken cancellationToken)
+    {
+        if (step.DelayBeforeExecutionMs.HasValue && step.DelayBeforeExecutionMs.Value > 0)
+        {
+            await Task.Delay(step.DelayBeforeExecutionMs.Value, cancellationToken);
+        }
+    }
+
+    private async Task<Request> GetStepRequestAsync(FlowStep step, FlowStepResult stepResult)
+    {
+        var request = await _requestRepository.GetByIdAsync(step.RequestId);
+        if (request == null)
+        {
+            throw new InvalidOperationException($"Request with ID {step.RequestId} not found.");
+        }
+
+        stepResult.RequestName = request.Name;
+        stepResult.RequestId = request.Id;
+        
+        return request;
+    }
+
+    private async Task ExecuteRequestWithVariablesAsync(
+        Request request,
+        FlowStepResult stepResult,
+        Domain.Entities.Environment environment,
+        Collection? collection,
+        Dictionary<string, string> flowVariables)
+    {
+        // Save original state
+        var originalEnvVariables = new Dictionary<string, string>(environment.Variables);
+        var originalCollectionVariables = collection != null 
+            ? new Dictionary<string, string>(collection.Variables) 
+            : null;
+
+        try
+        {
+            // Merge flow variables into environment (temporary)
+            MergeFlowVariables(environment, collection, flowVariables);
+
+            // Execute the request
+            var response = await _requestService.ExecuteRequestAsync(request);
+            stepResult.Response = response;
+
+            // Extract updated variables after request execution
+            UpdateFlowVariablesFromResponse(environment, collection, flowVariables);
+
+            // Validate response status
+            ValidateResponseStatus(response, stepResult);
+        }
+        finally
+        {
+            // Restore original variables
+            RestoreOriginalVariables(environment, collection, originalEnvVariables, originalCollectionVariables);
+        }
+    }
+
+    private void MergeFlowVariables(
+        Domain.Entities.Environment environment,
+        Collection? collection,
+        Dictionary<string, string> flowVariables)
+    {
+        foreach (var kvp in flowVariables)
+        {
+            environment.Variables[kvp.Key] = kvp.Value;
+        }
+    }
+
+    private void UpdateFlowVariablesFromResponse(
+        Domain.Entities.Environment environment,
+        Collection? collection,
+        Dictionary<string, string> flowVariables)
+    {
+        // Extract the current state of variables after request execution
+        // (RequestService may have updated them through ResponseExtractions)
+        foreach (var kvp in environment.Variables)
+        {
+            flowVariables[kvp.Key] = kvp.Value;
+        }
+        
+        if (collection != null)
+        {
+            foreach (var kvp in collection.Variables)
+            {
+                flowVariables[kvp.Key] = kvp.Value;
+            }
+        }
+    }
+
+    private void ValidateResponseStatus(RequestResponse response, FlowStepResult stepResult)
+    {
+        if (HttpStatusCodeHelper.IsSuccessStatusCode(response.StatusCode))
+        {
+            stepResult.Status = FlowStepStatus.Success;
+            return;
+        }
+        
+        if (response.StatusCode == 0)
+        {
+            // Status code 0 indicates an error (network error, exception, etc.)
+            throw new HttpRequestException($"Request failed: {response.StatusMessage}");
+        }
+        
+        // Non-success HTTP status codes (4xx, 5xx, etc.) should be treated as failures
+        throw new HttpRequestException($"Request failed with status code {response.StatusCode}: {response.StatusMessage}");
+    }
+
+    private void RestoreOriginalVariables(
+        Domain.Entities.Environment environment,
+        Collection? collection,
+        Dictionary<string, string> originalEnvVariables,
+        Dictionary<string, string>? originalCollectionVariables)
+    {
+        environment.Variables = originalEnvVariables;
+        if (collection != null && originalCollectionVariables != null)
+        {
+            collection.Variables = originalCollectionVariables;
+        }
+    }
+
+    private void HandleStepError(FlowStepResult stepResult, FlowStep step, Exception ex)
+    {
+        stepResult.ErrorMessage = ex.Message;
+        
+        if (step.ContinueOnError)
+        {
+            stepResult.Status = FlowStepStatus.FailedContinued;
+        }
+        else
+        {
+            stepResult.Status = FlowStepStatus.Failed;
+        }
+        
+        stepResult.CompletedAt = DateTime.UtcNow;
     }
 }
