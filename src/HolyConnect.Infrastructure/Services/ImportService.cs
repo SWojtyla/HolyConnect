@@ -273,11 +273,7 @@ public class ImportService : IImportService
         var subFolders = Directory.GetDirectories(folderPath);
         
         // Skip the environments folder - it's already processed at the root level
-        if (!isRootFolder)
-        {
-            subFolders = subFolders.Where(f => !Path.GetFileName(f).Equals("environments", StringComparison.OrdinalIgnoreCase)).ToArray();
-        }
-        else
+        if (isRootFolder)
         {
             subFolders = subFolders.Where(f => !Path.GetFileName(f).Equals("environments", StringComparison.OrdinalIgnoreCase)).ToArray();
         }

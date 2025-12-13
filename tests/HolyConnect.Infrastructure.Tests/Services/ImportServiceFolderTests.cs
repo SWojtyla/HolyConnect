@@ -769,4 +769,96 @@ body:json {
             }
         }
     }
+
+    [Fact]
+    public async Task ImportFromBrunoFolderAsync_WithDeeplyNestedSubfolders_ShouldImportAllRequests()
+    {
+        // This test reproduces the issue where requests in deeply nested subfolders are not imported
+        // Structure: root/Providers/SMS/send-sms.bru and root/Providers/Email/send-email.bru
+        
+        // Arrange
+        var environmentsPath = Path.Combine(_testFolderPath, "environments");
+        Directory.CreateDirectory(environmentsPath);
+        
+        var providersPath = Path.Combine(_testFolderPath, "Providers");
+        var smsPath = Path.Combine(providersPath, "SMS");
+        var emailPath = Path.Combine(providersPath, "Email");
+        Directory.CreateDirectory(smsPath);
+        Directory.CreateDirectory(emailPath);
+
+        // Create environment
+        await File.WriteAllTextAsync(Path.Combine(environmentsPath, "dev.bru"), @"
+vars {
+  baseUrl: http://localhost:3000
+}");
+
+        // Create requests in nested subfolders
+        await File.WriteAllTextAsync(Path.Combine(smsPath, "send-sms.bru"), @"
+meta {
+  name: Send SMS
+  type: http
+}
+
+post {
+  url: {{baseUrl}}/sms/send
+}");
+
+        await File.WriteAllTextAsync(Path.Combine(emailPath, "send-email.bru"), @"
+meta {
+  name: Send Email
+  type: http
+}
+
+post {
+  url: {{baseUrl}}/email/send
+}");
+
+        // Setup mocks
+        _mockEnvironmentService
+            .Setup(s => s.CreateEnvironmentAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, string? desc) => new Domain.Entities.Environment 
+            { 
+                Id = Guid.NewGuid(), 
+                Name = name,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        _mockEnvironmentService
+            .Setup(s => s.UpdateEnvironmentAsync(It.IsAny<Domain.Entities.Environment>()))
+            .ReturnsAsync((Domain.Entities.Environment env) => env);
+
+        _mockCollectionService
+            .Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, Guid? parentId, string? desc) => new Collection 
+            { 
+                Id = Guid.NewGuid(), 
+                Name = name,
+                ParentCollectionId = parentId,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        _mockCollectionService
+            .Setup(s => s.UpdateCollectionAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        _mockRequestService
+            .Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _importService.ImportFromBrunoFolderAsync(_testFolderPath);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Single(result.ImportedEnvironments);
+        
+        // Should have imported both requests from nested subfolders
+        Assert.Equal(2, result.SuccessfulImports);
+        Assert.Equal(2, result.ImportedRequests.Count);
+        Assert.Equal(0, result.FailedImports);
+        
+        // Verify we have a "Send SMS" and "Send Email" request
+        Assert.Contains(result.ImportedRequests, r => r.Name.Contains("SMS") || r.Name.Contains("sms"));
+        Assert.Contains(result.ImportedRequests, r => r.Name.Contains("Email") || r.Name.Contains("email"));
+    }
 }
