@@ -22,27 +22,56 @@
             </div>
             
             <MudTabs Class="mt-2" Elevation="2" Rounded="true" Style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" PanelClass="d-flex flex-column flex-grow-1 overflow-hidden">
-                <MudTabPanel Text="Body" Style="height: 100%;">
-                    <div class="pa-4 d-flex flex-column" style="height: 100%;">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Language: @_responseLanguage</MudText>
-                            <MudButton Variant="Variant.Outlined" 
-                                       Color="Color.Primary" 
-                                       Size="Size.Small" 
-                                       StartIcon="@Icons.Material.Filled.AutoFixHigh"
-                                       OnClick="PrettifyResponseBody">
-                                Format
-                            </MudButton>
-                        </MudStack>
-                        <div style="flex: 1; min-height: 0; overflow: hidden;">
-                             <CodeEditor @ref="_codeEditor"
-                                         @bind-Value="_responseBodyDisplay"
-                                         Language="@_responseLanguage" 
-                                         ReadOnly="true" 
-                                         Height="100%" />
+                @if (Response.IsStreaming)
+                {
+                    <MudTabPanel Text="Messages" Style="height: 100%;">
+                        <div class="pa-4 d-flex flex-column" style="height: 100%;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Events: @Response.StreamEvents.Count</MudText>
+                                <MudCheckBox @bind-Value="_autoScroll" Label="Auto-scroll" Color="Color.Primary" Dense="true" />
+                            </MudStack>
+                            <MudPaper Class="pa-2" Elevation="1" Style="flex: 1; overflow-y: auto; background-color: var(--mud-palette-surface);">
+                                @foreach (var evt in Response.StreamEvents)
+                                {
+                                    <div class="mb-2">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            [@evt.Timestamp.ToString("HH:mm:ss.fff")] 
+                                            @if (!string.IsNullOrEmpty(evt.EventType))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="@GetEventTypeColor(evt.EventType)" Variant="Variant.Text">@evt.EventType</MudChip>
+                                            }
+                                        </MudText>
+                                        <MudText Typo="Typo.body2" Style="font-family: monospace; white-space: pre-wrap; word-break: break-word;">@evt.Data</MudText>
+                                    </div>
+                                }
+                            </MudPaper>
                         </div>
-                    </div>
-                </MudTabPanel>
+                    </MudTabPanel>
+                }
+                else
+                {
+                    <MudTabPanel Text="Body" Style="height: 100%;">
+                        <div class="pa-4 d-flex flex-column" style="height: 100%;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Language: @_responseLanguage</MudText>
+                                <MudButton Variant="Variant.Outlined" 
+                                           Color="Color.Primary" 
+                                           Size="Size.Small" 
+                                           StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                           OnClick="PrettifyResponseBody">
+                                    Format
+                                </MudButton>
+                            </MudStack>
+                            <div style="flex: 1; min-height: 0; overflow: hidden;">
+                                 <CodeEditor @ref="_codeEditor"
+                                             @bind-Value="_responseBodyDisplay"
+                                             Language="@_responseLanguage" 
+                                             ReadOnly="true" 
+                                             Height="100%" />
+                            </div>
+                        </div>
+                    </MudTabPanel>
+                }
                 
                 <MudTabPanel Text="Headers" Style="height: 100%;">
                     <div class="pa-4" style="height: 100%; overflow-y: auto;">
@@ -152,6 +181,7 @@
     private bool _extractionError = false;
     private CodeEditor? _codeEditor;
     private string _responseLanguage = "json";
+    private bool _autoScroll = true;
 
     protected override void OnParametersSet()
     {
@@ -300,5 +330,19 @@
         {
             Snackbar.Add($"Failed to copy to clipboard: {ex.Message}", Severity.Error);
         }
+    }
+
+    private Color GetEventTypeColor(string? eventType)
+    {
+        return eventType?.ToLowerInvariant() switch
+        {
+            "message" => Color.Primary,
+            "sent" => Color.Info,
+            "error" => Color.Error,
+            "warning" => Color.Warning,
+            "close" => Color.Secondary,
+            "timeout" => Color.Warning,
+            _ => Color.Default
+        };
     }
 }
