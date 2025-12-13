@@ -9,18 +9,20 @@ namespace HolyConnect.Infrastructure.Tests.Services;
 public class ImportServiceTests
 {
     private readonly Mock<IRequestService> _mockRequestService;
+    private readonly Mock<IEnvironmentService> _mockEnvironmentService;
     private readonly ImportService _service;
 
     public ImportServiceTests()
     {
         _mockRequestService = new Mock<IRequestService>();
         var mockCollectionService = new Mock<ICollectionService>();
+        _mockEnvironmentService = new Mock<IEnvironmentService>();
         var strategies = new List<IImportStrategy>
         {
             new CurlImportStrategy(),
             new BrunoImportStrategy()
         };
-        _service = new ImportService(_mockRequestService.Object, mockCollectionService.Object, strategies);
+        _service = new ImportService(_mockRequestService.Object, mockCollectionService.Object, _mockEnvironmentService.Object, strategies);
     }
 
     [Fact]

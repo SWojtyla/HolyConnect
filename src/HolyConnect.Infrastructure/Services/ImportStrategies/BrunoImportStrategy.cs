@@ -69,6 +69,8 @@ public class BrunoImportStrategy : IImportStrategy
         string? currentSection = null;
         var currentContent = new System.Text.StringBuilder();
         int braceDepth = 0;
+        int bracketDepth = 0;
+        bool isArraySection = false;
         
         foreach (var line in lines)
         {
@@ -78,9 +80,8 @@ public class BrunoImportStrategy : IImportStrategy
             if (trimmedLine.StartsWith("//"))
                 continue;
             
-            // Check if this is a section header (e.g., "meta {", "headers {", "body:json {")
-            // Only when we're not inside a section (braceDepth == 0)
-            if (braceDepth == 0 && trimmedLine.EndsWith('{') && !string.IsNullOrWhiteSpace(trimmedLine))
+            // Check if this is a section header with braces (e.g., "meta {", "headers {", "body:json {")
+            if (braceDepth == 0 && bracketDepth == 0 && trimmedLine.EndsWith('{') && !string.IsNullOrWhiteSpace(trimmedLine))
             {
                 // Save previous section if exists
                 if (currentSection != null)
@@ -92,27 +93,46 @@ public class BrunoImportStrategy : IImportStrategy
                 currentSection = trimmedLine.TrimEnd('{').Trim();
                 currentContent.Clear();
                 braceDepth = 1;
+                isArraySection = false;
+            }
+            // Check if this is a section header with brackets (e.g., "vars:secret [")
+            else if (braceDepth == 0 && bracketDepth == 0 && trimmedLine.EndsWith('[') && !string.IsNullOrWhiteSpace(trimmedLine))
+            {
+                // Save previous section if exists
+                if (currentSection != null)
+                {
+                    sections[currentSection] = currentContent.ToString().Trim();
+                }
+                
+                // Start new section
+                currentSection = trimmedLine.TrimEnd('[').Trim();
+                currentContent.Clear();
+                bracketDepth = 1;
+                isArraySection = true;
             }
             else if (currentSection != null)
             {
-                // Count braces to track nesting depth
+                // Count braces/brackets to track nesting depth
                 foreach (char c in line)
                 {
                     if (c == '{') braceDepth++;
                     else if (c == '}') braceDepth--;
+                    else if (c == '[') bracketDepth++;
+                    else if (c == ']') bracketDepth--;
                 }
                 
                 // If we're back to depth 0, the section is complete
-                if (braceDepth == 0)
+                if ((isArraySection && bracketDepth == 0) || (!isArraySection && braceDepth == 0))
                 {
                     sections[currentSection] = currentContent.ToString().Trim();
                     currentSection = null;
                     currentContent.Clear();
+                    isArraySection = false;
                 }
                 else
                 {
-                    // Add content to current section (but not the closing brace line if it closes the section)
-                    if (braceDepth > 0)
+                    // Add content to current section (but not the closing bracket/brace line if it closes the section)
+                    if (braceDepth > 0 || bracketDepth > 0)
                     {
                         currentContent.AppendLine(line);
                     }
@@ -351,5 +371,162 @@ public class BrunoImportStrategy : IImportStrategy
         }
         
         return (null, BodyType.None, null);
+    }
+
+    /// <summary>
+    /// Parse a Bruno environment file (.bru file in environments/ folder)
+    /// </summary>
+    /// <param name="content">Content of the .bru environment file</param>
+    /// <param name="environmentName">Name for the environment (typically from filename)</param>
+    /// <returns>Parsed Environment object or null if parsing fails</returns>
+    public Domain.Entities.Environment? ParseEnvironment(string content, string environmentName)
+    {
+        try
+        {
+            content = content.Trim();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return null;
+            }
+
+            var sections = ParseBrunoSections(content);
+            
+            // Create environment
+            var environment = new Domain.Entities.Environment
+            {
+                Id = Guid.NewGuid(),
+                Name = environmentName,
+                CreatedAt = DateTime.UtcNow,
+                Variables = new Dictionary<string, string>(),
+                SecretVariableNames = new HashSet<string>()
+            };
+
+            // Extract variables from vars section
+            if (sections.TryGetValue("vars", out var varsContent))
+            {
+                environment.Variables = ParseBrunoVariables(varsContent);
+            }
+
+            // Extract secret variable names from vars:secret section
+            if (sections.TryGetValue("vars:secret", out var secretsContent))
+            {
+                var secretVars = ParseBrunoSecretVariables(secretsContent);
+                foreach (var secretVar in secretVars)
+                {
+                    environment.SecretVariableNames.Add(secretVar);
+                }
+            }
+
+            return environment;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Parse collection variables from collection.bru or bruno.json
+    /// </summary>
+    /// <param name="content">Content of the collection configuration file</param>
+    /// <returns>Dictionary of variables</returns>
+    public Dictionary<string, string> ParseCollectionVariables(string content)
+    {
+        try
+        {
+            content = content.Trim();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return new Dictionary<string, string>();
+            }
+
+            var sections = ParseBrunoSections(content);
+            
+            // Extract variables from vars section
+            if (sections.TryGetValue("vars", out var varsContent))
+            {
+                return ParseBrunoVariables(varsContent);
+            }
+
+            return new Dictionary<string, string>();
+        }
+        catch
+        {
+            return new Dictionary<string, string>();
+        }
+    }
+
+    /// <summary>
+    /// Parse secret variable names from collection.bru
+    /// </summary>
+    public HashSet<string> ParseCollectionSecretVariables(string content)
+    {
+        try
+        {
+            content = content.Trim();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return new HashSet<string>();
+            }
+
+            var sections = ParseBrunoSections(content);
+            
+            // Extract secret variable names from vars:secret section
+            if (sections.TryGetValue("vars:secret", out var secretsContent))
+            {
+                return ParseBrunoSecretVariables(secretsContent);
+            }
+
+            return new HashSet<string>();
+        }
+        catch
+        {
+            return new HashSet<string>();
+        }
+    }
+
+    private Dictionary<string, string> ParseBrunoVariables(string varsContent)
+    {
+        var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var lines = varsContent.Split('\n');
+
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedLine))
+                continue;
+
+            // Variables are in format: key: value
+            var parts = trimmedLine.Split(':', 2);
+            if (parts.Length == 2)
+            {
+                var key = parts[0].Trim();
+                var value = parts[1].Trim();
+                variables[key] = value;
+            }
+        }
+
+        return variables;
+    }
+
+    private HashSet<string> ParseBrunoSecretVariables(string secretsContent)
+    {
+        var secrets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var lines = secretsContent.Split('\n');
+
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedLine))
+                continue;
+
+            // Skip array markers
+            if (trimmedLine == "[" || trimmedLine == "]")
+                continue;
+
+            secrets.Add(trimmedLine);
+        }
+
+        return secrets;
     }
 }

@@ -117,10 +117,22 @@
 @code {
     [Parameter]
     public Guid? ParentCollectionId { get; set; }
+    
+    [SupplyParameterFromQuery(Name = "parentId")]
+    public Guid? ParentIdFromQuery { get; set; }
 
     private string _name = string.Empty;
     private string _description = string.Empty;
     private List<VariableModel> _variables = new();
+    
+    protected override void OnParametersSet()
+    {
+        // If ParentCollectionId is not set from the route, try to get it from the query parameter
+        if (!ParentCollectionId.HasValue && ParentIdFromQuery.HasValue)
+        {
+            ParentCollectionId = ParentIdFromQuery;
+        }
+    }
 
     private class VariableModel
     {

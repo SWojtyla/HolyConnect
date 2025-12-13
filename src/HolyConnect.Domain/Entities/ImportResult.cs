@@ -10,6 +10,7 @@ public class ImportResult
     public Request? ImportedRequest { get; set; }
     public List<Request> ImportedRequests { get; set; } = new();
     public List<Collection> ImportedCollections { get; set; } = new();
+    public List<Environment> ImportedEnvironments { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
     public int TotalFilesProcessed { get; set; }
     public int SuccessfulImports { get; set; }

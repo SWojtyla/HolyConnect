@@ -246,4 +246,151 @@ body:graphql {
         Assert.Contains("mutation", graphqlRequest.Query);
         Assert.Equal(GraphQLOperationType.Mutation, graphqlRequest.OperationType);
     }
+
+    [Fact]
+    public void ParseEnvironment_WithValidEnvironmentFile_ShouldReturnEnvironment()
+    {
+        // Arrange
+        var brunoContent = @"
+vars {
+  baseUrl: https://api.example.com
+  apiKey: secret-key-123
+  timeout: 5000
+}
+
+vars:secret [
+  apiKey
+]";
+
+        // Act
+        var result = _strategy.ParseEnvironment(brunoContent, "Development");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Development", result.Name);
+        Assert.Equal(3, result.Variables.Count);
+        Assert.Equal("https://api.example.com", result.Variables["baseUrl"]);
+        Assert.Equal("secret-key-123", result.Variables["apiKey"]);
+        Assert.Equal("5000", result.Variables["timeout"]);
+        Assert.Single(result.SecretVariableNames);
+        Assert.Contains("apiKey", result.SecretVariableNames);
+    }
+
+    [Fact]
+    public void ParseEnvironment_WithEmptyContent_ShouldReturnNull()
+    {
+        // Arrange
+        var emptyContent = "";
+
+        // Act
+        var result = _strategy.ParseEnvironment(emptyContent, "Test");
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void ParseEnvironment_WithOnlyVariables_ShouldReturnEnvironmentWithoutSecrets()
+    {
+        // Arrange
+        var brunoContent = @"
+vars {
+  var1: value1
+  var2: value2
+}";
+
+        // Act
+        var result = _strategy.ParseEnvironment(brunoContent, "Production");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Production", result.Name);
+        Assert.Equal(2, result.Variables.Count);
+        Assert.Empty(result.SecretVariableNames);
+    }
+
+    [Fact]
+    public void ParseEnvironment_WithMultipleSecretVariables_ShouldReturnAllSecrets()
+    {
+        // Arrange
+        var brunoContent = @"
+vars {
+  baseUrl: https://api.example.com
+  apiKey: secret1
+  authToken: secret2
+  publicVar: public
+}
+
+vars:secret [
+  apiKey
+  authToken
+]";
+
+        // Act
+        var result = _strategy.ParseEnvironment(brunoContent, "Staging");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(4, result.Variables.Count);
+        Assert.Equal(2, result.SecretVariableNames.Count);
+        Assert.Contains("apiKey", result.SecretVariableNames);
+        Assert.Contains("authToken", result.SecretVariableNames);
+    }
+
+    [Fact]
+    public void ParseCollectionVariables_WithValidContent_ShouldReturnVariables()
+    {
+        // Arrange
+        var brunoContent = @"
+vars {
+  collectionVar1: value1
+  sharedEndpoint: /api/v1
+}";
+
+        // Act
+        var result = _strategy.ParseCollectionVariables(brunoContent);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+        Assert.Equal("value1", result["collectionVar1"]);
+        Assert.Equal("/api/v1", result["sharedEndpoint"]);
+    }
+
+    [Fact]
+    public void ParseCollectionVariables_WithEmptyContent_ShouldReturnEmptyDictionary()
+    {
+        // Arrange
+        var emptyContent = "";
+
+        // Act
+        var result = _strategy.ParseCollectionVariables(emptyContent);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void ParseCollectionSecretVariables_WithValidContent_ShouldReturnSecrets()
+    {
+        // Arrange
+        var brunoContent = @"
+vars {
+  var1: value1
+  secret1: secretvalue
+}
+
+vars:secret [
+  secret1
+]";
+
+        // Act
+        var result = _strategy.ParseCollectionSecretVariables(brunoContent);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Contains("secret1", result);
+    }
 }
