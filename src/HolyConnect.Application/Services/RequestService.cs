@@ -11,7 +11,7 @@ public class RequestService : IRequestService
     private readonly IEnvironmentService _environmentService;
     private readonly ICollectionService _collectionService;
     private readonly IRepository<Collection> _collectionRepository;
-    private readonly IEnumerable<IRequestExecutor> _executors;
+    private readonly IRequestExecutorFactory _executorFactory;
     private readonly IVariableResolver _variableResolver;
     private readonly IRequestHistoryService? _historyService;
     private readonly IResponseValueExtractor? _responseValueExtractor;
@@ -22,7 +22,7 @@ public class RequestService : IRequestService
         IEnvironmentService environmentService,
         ICollectionService collectionService,
         IRepository<Collection> collectionRepository,
-        IEnumerable<IRequestExecutor> executors,
+        IRequestExecutorFactory executorFactory,
         IVariableResolver variableResolver,
         IRequestHistoryService? historyService = null,
         IResponseValueExtractor? responseValueExtractor = null)
@@ -32,7 +32,7 @@ public class RequestService : IRequestService
         _environmentService = environmentService;
         _collectionService = collectionService;
         _collectionRepository = collectionRepository;
-        _executors = executors;
+        _executorFactory = executorFactory;
         _variableResolver = variableResolver;
         _historyService = historyService;
         _responseValueExtractor = responseValueExtractor;
@@ -73,12 +73,7 @@ public class RequestService : IRequestService
 
     public async Task<RequestResponse> ExecuteRequestAsync(Request request)
     {
-        var executor = _executors.FirstOrDefault(e => e.CanExecute(request));
-        
-        if (executor == null)
-        {
-            throw new NotSupportedException($"No executor found for request type: {request.Type}");
-        }
+        var executor = _executorFactory.GetExecutor(request);
 
         // Resolve variables before execution using active environment
         var resolvedRequest = await ResolveRequestVariablesAsync(request);

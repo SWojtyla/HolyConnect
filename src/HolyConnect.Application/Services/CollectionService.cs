@@ -1,3 +1,4 @@
+using HolyConnect.Application.Common;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 
@@ -44,11 +45,10 @@ public class CollectionService : ICollectionService
         if (collection != null)
         {
             // Load secret variable values and merge them into the Variables dictionary
-            var secrets = await _secretVariablesService.GetCollectionSecretsAsync(id);
-            foreach (var secret in secrets)
-            {
-                collection.Variables[secret.Key] = secret.Value;
-            }
+            await SecretVariableHelper.LoadAndMergeSecretsAsync(
+                id,
+                collection.Variables,
+                _secretVariablesService.GetCollectionSecretsAsync);
         }
         return collection;
     }
@@ -56,33 +56,19 @@ public class CollectionService : ICollectionService
     public async Task<Collection> UpdateCollectionAsync(Collection collection)
     {
         // Separate secret and non-secret variables
-        var secretVariables = new Dictionary<string, string>();
-        var nonSecretVariables = new Dictionary<string, string>();
-        
-        foreach (var variable in collection.Variables)
-        {
-            if (collection.SecretVariableNames.Contains(variable.Key))
-            {
-                secretVariables[variable.Key] = variable.Value;
-            }
-            else
-            {
-                nonSecretVariables[variable.Key] = variable.Value;
-            }
-        }
+        var separated = SecretVariableHelper.SeparateVariables(
+            collection.Variables,
+            collection.SecretVariableNames);
         
         // Save secrets separately
-        await _secretVariablesService.SaveCollectionSecretsAsync(collection.Id, secretVariables);
+        await _secretVariablesService.SaveCollectionSecretsAsync(collection.Id, separated.SecretVariables);
         
         // Update collection with only non-secret variables
-        collection.Variables = nonSecretVariables;
+        collection.Variables = separated.NonSecretVariables;
         var result = await _collectionRepository.UpdateAsync(collection);
         
         // Restore all variables (including secrets) for the returned object
-        foreach (var secret in secretVariables)
-        {
-            result.Variables[secret.Key] = secret.Value;
-        }
+        SecretVariableHelper.MergeSecretVariables(result.Variables, separated.SecretVariables);
         
         return result;
     }

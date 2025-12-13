@@ -1,3 +1,4 @@
+using HolyConnect.Application.Common;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 
@@ -40,11 +41,10 @@ public class EnvironmentService : IEnvironmentService
         if (environment != null)
         {
             // Load secret variable values and merge them into the Variables dictionary
-            var secrets = await _secretVariablesService.GetEnvironmentSecretsAsync(id);
-            foreach (var secret in secrets)
-            {
-                environment.Variables[secret.Key] = secret.Value;
-            }
+            await SecretVariableHelper.LoadAndMergeSecretsAsync(
+                id,
+                environment.Variables,
+                _secretVariablesService.GetEnvironmentSecretsAsync);
         }
         return environment;
     }
@@ -52,33 +52,19 @@ public class EnvironmentService : IEnvironmentService
     public async Task<Domain.Entities.Environment> UpdateEnvironmentAsync(Domain.Entities.Environment environment)
     {
         // Separate secret and non-secret variables
-        var secretVariables = new Dictionary<string, string>();
-        var nonSecretVariables = new Dictionary<string, string>();
-        
-        foreach (var variable in environment.Variables)
-        {
-            if (environment.SecretVariableNames.Contains(variable.Key))
-            {
-                secretVariables[variable.Key] = variable.Value;
-            }
-            else
-            {
-                nonSecretVariables[variable.Key] = variable.Value;
-            }
-        }
+        var separated = SecretVariableHelper.SeparateVariables(
+            environment.Variables,
+            environment.SecretVariableNames);
         
         // Save secrets separately
-        await _secretVariablesService.SaveEnvironmentSecretsAsync(environment.Id, secretVariables);
+        await _secretVariablesService.SaveEnvironmentSecretsAsync(environment.Id, separated.SecretVariables);
         
         // Update environment with only non-secret variables
-        environment.Variables = nonSecretVariables;
+        environment.Variables = separated.NonSecretVariables;
         var result = await _environmentRepository.UpdateAsync(environment);
         
         // Restore all variables (including secrets) for the returned object
-        foreach (var secret in secretVariables)
-        {
-            result.Variables[secret.Key] = secret.Value;
-        }
+        SecretVariableHelper.MergeSecretVariables(result.Variables, separated.SecretVariables);
         
         return result;
     }
