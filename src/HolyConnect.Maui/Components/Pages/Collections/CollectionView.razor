@@ -352,7 +352,7 @@
 
     private void CreateSubCollection()
     {
-        NavigationManager.NavigateTo($"/collection/create?parentId={CollectionId}");
+        NavigationManager.NavigateTo($"/collection/{CollectionId}/subcollection/create");
     }
 
     private async Task RenameRequest(Domain.Entities.Request request)
