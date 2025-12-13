@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
@@ -30,12 +29,7 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
             throw new ArgumentException("Request must be of type GraphQLRequest", nameof(request));
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        var response = new RequestResponse
-        {
-            Timestamp = DateTime.UtcNow,
-            IsStreaming = true
-        };
+        var builder = RequestResponseBuilder.CreateStreaming();
 
         try
         {
@@ -56,24 +50,17 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
             HttpAuthenticationHelper.ApplyHeaders(httpRequest, graphQLRequest);
 
             // Capture the sent request details
-            response.SentRequest = HttpRequestHelper.CreateSentRequest(
-                httpRequest, 
-                graphQLRequest.Url, 
-                "GRAPHQL_SUBSCRIPTION_SSE", 
-                json);
+            builder.WithSentRequest(httpRequest, graphQLRequest.Url, "GRAPHQL_SUBSCRIPTION_SSE", json);
 
             // Send the request with ResponseHeadersRead to start reading stream immediately
             var httpResponse = await _httpClient.SendAsync(
                 httpRequest,
                 HttpCompletionOption.ResponseHeadersRead);
 
-            stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = (int)httpResponse.StatusCode;
-            response.StatusMessage = httpResponse.ReasonPhrase ?? string.Empty;
-
-            ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Headers);
-            ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Content.Headers);
+            builder.StopTiming()
+                .WithStatus(httpResponse)
+                .WithHeaders(httpResponse.Headers)
+                .WithHeaders(httpResponse.Content.Headers);
 
             // Read the SSE stream
             if (httpResponse.IsSuccessStatusCode)
@@ -99,13 +86,7 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
                             // Empty line indicates end of event
                             if (eventData.Length > 0)
                             {
-                                response.StreamEvents.Add(new StreamEvent
-                                {
-                                    Timestamp = DateTime.UtcNow,
-                                    Data = eventData.ToString(),
-                                    EventType = eventType
-                                });
-
+                                builder.AddStreamEvent(eventData.ToString(), eventType);
                                 eventData.Clear();
                                 eventType = "message";
                             }
@@ -131,12 +112,7 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
                     }
                     catch (OperationCanceledException)
                     {
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = "Timeout reached, closing connection",
-                            EventType = "timeout"
-                        });
+                        builder.AddStreamEvent("Timeout reached, closing connection", "timeout");
                         break;
                     }
                 }
@@ -144,24 +120,18 @@ public class GraphQLSubscriptionSSEExecutor : IRequestExecutor
                 // Add any remaining event data
                 if (eventData.Length > 0)
                 {
-                    response.StreamEvents.Add(new StreamEvent
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        Data = eventData.ToString(),
-                        EventType = eventType
-                    });
+                    builder.AddStreamEvent(eventData.ToString(), eventType);
                 }
             }
 
             // Build response body from all events
-            ResponseHelper.FinalizeStreamingResponse(response);
+            builder.FinalizeStreaming();
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
+            builder.WithException(ex);
         }
 
-        return response;
+        return builder.Build();
     }
 }
