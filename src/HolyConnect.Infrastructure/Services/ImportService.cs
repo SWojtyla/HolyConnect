@@ -1,6 +1,7 @@
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 using HolyConnect.Infrastructure.Services.ImportStrategies;
+using System.Text.Json;
 
 namespace HolyConnect.Infrastructure.Services;
 
@@ -297,13 +298,13 @@ public class ImportService : IImportService
                     try
                     {
                         var jsonContent = await File.ReadAllTextAsync(brunoJsonPath);
-                        var nameMatch = System.Text.RegularExpressions.Regex.Match(jsonContent, @"""name""\s*:\s*""([^""]+)""");
-                        if (nameMatch.Success)
+                        using var jsonDoc = JsonDocument.Parse(jsonContent);
+                        if (jsonDoc.RootElement.TryGetProperty("name", out var nameProperty))
                         {
-                            collectionName = nameMatch.Groups[1].Value;
+                            collectionName = nameProperty.GetString() ?? collectionName;
                         }
                     }
-                    catch
+                    catch (JsonException)
                     {
                         // If bruno.json parsing fails, just use folder name
                     }
