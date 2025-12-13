@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Text;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 using HolyConnect.Infrastructure.Common;
@@ -27,18 +25,14 @@ public class RestRequestExecutor : IRequestExecutor
             throw new ArgumentException("Request must be of type RestRequest", nameof(request));
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        var response = new RequestResponse
-        {
-            Timestamp = DateTime.UtcNow
-        };
+        var builder = RequestResponseBuilder.Create();
 
         try
         {
             var httpRequest = CreateHttpRequestMessage(restRequest);
             
             // Capture the sent request details (only enabled parameters)
-            response.SentRequest = HttpRequestHelper.CreateSentRequest(
+            builder.WithSentRequest(
                 httpRequest,
                 restRequest.Url,
                 restRequest.Method.ToString(),
@@ -47,27 +41,18 @@ public class RestRequestExecutor : IRequestExecutor
 
             var httpResponse = await _httpClient.SendAsync(httpRequest);
 
-            stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = (int)httpResponse.StatusCode;
-            response.StatusMessage = httpResponse.ReasonPhrase ?? string.Empty;
+            builder.StopTiming()
+                .WithStatus(httpResponse)
+                .WithHeaders(httpResponse.Headers);
 
-            ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Headers);
-
-            if (httpResponse.Content != null)
-            {
-                response.Body = await httpResponse.Content.ReadAsStringAsync();
-                response.Size = response.Body.Length;
-                ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Content.Headers);
-            }
+            await builder.WithBodyFromContentAsync(httpResponse.Content);
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
+            builder.WithException(ex);
         }
 
-        return response;
+        return builder.Build();
     }
 
     private Dictionary<string, string> GetEnabledQueryParameters(RestRequest request)

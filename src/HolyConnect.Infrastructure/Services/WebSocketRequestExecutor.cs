@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using HolyConnect.Application.Interfaces;
@@ -25,13 +24,7 @@ public class WebSocketRequestExecutor : IRequestExecutor
             throw new ArgumentException("Request must be of type WebSocketRequest", nameof(request));
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        var response = new RequestResponse
-        {
-            Timestamp = DateTime.UtcNow,
-            IsStreaming = true
-        };
-
+        var builder = RequestResponseBuilder.CreateStreaming();
         ClientWebSocket? webSocket = null;
 
         try
@@ -67,27 +60,22 @@ public class WebSocketRequestExecutor : IRequestExecutor
                 QueryParameters = new Dictionary<string, string>()
             };
 
-            response.SentRequest = sentRequest;
+            builder.WithSentRequest(sentRequest);
 
             // Add warning about failed headers if any
             if (failedHeaders.Count > 0)
             {
-                response.StreamEvents.Add(new StreamEvent
-                {
-                    Timestamp = DateTime.UtcNow,
-                    Data = $"Warning: Failed to set {failedHeaders.Count} header(s): {string.Join(", ", failedHeaders)}",
-                    EventType = "warning"
-                });
+                builder.AddStreamEvent(
+                    $"Warning: Failed to set {failedHeaders.Count} header(s): {string.Join(", ", failedHeaders)}",
+                    "warning");
             }
 
             // Connect
             var uri = new Uri(webSocketRequest.Url);
             await webSocket.ConnectAsync(uri, CancellationToken.None);
 
-            stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = 101; // Switching Protocols
-            response.StatusMessage = "WebSocket connection established";
+            builder.StopTiming()
+                .WithStatus(101, "WebSocket connection established");
 
             // Send message if provided
             if (!string.IsNullOrEmpty(webSocketRequest.Message))
@@ -99,12 +87,7 @@ public class WebSocketRequestExecutor : IRequestExecutor
                     endOfMessage: true,
                     CancellationToken.None);
 
-                response.StreamEvents.Add(new StreamEvent
-                {
-                    Timestamp = DateTime.UtcNow,
-                    Data = $"Sent: {webSocketRequest.Message}",
-                    EventType = "sent"
-                });
+                builder.AddStreamEvent($"Sent: {webSocketRequest.Message}", "sent");
             }
 
             // Receive messages for a limited time or until connection closes
@@ -127,12 +110,7 @@ public class WebSocketRequestExecutor : IRequestExecutor
                             "Client closing",
                             CancellationToken.None);
 
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = "Connection closed by server",
-                            EventType = "close"
-                        });
+                        builder.AddStreamEvent("Connection closed by server", "close");
                         break;
                     }
 
@@ -142,47 +120,35 @@ public class WebSocketRequestExecutor : IRequestExecutor
                     if (result.EndOfMessage)
                     {
                         var fullMessage = messageBuilder.ToString();
-                        response.StreamEvents.Add(new StreamEvent
-                        {
-                            Timestamp = DateTime.UtcNow,
-                            Data = fullMessage,
-                            EventType = "message"
-                        });
-
+                        builder.AddStreamEvent(fullMessage, "message");
                         messageBuilder.Clear();
                     }
                 }
                 catch (OperationCanceledException)
                 {
                     // Timeout reached
-                    response.StreamEvents.Add(new StreamEvent
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        Data = "Timeout reached, closing connection",
-                        EventType = "timeout"
-                    });
+                    builder.AddStreamEvent("Timeout reached, closing connection", "timeout");
                     break;
                 }
             }
 
             // Build response body from all events
-            ResponseHelper.FinalizeStreamingResponse(response);
+            builder.FinalizeStreaming();
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
+            builder.WithException(ex);
         }
         finally
         {
             if (webSocket != null)
             {
-                await WebSocketHelper.SafeCloseAsync(webSocket, response);
+                await WebSocketHelper.SafeCloseAsync(webSocket, builder.Build());
                 webSocket.Dispose();
             }
         }
 
-        return response;
+        return builder.Build();
     }
 
 }

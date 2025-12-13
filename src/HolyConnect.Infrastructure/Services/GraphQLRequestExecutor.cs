@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Domain.Entities;
 using HolyConnect.Infrastructure.Common;
@@ -26,11 +25,7 @@ public class GraphQLRequestExecutor : IRequestExecutor
             throw new ArgumentException("Request must be of type GraphQLRequest", nameof(request));
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        var response = new RequestResponse
-        {
-            Timestamp = DateTime.UtcNow
-        };
+        var builder = RequestResponseBuilder.Create();
 
         try
         {
@@ -48,31 +43,22 @@ public class GraphQLRequestExecutor : IRequestExecutor
             HttpAuthenticationHelper.ApplyHeaders(httpRequest, graphQLRequest);
 
             // Capture the sent request details
-            response.SentRequest = HttpRequestHelper.CreateSentRequest(httpRequest, graphQLRequest.Url, "POST", json);
+            builder.WithSentRequest(httpRequest, graphQLRequest.Url, "POST", json);
 
             var httpResponse = await _httpClient.SendAsync(httpRequest);
 
-            stopwatch.Stop();
-            response.ResponseTime = stopwatch.ElapsedMilliseconds;
-            response.StatusCode = (int)httpResponse.StatusCode;
-            response.StatusMessage = httpResponse.ReasonPhrase ?? string.Empty;
+            builder.StopTiming()
+                .WithStatus(httpResponse)
+                .WithHeaders(httpResponse.Headers);
 
-            ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Headers);
-
-            if (httpResponse.Content != null)
-            {
-                response.Body = await httpResponse.Content.ReadAsStringAsync();
-                response.Size = response.Body.Length;
-                ResponseHelper.CaptureHeaders(response.Headers, httpResponse.Content.Headers);
-            }
+            await builder.WithBodyFromContentAsync(httpResponse.Content);
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            ResponseHelper.HandleException(response, ex, stopwatch.ElapsedMilliseconds);
+            builder.WithException(ex);
         }
 
-        return response;
+        return builder.Build();
     }
 
 }
