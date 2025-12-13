@@ -26,6 +26,7 @@ public class WebSocketRequestExecutor : IRequestExecutor
 
         var builder = RequestResponseBuilder.CreateStreaming();
         ClientWebSocket? webSocket = null;
+        RequestResponse? response = null;
 
         try
         {
@@ -143,12 +144,13 @@ public class WebSocketRequestExecutor : IRequestExecutor
         {
             if (webSocket != null)
             {
-                await WebSocketHelper.SafeCloseAsync(webSocket, builder.Build());
+                response = builder.Build();
+                await WebSocketHelper.SafeCloseAsync(webSocket, response);
                 webSocket.Dispose();
             }
         }
 
-        return builder.Build();
+        return response ?? builder.Build();
     }
 
 }
