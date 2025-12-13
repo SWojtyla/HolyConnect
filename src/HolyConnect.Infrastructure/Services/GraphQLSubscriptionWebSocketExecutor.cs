@@ -181,7 +181,6 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
         {
             if (webSocket != null)
             {
-                var response = builder.Build();
                 if (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseReceived)
                 {
                     try
@@ -195,6 +194,8 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
                         builder.AddStreamEvent($"Warning: Failed to send complete message: {ex.Message}", "warning");
                     }
                 }
+                
+                var response = builder.Build();
                 await WebSocketHelper.SafeCloseAsync(webSocket, response);
                 webSocket.Dispose();
             }
