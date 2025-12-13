@@ -28,7 +28,6 @@
                         <div class="pa-4 d-flex flex-column" style="height: 100%;">
                             <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="AlignItems.Center">
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">Events: @Response.StreamEvents.Count</MudText>
-                                <MudCheckBox @bind-Value="_autoScroll" Label="Auto-scroll" Color="Color.Primary" Dense="true" />
                             </MudStack>
                             <MudPaper Class="pa-2" Elevation="1" Style="flex: 1; overflow-y: auto; background-color: var(--mud-palette-surface);">
                                 @foreach (var evt in Response.StreamEvents)
@@ -181,7 +180,6 @@
     private bool _extractionError = false;
     private CodeEditor? _codeEditor;
     private string _responseLanguage = "json";
-    private bool _autoScroll = true;
 
     protected override void OnParametersSet()
     {
