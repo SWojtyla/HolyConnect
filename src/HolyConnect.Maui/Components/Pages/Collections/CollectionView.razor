@@ -1,5 +1,6 @@
 @page "/collection/{CollectionId:guid}"
 @using HolyConnect.Domain.Entities
+@using HolyConnect.Application.Common
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
 @inject IActiveEnvironmentService ActiveEnvironmentService
@@ -249,10 +250,22 @@
             return;
         }
 
-        _allCollections = await CollectionService.GetAllCollectionsAsync();
+        var allCollections = await CollectionService.GetAllCollectionsAsync();
+        var allRequests = await RequestService.GetAllRequestsAsync();
+        
+        // Build hierarchy to populate SubCollections navigation property
+        var hierarchicalCollections = CollectionHierarchyHelper.BuildHierarchy(allCollections);
+        
+        // Flatten back to get all collections with populated SubCollections
+        _allCollections = CollectionHierarchyHelper.FlattenHierarchy(hierarchicalCollections);
+        
+        // Populate Requests navigation property for all collections
+        CollectionHierarchyHelper.PopulateRequests(_allCollections, allRequests);
+        
+        // Find direct subcollections of the current collection
         _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId);
         
-        var allRequests = await RequestService.GetAllRequestsAsync();
+        // Find requests directly in this collection
         _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId);
         
         // Load the active environment for variable resolution
@@ -352,7 +365,7 @@
 
     private void CreateSubCollection()
     {
-        NavigationManager.NavigateTo($"/collection/create?parentId={CollectionId}");
+        NavigationManager.NavigateTo($"/collection/{CollectionId}/subcollection/create");
     }
 
     private async Task RenameRequest(Domain.Entities.Request request)

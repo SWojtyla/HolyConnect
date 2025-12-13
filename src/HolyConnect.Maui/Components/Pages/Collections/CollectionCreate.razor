@@ -154,7 +154,16 @@
             
             var collectionType = ParentCollectionId.HasValue ? "Sub-collection" : "Collection";
             Snackbar.Add($"{collectionType} '{_name}' created successfully", Severity.Success);
-            NavigationManager.NavigateTo("/");
+            
+            // Navigate back to parent collection if creating a sub-collection, otherwise go home
+            if (ParentCollectionId.HasValue)
+            {
+                NavigationManager.NavigateTo($"/collection/{ParentCollectionId.Value}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/");
+            }
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
         {
@@ -169,6 +178,14 @@
 
     private void Cancel()
     {
-        NavigationManager.NavigateTo("/");
+        // Navigate back to parent collection if canceling sub-collection creation, otherwise go home
+        if (ParentCollectionId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/collection/{ParentCollectionId.Value}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/");
+        }
     }
 }
