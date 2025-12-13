@@ -322,38 +322,31 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
     public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
     {
         var entityList = entities.ToList();
-        var results = new List<T>();
-
-        foreach (var entity in entityList)
-        {
-            var result = await AddAsync(entity);
-            results.Add(result);
-        }
-
+        
+        // Process in parallel for better performance with I/O-bound file operations
+        var tasks = entityList.Select(entity => AddAsync(entity));
+        var results = await Task.WhenAll(tasks);
+        
         return results;
     }
 
     public async Task<IEnumerable<T>> UpdateRangeAsync(IEnumerable<T> entities)
     {
         var entityList = entities.ToList();
-        var results = new List<T>();
-
-        foreach (var entity in entityList)
-        {
-            var result = await UpdateAsync(entity);
-            results.Add(result);
-        }
-
+        
+        // Process in parallel for better performance with I/O-bound file operations
+        var tasks = entityList.Select(entity => UpdateAsync(entity));
+        var results = await Task.WhenAll(tasks);
+        
         return results;
     }
 
     public async Task DeleteRangeAsync(IEnumerable<Guid> ids)
     {
         var idList = ids.ToList();
-
-        foreach (var id in idList)
-        {
-            await DeleteAsync(id);
-        }
+        
+        // Process in parallel for better performance with I/O-bound file operations
+        var tasks = idList.Select(id => DeleteAsync(id));
+        await Task.WhenAll(tasks);
     }
 }
