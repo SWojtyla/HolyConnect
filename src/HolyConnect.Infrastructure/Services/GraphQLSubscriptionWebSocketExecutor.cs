@@ -93,7 +93,10 @@ public class GraphQLSubscriptionWebSocketExecutor : IRequestExecutor
             if (!ackReceived)
             {
                 builder.WithStatus(101, "Failed to receive connection_ack");
-                return builder.Build();
+                response = builder.Build();
+                await WebSocketHelper.SafeCloseAsync(webSocket, response);
+                webSocket.Dispose();
+                return response;
             }
 
             // Send subscribe message

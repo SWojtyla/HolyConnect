@@ -7,11 +7,13 @@ namespace HolyConnect.Infrastructure.Common;
 /// <summary>
 /// Fluent builder for constructing RequestResponse objects with a consistent API.
 /// Centralizes response construction logic used across all request executors.
+/// Follows the single-use pattern - Build() can only be called once.
 /// </summary>
 public class RequestResponseBuilder
 {
     private readonly RequestResponse _response;
     private readonly Stopwatch _stopwatch;
+    private bool _isBuilt;
 
     private RequestResponseBuilder()
     {
@@ -20,6 +22,7 @@ public class RequestResponseBuilder
             Timestamp = DateTime.UtcNow
         };
         _stopwatch = new Stopwatch();
+        _isBuilt = false;
     }
 
     /// <summary>
@@ -184,9 +187,17 @@ public class RequestResponseBuilder
 
     /// <summary>
     /// Builds and returns the final RequestResponse object.
+    /// Can only be called once - subsequent calls will throw InvalidOperationException.
     /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown if Build() has already been called on this builder instance.</exception>
     public RequestResponse Build()
     {
+        if (_isBuilt)
+        {
+            throw new InvalidOperationException("Build() has already been called on this RequestResponseBuilder instance. The builder follows a single-use pattern.");
+        }
+        
+        _isBuilt = true;
         return _response;
     }
 

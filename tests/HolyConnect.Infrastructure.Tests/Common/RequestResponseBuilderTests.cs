@@ -390,4 +390,17 @@ public class RequestResponseBuilderTests
         Assert.Contains("HttpRequestException", response.Body);
         Assert.True(response.ResponseTime >= 0);
     }
+
+    [Fact]
+    public void Build_WhenCalledTwice_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var builder = RequestResponseBuilder.Create();
+        builder.Build(); // First call succeeds
+
+        // Act & Assert
+        var exception = Assert.Throws<InvalidOperationException>(() => builder.Build());
+        Assert.Contains("Build() has already been called", exception.Message);
+        Assert.Contains("single-use pattern", exception.Message);
+    }
 }
