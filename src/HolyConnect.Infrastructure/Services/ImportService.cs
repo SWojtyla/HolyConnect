@@ -202,12 +202,6 @@ public class ImportService : IImportService
                 {
                     result.Warnings.Add($"{result.FailedImports} out of {result.TotalFilesProcessed} files failed to import.");
                 }
-                
-                // Add summary for debugging
-                if (result.TotalFilesProcessed == 0 && result.ImportedCollections.Count > 0)
-                {
-                    result.Warnings.Add($"Import summary: {result.ImportedCollections.Count} collection(s) created, {result.ImportedEnvironments.Count} environment(s) imported, but no request files were found or processed. Check that your .bru request files are in the subfolders.");
-                }
             }
         }
         catch (Exception ex)
