@@ -318,4 +318,42 @@ public class MultiFileRepository<T> : IRepository<T> where T : class
             Console.WriteLine($"Error deleting file {filePath}: {ex.Message}");
         }
     }
+
+    public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
+    {
+        var entityList = entities.ToList();
+        var results = new List<T>();
+
+        foreach (var entity in entityList)
+        {
+            var result = await AddAsync(entity);
+            results.Add(result);
+        }
+
+        return results;
+    }
+
+    public async Task<IEnumerable<T>> UpdateRangeAsync(IEnumerable<T> entities)
+    {
+        var entityList = entities.ToList();
+        var results = new List<T>();
+
+        foreach (var entity in entityList)
+        {
+            var result = await UpdateAsync(entity);
+            results.Add(result);
+        }
+
+        return results;
+    }
+
+    public async Task DeleteRangeAsync(IEnumerable<Guid> ids)
+    {
+        var idList = ids.ToList();
+
+        foreach (var id in idList)
+        {
+            await DeleteAsync(id);
+        }
+    }
 }

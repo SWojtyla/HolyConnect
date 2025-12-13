@@ -108,4 +108,46 @@ public class FileBasedRepository<T> : IRepository<T> where T : class
         data.Remove(id);
         await SaveDataAsync(data);
     }
+
+    public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
+    {
+        var data = await LoadDataAsync();
+        var entityList = entities.ToList();
+        
+        foreach (var entity in entityList)
+        {
+            var id = _idSelector(entity);
+            data[id] = entity;
+        }
+        
+        await SaveDataAsync(data);
+        return entityList;
+    }
+
+    public async Task<IEnumerable<T>> UpdateRangeAsync(IEnumerable<T> entities)
+    {
+        var data = await LoadDataAsync();
+        var entityList = entities.ToList();
+        
+        foreach (var entity in entityList)
+        {
+            var id = _idSelector(entity);
+            data[id] = entity;
+        }
+        
+        await SaveDataAsync(data);
+        return entityList;
+    }
+
+    public async Task DeleteRangeAsync(IEnumerable<Guid> ids)
+    {
+        var data = await LoadDataAsync();
+        
+        foreach (var id in ids)
+        {
+            data.Remove(id);
+        }
+        
+        await SaveDataAsync(data);
+    }
 }

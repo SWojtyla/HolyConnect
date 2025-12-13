@@ -125,4 +125,97 @@ public class InMemoryRepositoryTests
         Assert.NotNull(result);
         Assert.Equal("Second", result.Name);
     }
+
+    [Fact]
+    public async Task AddRangeAsync_ShouldAddMultipleEntities()
+    {
+        // Arrange
+        var repository = new InMemoryRepository<TestEntity>(e => e.Id);
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test1" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test2" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test3" }
+        };
+
+        // Act
+        var results = await repository.AddRangeAsync(entities);
+        var all = await repository.GetAllAsync();
+
+        // Assert
+        Assert.Equal(3, results.Count());
+        Assert.Equal(3, all.Count());
+    }
+
+    [Fact]
+    public async Task UpdateRangeAsync_ShouldUpdateMultipleEntities()
+    {
+        // Arrange
+        var repository = new InMemoryRepository<TestEntity>(e => e.Id);
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test1" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test2" }
+        };
+        await repository.AddRangeAsync(entities);
+
+        // Act
+        entities[0].Name = "Updated1";
+        entities[1].Name = "Updated2";
+        var results = await repository.UpdateRangeAsync(entities);
+        var all = await repository.GetAllAsync();
+
+        // Assert
+        Assert.Equal(2, results.Count());
+        Assert.Contains(all, e => e.Name == "Updated1");
+        Assert.Contains(all, e => e.Name == "Updated2");
+    }
+
+    [Fact]
+    public async Task DeleteRangeAsync_ShouldDeleteMultipleEntities()
+    {
+        // Arrange
+        var repository = new InMemoryRepository<TestEntity>(e => e.Id);
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test1" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test2" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Test3" }
+        };
+        await repository.AddRangeAsync(entities);
+
+        // Act
+        var idsToDelete = entities.Take(2).Select(e => e.Id);
+        await repository.DeleteRangeAsync(idsToDelete);
+        var all = await repository.GetAllAsync();
+
+        // Assert
+        Assert.Single(all);
+        Assert.Contains(all, e => e.Name == "Test3");
+    }
+
+    [Fact]
+    public async Task AddRangeAsync_WithEmptyCollection_ShouldReturnEmptyList()
+    {
+        // Arrange
+        var repository = new InMemoryRepository<TestEntity>(e => e.Id);
+        var entities = new List<TestEntity>();
+
+        // Act
+        var results = await repository.AddRangeAsync(entities);
+
+        // Assert
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public async Task DeleteRangeAsync_WithNonExistentIds_ShouldNotThrow()
+    {
+        // Arrange
+        var repository = new InMemoryRepository<TestEntity>(e => e.Id);
+        var ids = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
+
+        // Act & Assert - Should not throw
+        await repository.DeleteRangeAsync(ids);
+    }
 }

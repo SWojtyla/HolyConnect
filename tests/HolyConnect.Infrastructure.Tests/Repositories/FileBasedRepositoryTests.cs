@@ -246,6 +246,98 @@ public class FileBasedRepositoryTests : IDisposable
         Assert.Equal("Persisted Entity", result.Name);
     }
 
+    [Fact]
+    public async Task AddRangeAsync_ShouldAddMultipleEntities()
+    {
+        // Arrange
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity1" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity2" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity3" }
+        };
+
+        // Act
+        var results = await _repository.AddRangeAsync(entities);
+        var all = await _repository.GetAllAsync();
+
+        // Assert
+        Assert.Equal(3, results.Count());
+        Assert.Equal(3, all.Count());
+    }
+
+    [Fact]
+    public async Task UpdateRangeAsync_ShouldUpdateMultipleEntities()
+    {
+        // Arrange
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = Guid.NewGuid(), Name = "Original1" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Original2" }
+        };
+        await _repository.AddRangeAsync(entities);
+
+        // Act
+        entities[0].Name = "Updated1";
+        entities[1].Name = "Updated2";
+        await _repository.UpdateRangeAsync(entities);
+        var all = await _repository.GetAllAsync();
+
+        // Assert
+        Assert.Contains(all, e => e.Name == "Updated1");
+        Assert.Contains(all, e => e.Name == "Updated2");
+        Assert.DoesNotContain(all, e => e.Name == "Original1");
+    }
+
+    [Fact]
+    public async Task DeleteRangeAsync_ShouldDeleteMultipleEntities()
+    {
+        // Arrange
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity1" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity2" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity3" }
+        };
+        await _repository.AddRangeAsync(entities);
+
+        // Act
+        var idsToDelete = entities.Take(2).Select(e => e.Id);
+        await _repository.DeleteRangeAsync(idsToDelete);
+        var all = await _repository.GetAllAsync();
+
+        // Assert
+        Assert.Single(all);
+        Assert.Contains(all, e => e.Name == "Entity3");
+    }
+
+    [Fact]
+    public async Task AddRangeAsync_ShouldPersistToFile()
+    {
+        // Arrange
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity1" },
+            new TestEntity { Id = Guid.NewGuid(), Name = "Entity2" }
+        };
+
+        // Act
+        await _repository.AddRangeAsync(entities);
+
+        // Assert
+        var filePath = Path.Combine(_testDirectory, "test-entities.json");
+        Assert.True(File.Exists(filePath));
+
+        // Create new instance to verify persistence
+        var newRepo = new FileBasedRepository<TestEntity>(
+            e => e.Id,
+            () => _testDirectory,
+            "test-entities.json"
+        );
+        var all = await newRepo.GetAllAsync();
+        Assert.Equal(2, all.Count());
+    }
+
     // Test entity class
     private class TestEntity
     {

@@ -42,4 +42,35 @@ public class InMemoryRepository<T> : IRepository<T> where T : class
         _data.Remove(id);
         return Task.CompletedTask;
     }
+
+    public Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
+    {
+        var entityList = entities.ToList();
+        foreach (var entity in entityList)
+        {
+            var id = _idSelector(entity);
+            _data[id] = entity;
+        }
+        return Task.FromResult(entityList.AsEnumerable());
+    }
+
+    public Task<IEnumerable<T>> UpdateRangeAsync(IEnumerable<T> entities)
+    {
+        var entityList = entities.ToList();
+        foreach (var entity in entityList)
+        {
+            var id = _idSelector(entity);
+            _data[id] = entity;
+        }
+        return Task.FromResult(entityList.AsEnumerable());
+    }
+
+    public Task DeleteRangeAsync(IEnumerable<Guid> ids)
+    {
+        foreach (var id in ids)
+        {
+            _data.Remove(id);
+        }
+        return Task.CompletedTask;
+    }
 }
