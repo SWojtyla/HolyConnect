@@ -3,13 +3,11 @@
 
 /* Layout utilities */
 .full-height-with-header {
-    height: calc(100vh - 4rem);
-    height: calc(100vh - var(--header-height));
+    height: calc(100vh - var(--header-height, 4rem));
 }
 
 .full-height-with-toolbar {
-    height: calc(100vh - 11.25rem);
-    height: calc(100vh - var(--toolbar-height));
+    height: calc(100vh - var(--toolbar-height, 11.25rem));
 }
 
 /* Flexbox utilities */
@@ -58,10 +56,8 @@
 }
 
 .status-badge {
-    padding: 0.25rem 0.75rem;
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-radius: 0.25rem;
-    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-md, 0.75rem);
+    border-radius: var(--border-radius-sm, 0.25rem);
     font-size: 0.75rem;
     font-weight: 600;
 }
