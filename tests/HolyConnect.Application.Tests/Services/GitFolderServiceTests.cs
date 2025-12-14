@@ -9,19 +9,26 @@ namespace HolyConnect.Application.Tests.Services;
 public class GitFolderServiceTests
 {
     private readonly Mock<ISettingsService> _mockSettingsService;
+    private readonly Mock<IGitService> _mockGitService;
     private readonly GitFolderService _service;
     private readonly AppSettings _testSettings;
 
     public GitFolderServiceTests()
     {
         _mockSettingsService = new Mock<ISettingsService>();
+        _mockGitService = new Mock<IGitService>();
         _testSettings = new AppSettings
         {
             GitFolders = new List<GitFolder>()
         };
         _mockSettingsService.Setup(s => s.GetSettingsAsync())
             .ReturnsAsync(_testSettings);
-        _service = new GitFolderService(_mockSettingsService.Object);
+        
+        // Setup git service to return a repository path for any path
+        _mockGitService.Setup(g => g.DiscoverRepositoryAsync(It.IsAny<string>()))
+            .ReturnsAsync((string path) => path); // Return the same path for simplicity in tests
+        
+        _service = new GitFolderService(_mockSettingsService.Object, _mockGitService.Object);
     }
 
     [Fact]

@@ -13,6 +13,7 @@ public class GitFolderIntegrationTests
     {
         // Arrange
         var mockSettingsService = new Mock<ISettingsService>();
+        var mockGitService = new Mock<IGitService>();
         var testSettings = new AppSettings
         {
             GitFolders = new List<GitFolder>(),
@@ -21,7 +22,11 @@ public class GitFolderIntegrationTests
         mockSettingsService.Setup(s => s.GetSettingsAsync())
             .ReturnsAsync(testSettings);
         
-        var gitFolderService = new GitFolderService(mockSettingsService.Object);
+        // Setup git service to return repository path
+        mockGitService.Setup(g => g.DiscoverRepositoryAsync(It.IsAny<string>()))
+            .ReturnsAsync((string path) => path);
+        
+        var gitFolderService = new GitFolderService(mockSettingsService.Object, mockGitService.Object);
 
         // Act & Assert - Add first repository
         var repo1 = await gitFolderService.AddAsync("Project A", "/path/to/project-a");
@@ -83,6 +88,7 @@ public class GitFolderIntegrationTests
     {
         // Arrange
         var mockSettingsService = new Mock<ISettingsService>();
+        var mockGitService = new Mock<IGitService>();
         var testSettings = new AppSettings
         {
             GitFolders = new List<GitFolder>()
@@ -90,7 +96,10 @@ public class GitFolderIntegrationTests
         mockSettingsService.Setup(s => s.GetSettingsAsync())
             .ReturnsAsync(testSettings);
         
-        var gitFolderService = new GitFolderService(mockSettingsService.Object);
+        mockGitService.Setup(g => g.DiscoverRepositoryAsync(It.IsAny<string>()))
+            .ReturnsAsync((string path) => path);
+        
+        var gitFolderService = new GitFolderService(mockSettingsService.Object, mockGitService.Object);
 
         // Act
         var activeRepo = await gitFolderService.GetActiveAsync();
@@ -104,6 +113,7 @@ public class GitFolderIntegrationTests
     {
         // Arrange
         var mockSettingsService = new Mock<ISettingsService>();
+        var mockGitService = new Mock<IGitService>();
         var testSettings = new AppSettings
         {
             GitFolders = new List<GitFolder>()
@@ -111,7 +121,10 @@ public class GitFolderIntegrationTests
         mockSettingsService.Setup(s => s.GetSettingsAsync())
             .ReturnsAsync(testSettings);
         
-        var gitFolderService = new GitFolderService(mockSettingsService.Object);
+        mockGitService.Setup(g => g.DiscoverRepositoryAsync(It.IsAny<string>()))
+            .ReturnsAsync((string path) => path);
+        
+        var gitFolderService = new GitFolderService(mockSettingsService.Object, mockGitService.Object);
 
         // Act
         var repo1 = await gitFolderService.AddAsync("Repo 1", "/path/1");

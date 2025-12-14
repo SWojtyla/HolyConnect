@@ -9,10 +9,12 @@ namespace HolyConnect.Application.Services;
 public class GitFolderService : IGitFolderService
 {
     private readonly ISettingsService _settingsService;
+    private readonly IGitService _gitService;
 
-    public GitFolderService(ISettingsService settingsService)
+    public GitFolderService(ISettingsService settingsService, IGitService gitService)
     {
         _settingsService = settingsService;
+        _gitService = gitService;
     }
 
     public async Task<IEnumerable<GitFolder>> GetAllAsync()
@@ -34,11 +36,15 @@ public class GitFolderService : IGitFolderService
     {
         var settings = await _settingsService.GetSettingsAsync();
         
+        // Discover the actual repository root path (supports subfolders)
+        var repositoryPath = await _gitService.DiscoverRepositoryAsync(path);
+        
         var folder = new GitFolder
         {
             Id = Guid.NewGuid(),
             Name = name,
             Path = path,
+            RepositoryPath = repositoryPath, // Store the discovered repository root
             IsActive = false,
             CreatedAt = DateTimeOffset.UtcNow
         };

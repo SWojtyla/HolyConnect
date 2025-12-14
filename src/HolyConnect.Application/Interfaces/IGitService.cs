@@ -67,10 +67,17 @@ public interface IGitService
     Task<bool> InitRepositoryAsync(string path);
 
     /// <summary>
-    /// Checks if the storage path is a git repository
+    /// Checks if the storage path is a git repository (or within one)
     /// </summary>
     /// <param name="repositoryPath">Optional repository path. If null, uses the active git folder</param>
     Task<bool> IsRepositoryAsync(string? repositoryPath = null);
+
+    /// <summary>
+    /// Discovers the actual git repository root path for a given path
+    /// Returns the repository root path if found, null otherwise
+    /// </summary>
+    /// <param name="path">Path to search from (can be a subfolder)</param>
+    Task<string?> DiscoverRepositoryAsync(string path);
 
     /// <summary>
     /// Gets the repository name from the path or remote URL
