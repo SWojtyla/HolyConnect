@@ -1,3 +1,4 @@
+using HolyConnect.Application.Common;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Application.Services;
 using HolyConnect.Domain.Entities;
@@ -12,6 +13,9 @@ public class RequestServiceTests
     private readonly Mock<IEnvironmentService> _mockEnvironmentService;
     private readonly Mock<ICollectionService> _mockCollectionService;
     private readonly Mock<IRepository<Collection>> _mockCollectionRepository;
+    private readonly Mock<IRepository<Domain.Entities.Environment>> _mockEnvironmentRepository;
+    private readonly Mock<IRepository<Flow>> _mockFlowRepository;
+    private readonly Mock<IRepository<RequestHistoryEntry>> _mockHistoryRepository;
     private readonly Mock<IRequestExecutor> _mockExecutor;
     private readonly Mock<IRequestExecutorFactory> _mockExecutorFactory;
     private readonly Mock<IVariableResolver> _mockVariableResolver;
@@ -24,6 +28,9 @@ public class RequestServiceTests
         _mockEnvironmentService = new Mock<IEnvironmentService>();
         _mockCollectionService = new Mock<ICollectionService>();
         _mockCollectionRepository = new Mock<IRepository<Collection>>();
+        _mockEnvironmentRepository = new Mock<IRepository<Domain.Entities.Environment>>();
+        _mockFlowRepository = new Mock<IRepository<Flow>>();
+        _mockHistoryRepository = new Mock<IRepository<RequestHistoryEntry>>();
         _mockExecutor = new Mock<IRequestExecutor>();
         _mockExecutorFactory = new Mock<IRequestExecutorFactory>();
         _mockVariableResolver = new Mock<IVariableResolver>();
@@ -31,15 +38,24 @@ public class RequestServiceTests
         // Setup factory to return mock executor
         _mockExecutorFactory.Setup(f => f.GetExecutor(It.IsAny<Request>()))
             .Returns(_mockExecutor.Object);
+
+        var repositories = new RepositoryAccessor(
+            _mockRepository.Object,
+            _mockCollectionRepository.Object,
+            _mockEnvironmentRepository.Object,
+            _mockFlowRepository.Object,
+            _mockHistoryRepository.Object);
+
+        var executionContext = new RequestExecutionContext(
+            _mockActiveEnvironmentService.Object,
+            _mockVariableResolver.Object,
+            _mockExecutorFactory.Object);
         
         _service = new RequestService(
-            _mockRepository.Object,
-            _mockActiveEnvironmentService.Object,
+            repositories,
+            executionContext,
             _mockEnvironmentService.Object,
-            _mockCollectionService.Object,
-            _mockCollectionRepository.Object,
-            _mockExecutorFactory.Object,
-            _mockVariableResolver.Object);
+            _mockCollectionService.Object);
     }
 
     [Fact]
@@ -417,15 +433,24 @@ public class RequestServiceTests
         var mockExecutorFactoryForHistory = new Mock<IRequestExecutorFactory>();
         mockExecutorFactoryForHistory.Setup(f => f.GetExecutor(It.IsAny<Request>()))
             .Returns(_mockExecutor.Object);
+
+        var repositoriesForHistory = new RepositoryAccessor(
+            _mockRepository.Object,
+            _mockCollectionRepository.Object,
+            _mockEnvironmentRepository.Object,
+            _mockFlowRepository.Object,
+            _mockHistoryRepository.Object);
+
+        var executionContextForHistory = new RequestExecutionContext(
+            _mockActiveEnvironmentService.Object,
+            _mockVariableResolver.Object,
+            mockExecutorFactoryForHistory.Object);
         
         var serviceWithHistory = new RequestService(
-            _mockRepository.Object,
-            _mockActiveEnvironmentService.Object,
+            repositoriesForHistory,
+            executionContextForHistory,
             _mockEnvironmentService.Object,
             _mockCollectionService.Object,
-            _mockCollectionRepository.Object,
-            mockExecutorFactoryForHistory.Object,
-            _mockVariableResolver.Object,
             mockHistoryService.Object);
         
         _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())

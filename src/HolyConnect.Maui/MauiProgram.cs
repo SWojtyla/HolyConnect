@@ -190,6 +190,22 @@ public static class MauiProgram
         });
 
         // Add services
+        // Register aggregators to reduce constructor parameter count
+        builder.Services.AddScoped<HolyConnect.Application.Common.RepositoryAccessor>(sp =>
+            new HolyConnect.Application.Common.RepositoryAccessor(
+                sp.GetRequiredService<IRepository<Request>>(),
+                sp.GetRequiredService<IRepository<Collection>>(),
+                sp.GetRequiredService<IRepository<Domain.Entities.Environment>>(),
+                sp.GetRequiredService<IRepository<Flow>>(),
+                sp.GetRequiredService<IRepository<RequestHistoryEntry>>()));
+        
+        builder.Services.AddScoped<HolyConnect.Application.Common.RequestExecutionContext>(sp =>
+            new HolyConnect.Application.Common.RequestExecutionContext(
+                sp.GetRequiredService<IActiveEnvironmentService>(),
+                sp.GetRequiredService<IVariableResolver>(),
+                sp.GetRequiredService<IRequestExecutorFactory>(),
+                sp.GetService<IResponseValueExtractor>()));
+        
         builder.Services.AddScoped<IActiveEnvironmentService, ActiveEnvironmentService>();
         builder.Services.AddScoped<IEnvironmentService, EnvironmentService>();
         builder.Services.AddScoped<ICollectionService, CollectionService>();
