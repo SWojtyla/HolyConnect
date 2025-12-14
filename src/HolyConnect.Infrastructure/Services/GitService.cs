@@ -30,24 +30,32 @@ public class GitService : IGitService
     /// <summary>
     /// Discovers the actual git repository path for the given path.
     /// This supports finding parent git repositories when a subfolder is provided.
-    /// Returns null if no repository is found.
+    /// Returns the .git directory path if found, null otherwise.
+    /// This path can be used directly with the Repository constructor.
     /// </summary>
     private string? DiscoverGitRepositoryPath(string path)
     {
         try
         {
-            var gitPath = Repository.Discover(path);
-            if (gitPath == null)
-                return null;
-
             // Repository.Discover returns the .git directory path
-            // We need the repository root, so we use it directly with Repository constructor
-            return gitPath;
+            // which can be used directly with Repository constructor
+            return Repository.Discover(path);
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Extracts the repository root directory path from a .git directory path.
+    /// </summary>
+    /// <param name="gitPath">Path to the .git directory</param>
+    /// <returns>The repository root directory path</returns>
+    private string? GetRepositoryRootFromGitPath(string gitPath)
+    {
+        // gitPath is like "/path/to/repo/.git/" so we need to get the parent directory
+        return Path.GetDirectoryName(gitPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
     }
 
     public Task<bool> IsRepositoryAsync(string? repositoryPath = null)
@@ -76,8 +84,7 @@ public class GitService : IGitService
             if (gitPath == null)
                 return Task.FromResult<string?>(null);
 
-            // gitPath is like "/path/to/repo/.git/" so we need to get the parent directory
-            var repoPath = Path.GetDirectoryName(gitPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var repoPath = GetRepositoryRootFromGitPath(gitPath);
             return Task.FromResult<string?>(repoPath);
         }
         catch
@@ -117,7 +124,7 @@ public class GitService : IGitService
             }
 
             // Fallback to repository root directory name
-            var repoRootPath = Path.GetDirectoryName(discoveredRepoPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var repoRootPath = GetRepositoryRootFromGitPath(discoveredRepoPath);
             var dirName = repoRootPath != null ? Path.GetFileName(repoRootPath) : Path.GetFileName(path);
             return Task.FromResult<string?>(dirName);
         }
