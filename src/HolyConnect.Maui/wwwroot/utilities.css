@@ -1,0 +1,135 @@
+/* HolyConnect Utility Classes */
+/* Provides reusable CSS classes for common patterns */
+
+/* Layout utilities */
+.full-height-with-header {
+    height: calc(100vh - var(--header-height, 4rem));
+}
+
+.full-height-with-toolbar {
+    height: calc(100vh - var(--toolbar-height, 11.25rem));
+}
+
+/* Flexbox utilities */
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.flex-grow {
+    flex: 1;
+}
+
+.flex-shrink-0 {
+    flex-shrink: 0;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+/* Overflow utilities */
+.overflow-hidden {
+    overflow: hidden;
+}
+
+.overflow-auto {
+    overflow: auto;
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
+.overflow-y-auto {
+    overflow-y: auto;
+}
+
+/* Common component patterns */
+.card-actions-bottom {
+    margin-top: auto;
+}
+
+.status-badge {
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-md, 0.75rem);
+    border-radius: var(--border-radius-sm, 0.25rem);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Accessibility helpers */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Spacing utilities */
+.mt-auto {
+    margin-top: auto;
+}
+
+.mb-auto {
+    margin-bottom: auto;
+}
+
+.ml-auto {
+    margin-left: auto;
+}
+
+.mr-auto {
+    margin-right: auto;
+}
+
+/* Combined patterns for common use cases */
+.full-height-flex-column {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.full-height-flex-column-overflow {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.centered-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Loading overlay pattern */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+}
+
+/* Dark mode loading overlay */
+@media (prefers-color-scheme: dark) {
+    .loading-overlay {
+        background-color: rgba(0, 0, 0, 0.9);
+    }
+}

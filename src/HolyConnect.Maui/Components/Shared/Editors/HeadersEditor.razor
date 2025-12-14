@@ -1,0 +1,259 @@
+@using HolyConnect.Domain.Entities
+@using HolyConnect.Maui.Components.Shared.Common
+
+@* 
+HeadersEditor Component
+Provides a reusable header management interface used across REST, GraphQL, and WebSocket request editors.
+Eliminates ~250 lines of duplicate code.
+*@
+
+<div class="pa-4" style="height: 100%; overflow-y: auto;">
+    <MudText Typo="Typo.subtitle2" Class="mb-2">Common Headers</MudText>
+    <MudStack Row="true" Spacing="2" Class="mb-4" Wrap="Wrap.Wrap">
+        <MudButton Variant="Variant.Outlined" 
+                   Size="Size.Small" 
+                   OnClick="@(() => AddCommonHeader("Content-Type", "application/json"))"
+                   AriaLabel="Add JSON Content-Type header">
+            + JSON
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" 
+                   Size="Size.Small" 
+                   OnClick="@(() => AddCommonHeader("Content-Type", "application/xml"))"
+                   AriaLabel="Add XML Content-Type header">
+            + XML
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" 
+                   Size="Size.Small" 
+                   OnClick="@(() => AddCommonHeader("Authorization", "Bearer "))"
+                   AriaLabel="Add Bearer Authorization header">
+            + Auth
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" 
+                   Size="Size.Small" 
+                   OnClick="@(() => AddCommonHeader("Accept", "*/*"))"
+                   AriaLabel="Add Accept header">
+            + Accept
+        </MudButton>
+    </MudStack>
+    
+    @foreach (var header in _headers)
+    {
+        <MudGrid Class="mb-2">
+            <MudItem xs="1" Class="d-flex align-center">
+                <MudCheckBox Value="@header.Enabled" 
+                            ValueChanged="@((bool v) => UpdateHeaderEnabled(header, v))" 
+                            Color="Color.Primary"
+                            AriaLabel="@($"Enable {header.Key} header")" />
+            </MudItem>
+            <MudItem xs="5">
+                <MudStack Spacing="1">
+                    <VariableTextField Value="@header.Key" 
+                                     ValueChanged="@((string v) => UpdateHeaderKey(header, v))"
+                                     Label="Header Name" 
+                                     Variant="Variant.Outlined" 
+                                     Disabled="@(!header.Enabled)" 
+                                     Environment="@Environment" 
+                                     Collection="@Collection" />
+                    @if (header.IsDefault)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">(auto-added)</MudText>
+                    }
+                </MudStack>
+            </MudItem>
+            <MudItem xs="4">
+                <MudStack Spacing="1">
+                    <VariableTextField Value="@header.Value" 
+                                     ValueChanged="@((string v) => UpdateHeaderValue(header, v))"
+                                     Label="Header Value" 
+                                     Variant="Variant.Outlined" 
+                                     Disabled="@(!header.Enabled)" 
+                                     Environment="@Environment" 
+                                     Collection="@Collection" />
+                    @if (header.IsDefault)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">(can be overridden)</MudText>
+                    }
+                </MudStack>
+            </MudItem>
+            <MudItem xs="2" Class="d-flex align-center">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                              Color="Color.Error" 
+                              OnClick="@(() => RemoveHeader(header))"
+                              AriaLabel="@($"Delete {header.Key} header")"
+                              Title="Delete header" />
+            </MudItem>
+        </MudGrid>
+    }
+    <MudButton Variant="Variant.Outlined" 
+               Color="Color.Primary" 
+               OnClick="AddHeader" 
+               StartIcon="@Icons.Material.Filled.Add"
+               AriaLabel="Add new header">
+        Add Header
+    </MudButton>
+</div>
+
+@code {
+    /// <summary>
+    /// The request being edited
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Request Request { get; set; } = null!;
+
+    /// <summary>
+    /// Current environment for variable resolution
+    /// </summary>
+    [Parameter]
+    public HolyConnect.Domain.Entities.Environment? Environment { get; set; }
+
+    /// <summary>
+    /// Current collection for variable resolution
+    /// </summary>
+    [Parameter]
+    public Collection? Collection { get; set; }
+
+    /// <summary>
+    /// Optional callback to notify parent of header changes
+    /// </summary>
+    [Parameter]
+    public EventCallback OnHeadersChanged { get; set; }
+
+    /// <summary>
+    /// Optional function to determine default headers based on request state
+    /// </summary>
+    [Parameter]
+    public Func<List<HeaderModel>>? GetDefaultHeaders { get; set; }
+
+    private List<HeaderModel> _headers = new();
+    private Guid _lastRequestId;
+
+    /// <summary>
+    /// Header model for internal state management
+    /// </summary>
+    public class HeaderModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = false;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Request != null && Request.Id != _lastRequestId)
+        {
+            _lastRequestId = Request.Id;
+            InitializeHeaders();
+        }
+    }
+
+    private void InitializeHeaders()
+    {
+        _headers = Request.Headers.Select(h => new HeaderModel 
+        { 
+            Key = h.Key, 
+            Value = h.Value,
+            Enabled = !Request.DisabledHeaders.Contains(h.Key)
+        }).ToList();
+
+        // Allow parent to provide default headers
+        if (GetDefaultHeaders != null)
+        {
+            var defaults = GetDefaultHeaders();
+            foreach (var defaultHeader in defaults)
+            {
+                if (!_headers.Any(h => h.Key.Equals(defaultHeader.Key, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _headers.Insert(0, defaultHeader);
+                }
+            }
+        }
+    }
+
+    private void AddHeader()
+    {
+        _headers.Add(new HeaderModel());
+        SyncHeadersToRequest();
+    }
+
+    private void RemoveHeader(HeaderModel header)
+    {
+        _headers.Remove(header);
+        SyncHeadersToRequest();
+    }
+
+    private void AddCommonHeader(string key, string value)
+    {
+        var existingHeader = _headers.FirstOrDefault(h => h.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+        if (existingHeader != null)
+        {
+            existingHeader.Value = value;
+            existingHeader.Enabled = true;
+        }
+        else
+        {
+            _headers.Add(new HeaderModel { Key = key, Value = value });
+        }
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderKey(HeaderModel header, string newKey)
+    {
+        header.Key = newKey;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderValue(HeaderModel header, string newValue)
+    {
+        header.Value = newValue;
+        SyncHeadersToRequest();
+    }
+
+    private void UpdateHeaderEnabled(HeaderModel header, bool enabled)
+    {
+        header.Enabled = enabled;
+        SyncHeadersToRequest();
+    }
+
+    private void SyncHeadersToRequest()
+    {
+        Request.Headers.Clear();
+        Request.DisabledHeaders.Clear();
+        
+        foreach (var header in _headers.Where(h => !string.IsNullOrWhiteSpace(h.Key)))
+        {
+            if (header.Enabled)
+            {
+                // Skip default headers if unmodified
+                if (header.IsDefault && !IsHeaderModified(header))
+                {
+                    continue;
+                }
+                
+                Request.Headers[header.Key] = header.Value;
+            }
+            else
+            {
+                Request.DisabledHeaders.Add(header.Key);
+            }
+        }
+
+        // Notify parent of changes
+        if (OnHeadersChanged.HasDelegate)
+        {
+            OnHeadersChanged.InvokeAsync();
+        }
+    }
+
+    private bool IsHeaderModified(HeaderModel header)
+    {
+        // A default header is considered modified if its value has changed from the default
+        // This is a simple heuristic - could be expanded based on specific needs
+        if (header.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+        {
+            return header.Value != "HolyConnect/1.0";
+        }
+        // Add more default header checks as needed
+        return true; // By default, consider it modified to ensure it's saved
+    }
+}
