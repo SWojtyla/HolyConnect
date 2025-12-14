@@ -217,11 +217,11 @@
                 return;
             }
 
-            // Check if path is a valid git repository
+            // Check if path is within a git repository (supports subfolders)
             var isRepo = await GitService.IsRepositoryAsync(_newGitFolderPath);
             if (!isRepo)
             {
-                Snackbar.Add("The specified path is not a git repository", Severity.Warning);
+                Snackbar.Add("The specified path is not within a git repository", Severity.Warning);
                 return;
             }
 

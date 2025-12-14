@@ -27,16 +27,69 @@ public class GitService : IGitService
         return repositoryPath ?? _getStoragePath();
     }
 
+    /// <summary>
+    /// Discovers the actual git repository path for the given path.
+    /// This supports finding parent git repositories when a subfolder is provided.
+    /// Returns the .git directory path if found, null otherwise.
+    /// This path can be used directly with the Repository constructor.
+    /// </summary>
+    private string? DiscoverGitRepositoryPath(string path)
+    {
+        try
+        {
+            // Repository.Discover returns the .git directory path
+            // which can be used directly with Repository constructor
+            return Repository.Discover(path);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Extracts the repository root directory path from a .git directory path.
+    /// </summary>
+    /// <param name="gitPath">Path to the .git directory</param>
+    /// <returns>The repository root directory path</returns>
+    private string? GetRepositoryRootFromGitPath(string gitPath)
+    {
+        // gitPath is like "/path/to/repo/.git/" so we need to get the parent directory
+        return Path.GetDirectoryName(gitPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+    }
+
     public Task<bool> IsRepositoryAsync(string? repositoryPath = null)
     {
         try
         {
             var path = GetRepositoryPath(repositoryPath);
-            return Task.FromResult(Repository.IsValid(path));
+            // Use Repository.Discover to find git repo in parent directories
+            // This allows supporting subfolders within a git repository
+            var discoveredPath = Repository.Discover(path);
+            return Task.FromResult(discoveredPath != null);
         }
         catch
         {
             return Task.FromResult(false);
+        }
+    }
+
+    public Task<string?> DiscoverRepositoryAsync(string path)
+    {
+        try
+        {
+            // Repository.Discover returns the path to the .git folder
+            // We need to return the repository root (parent of .git)
+            var gitPath = Repository.Discover(path);
+            if (gitPath == null)
+                return Task.FromResult<string?>(null);
+
+            var repoPath = GetRepositoryRootFromGitPath(gitPath);
+            return Task.FromResult<string?>(repoPath);
+        }
+        catch
+        {
+            return Task.FromResult<string?>(null);
         }
     }
 
@@ -45,10 +98,13 @@ public class GitService : IGitService
         try
         {
             var path = GetRepositoryPath(repositoryPath);
-            if (!Repository.IsValid(path))
+            
+            // Discover the actual repository path (supports subfolders)
+            var discoveredRepoPath = Repository.Discover(path);
+            if (discoveredRepoPath == null)
                 return Task.FromResult<string?>(null);
 
-            using var repo = new Repository(path);
+            using var repo = new Repository(discoveredRepoPath);
             
             // Try to get name from remote URL first
             var remote = repo.Network.Remotes.FirstOrDefault();
@@ -67,8 +123,9 @@ public class GitService : IGitService
                 }
             }
 
-            // Fallback to directory name
-            var dirName = Path.GetFileName(path);
+            // Fallback to repository root directory name
+            var repoRootPath = GetRepositoryRootFromGitPath(discoveredRepoPath);
+            var dirName = repoRootPath != null ? Path.GetFileName(repoRootPath) : Path.GetFileName(path);
             return Task.FromResult<string?>(dirName);
         }
         catch
@@ -94,11 +151,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath(repositoryPath);
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath(repositoryPath);
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult<string?>(null);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             return Task.FromResult<string?>(repo.Head?.FriendlyName);
         }
         catch
@@ -111,11 +169,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(Enumerable.Empty<string>());
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var branches = repo.Branches
                 .Where(b => !b.IsRemote)
                 .Select(b => b.FriendlyName)
@@ -132,11 +191,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var branch = repo.Branches[branchName];
             if (branch == null)
                 return Task.FromResult(false);
@@ -154,11 +214,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             
             // Check if branch already exists
             if (repo.Branches[branchName] != null)
@@ -176,11 +237,12 @@ public class GitService : IGitService
 
     public Task<bool> FetchAsync()
     {
-        var repoPath = GetRepositoryPath();
-        if (!Repository.IsValid(repoPath))
+        var path = GetRepositoryPath();
+        var gitPath = DiscoverGitRepositoryPath(path);
+        if (gitPath == null)
             return Task.FromResult(false);
 
-        using var repo = new Repository(repoPath);
+        using var repo = new Repository(gitPath);
         
         // Check if there's a remote configured
         var remote = repo.Network.Remotes.FirstOrDefault();
@@ -199,11 +261,12 @@ public class GitService : IGitService
 
     public Task<bool> PullAsync()
     {
-        var repoPath = GetRepositoryPath();
-        if (!Repository.IsValid(repoPath))
+        var path = GetRepositoryPath();
+        var gitPath = DiscoverGitRepositoryPath(path);
+        if (gitPath == null)
             return Task.FromResult(false);
 
-        using var repo = new Repository(repoPath);
+        using var repo = new Repository(gitPath);
         
         // Check if there's a remote configured
         var remote = repo.Network.Remotes.FirstOrDefault();
@@ -227,11 +290,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             
             // Stage all changes (respects .gitignore if present)
             // Using "*" to stage all modified, added, and deleted files
@@ -257,11 +321,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             
             var signature = GetSignature(repo);
             
@@ -289,11 +354,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             
             // Get the file status
             var status = repo.RetrieveStatus(new StatusOptions { PathSpec = new[] { filePath } });
@@ -305,7 +371,8 @@ public class GitService : IGitService
             // If file is untracked (new file not in git), just delete it
             if (fileStatus.State == FileStatus.NewInWorkdir)
             {
-                var fullPath = Path.Combine(repoPath, filePath);
+                // Use the working directory (original path) for file operations
+                var fullPath = Path.Combine(path, filePath);
                 if (File.Exists(fullPath))
                 {
                     File.Delete(fullPath);
@@ -330,11 +397,12 @@ public class GitService : IGitService
 
     public Task<bool> PushAsync()
     {
-        var repoPath = GetRepositoryPath();
-        if (!Repository.IsValid(repoPath))
+        var path = GetRepositoryPath();
+        var gitPath = DiscoverGitRepositoryPath(path);
+        if (gitPath == null)
             return Task.FromResult(false);
 
-        using var repo = new Repository(repoPath);
+        using var repo = new Repository(gitPath);
         
         var branch = repo.Head;
         if (branch == null)
@@ -367,11 +435,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(new GitStatus());
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var status = repo.RetrieveStatus();
             
             var gitStatus = new GitStatus
@@ -522,11 +591,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var branch = repo.Branches[branchName];
             if (branch == null)
                 return Task.FromResult(false);
@@ -548,11 +618,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var currentBranch = repo.Head;
             
             // Check if there's a tracked branch
@@ -589,11 +660,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var currentBranch = repo.Head;
             
             // Check if there's a tracked branch
@@ -630,11 +702,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(Enumerable.Empty<GitCommitInfo>());
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var commits = repo.Commits
                 .Take(maxCount)
                 .Select(c => new GitCommitInfo
@@ -659,11 +732,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(Enumerable.Empty<GitFileChange>());
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             
             // Use StatusOptions to exclude ignored files
             var statusOptions = new StatusOptions
@@ -707,11 +781,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             Commands.Stage(repo, filePath);
             return Task.FromResult(true);
         }
@@ -725,11 +800,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             Commands.Unstage(repo, filePath);
             return Task.FromResult(true);
         }
@@ -743,11 +819,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var status = repo.RetrieveStatus();
             
             // Check if any files in the secrets folder or secrets files are tracked or staged
@@ -794,11 +871,12 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var status = repo.RetrieveStatus();
             
             // Check if any files in the history folder are tracked or staged
@@ -883,11 +961,16 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult(false);
 
-            var gitignorePath = Path.Combine(repoPath, ".gitignore");
+            // Get the repository root directory
+            using var repo = new Repository(gitPath);
+            var repoRoot = repo.Info.WorkingDirectory;
+            
+            var gitignorePath = Path.Combine(repoRoot, ".gitignore");
             const string secretsComment = "# Secret variables - should not be checked into git";
             const string historyComment = "# Request history - changes frequently and may contain sensitive data";
 
@@ -979,18 +1062,20 @@ public class GitService : IGitService
     {
         try
         {
-            var repoPath = GetRepositoryPath();
-            if (!Repository.IsValid(repoPath))
+            var path = GetRepositoryPath();
+            var gitPath = DiscoverGitRepositoryPath(path);
+            if (gitPath == null)
                 return Task.FromResult<GitFileDiff?>(null);
 
-            using var repo = new Repository(repoPath);
+            using var repo = new Repository(gitPath);
             var status = repo.RetrieveStatus(new StatusOptions { PathSpec = new[] { filePath } });
             var fileStatus = status.FirstOrDefault(s => s.FilePath == filePath);
             
             if (fileStatus == null)
                 return Task.FromResult<GitFileDiff?>(null);
 
-            var fullPath = Path.Combine(repoPath, filePath);
+            // Use the working directory (original path) for file operations
+            var fullPath = Path.Combine(path, filePath);
             string modifiedContent = string.Empty;
             string originalContent = string.Empty;
             
