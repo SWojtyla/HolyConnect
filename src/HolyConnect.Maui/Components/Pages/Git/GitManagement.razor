@@ -5,6 +5,7 @@
 @inject MudBlazor.IDialogService DialogService
 @using HolyConnect.Application.Interfaces
 @using LibGit2Sharp
+@using HolyConnect.Maui.Components.Pages.Git.Sections
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-6">
     <MudOverlay Visible="_isLoading" DarkBackground="true" Absolute="false">
@@ -31,452 +32,54 @@
     }
     else
     {
-        <!-- Repository Status -->
-        <MudCard Class="mb-4">
-            <MudCardContent>
-                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-                    <MudText Typo="Typo.h6">Repository Status</MudText>
-                    <MudButton Variant="Variant.Outlined" 
-                              Color="Color.Info" 
-                              OnClick="RefreshStatus"
-                              StartIcon="@Icons.Material.Filled.Refresh"
-                              Size="Size.Small"
-                              Disabled="_isLoading">
-                        Refresh
-                    </MudButton>
-                </MudStack>
-                
-                <MudGrid>
-                    <MudItem xs="12" sm="6" md="3">
-                        <MudPaper Class="pa-3" Outlined="true">
-                            <MudStack Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Source" Color="Color.Info" />
-                                <MudText Typo="Typo.caption">Current Branch</MudText>
-                                <MudText Typo="Typo.body1">
-                                    <strong>@(_currentBranch ?? "Unknown")</strong>
-                                </MudText>
-                            </MudStack>
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12" sm="6" md="3">
-                        <MudPaper Class="pa-3" Outlined="true">
-                            <MudStack Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Edit" Color="@(_status?.ModifiedFiles > 0 ? Color.Warning : Color.Default)" />
-                                <MudText Typo="Typo.caption">Modified</MudText>
-                                <MudText Typo="Typo.body1">
-                                    <strong>@(_status?.ModifiedFiles ?? 0) files</strong>
-                                </MudText>
-                            </MudStack>
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12" sm="6" md="3">
-                        <MudPaper Class="pa-3" Outlined="true">
-                            <MudStack Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Color="@(_incomingCommits.Any() ? Color.Info : Color.Default)" />
-                                <MudText Typo="Typo.caption">Incoming</MudText>
-                                <MudText Typo="Typo.body1">
-                                    <strong>@_incomingCommits.Count() commits</strong>
-                                </MudText>
-                            </MudStack>
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12" sm="6" md="3">
-                        <MudPaper Class="pa-3" Outlined="true">
-                            <MudStack Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="@(_outgoingCommits.Any() ? Color.Warning : Color.Default)" />
-                                <MudText Typo="Typo.caption">Outgoing</MudText>
-                                <MudText Typo="Typo.body1">
-                                    <strong>@_outgoingCommits.Count() commits</strong>
-                                </MudText>
-                            </MudStack>
-                        </MudPaper>
-                    </MudItem>
-                </MudGrid>
+        <GitStatusSection 
+            CurrentBranch="@_currentBranch"
+            Status="@_status"
+            IncomingCommits="@_incomingCommits"
+            OutgoingCommits="@_outgoingCommits"
+            IsLoading="@_isLoading"
+            OnRefresh="RefreshStatus" />
 
-                @if (_incomingCommits.Any() || _outgoingCommits.Any())
-                {
-                    <MudGrid Class="mt-3">
-                        @if (_incomingCommits.Any())
-                        {
-                            <MudItem xs="12" md="6">
-                                <MudText Typo="Typo.subtitle2" Class="mb-2">Incoming Commits:</MudText>
-                                <MudList T="string" Dense="true" Class="ml-2">
-                                    @foreach (var commit in _incomingCommits.Take(5))
-                                    {
-                                        <MudListItem T="string">
-                                            <MudText Typo="Typo.body2">
-                                                <strong>@commit.ShortSha</strong> - @commit.Message
-                                                <br />
-                                                <span style="font-size: 0.8em; color: gray;">@commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm")</span>
-                                            </MudText>
-                                        </MudListItem>
-                                    }
-                                    @if (_incomingCommits.Count() > 5)
-                                    {
-                                        <MudListItem T="string">
-                                            <MudText Typo="Typo.caption">... and @(_incomingCommits.Count() - 5) more</MudText>
-                                        </MudListItem>
-                                    }
-                                </MudList>
-                            </MudItem>
-                        }
-                        @if (_outgoingCommits.Any())
-                        {
-                            <MudItem xs="12" md="6">
-                                <MudText Typo="Typo.subtitle2" Class="mb-2">Outgoing Commits:</MudText>
-                                <MudList T="string" Dense="true" Class="ml-2">
-                                    @foreach (var commit in _outgoingCommits.Take(5))
-                                    {
-                                        <MudListItem T="string">
-                                            <MudText Typo="Typo.body2">
-                                                <strong>@commit.ShortSha</strong> - @commit.Message
-                                                <br />
-                                                <span style="font-size: 0.8em; color: gray;">@commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm")</span>
-                                            </MudText>
-                                        </MudListItem>
-                                    }
-                                    @if (_outgoingCommits.Count() > 5)
-                                    {
-                                        <MudListItem T="string">
-                                            <MudText Typo="Typo.caption">... and @(_outgoingCommits.Count() - 5) more</MudText>
-                                        </MudListItem>
-                                    }
-                                </MudList>
-                            </MudItem>
-                        }
-                    </MudGrid>
-                }
+        <GitSecretsWarningSection 
+            IsSecretsTracked="@_isSecretsTracked"
+            IsHistoryTracked="@_isHistoryTracked"
+            IsLoading="@_isLoading"
+            OnAddToGitignore="AddSecretsToGitignore" />
 
-                @if (_status?.HasChanges == true)
-                {
-                    <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Changes:</MudText>
-                    <MudList T="string" Dense="true" Class="ml-2">
-                        @foreach (var change in _status.Changes.Take(10))
-                        {
-                            <MudListItem T="string">
-                                <MudText Typo="Typo.body2">@change</MudText>
-                            </MudListItem>
-                        }
-                        @if (_status.Changes.Count > 10)
-                        {
-                            <MudListItem T="string">
-                                <MudText Typo="Typo.caption">... and @(_status.Changes.Count - 10) more</MudText>
-                            </MudListItem>
-                        }
-                    </MudList>
-                }
+        <GitBranchesSection 
+            CurrentBranch="@_currentBranch"
+            Branches="@_branches"
+            @bind-SelectedBranch="@_selectedBranch"
+            @bind-NewBranchName="@_newBranchName"
+            @bind-BranchToDelete="@_branchToDelete"
+            OnSwitchBranch="SwitchBranch"
+            OnCreateBranch="CreateBranch"
+            OnDeleteBranch="DeleteBranch" />
 
-            </MudCardContent>
-        </MudCard>
+        <GitChangesSection 
+            FileChanges="@_fileChanges"
+            @bind-CommitMessage="@_commitMessage"
+            OnCommit="CommitChanges"
+            OnStageAll="StageAllFiles"
+            OnStageFile="StageFile"
+            OnUnstageFile="UnstageFile"
+            OnRevertFile="RevertFile"
+            OnShowDiff="ShowFileDiff" />
 
-        <!-- Secrets and History Warning -->
-        @if (_isSecretsTracked || _isHistoryTracked)
-        {
-            <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Filled">
-                <MudStack Spacing="2">
-                    <MudText Typo="Typo.body1">
-                        <strong>Warning:</strong> Sensitive data is being tracked by Git!
-                    </MudText>
-                    @if (_isSecretsTracked)
-                    {
-                        <MudText Typo="Typo.body2">
-                            • The <code>secrets/</code> folder contains sensitive data (API keys, tokens, passwords) that should not be committed to version control.
-                        </MudText>
-                    }
-                    @if (_isHistoryTracked)
-                    {
-                        <MudText Typo="Typo.body2">
-                            • The <code>history/</code> folder contains request execution history that changes frequently and may contain sensitive data from requests and responses.
-                        </MudText>
-                    }
-                    <MudText Typo="Typo.body2">
-                        This could expose your credentials or sensitive information if you push to a remote repository.
-                    </MudText>
-                    <MudButton Variant="Variant.Filled" 
-                              Color="Color.Dark" 
-                              OnClick="AddSecretsToGitignore"
-                              StartIcon="@Icons.Material.Filled.Security"
-                              Disabled="_isLoading">
-                        Add to .gitignore
-                    </MudButton>
-                </MudStack>
-            </MudAlert>
-        }
+        <GitCommitHistorySection 
+            CommitHistory="@_commitHistory"
+            @bind-IsExpanded="@_commitHistoryExpanded"
+            IsLoading="@_isLoading"
+            OnRefresh="RefreshCommitHistory" />
 
-        <!-- Branch Operations -->
-        <MudCard Class="mb-4">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Class="mb-3">Branch Operations</MudText>
-                
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Switch Branch:</MudText>
-                <MudGrid>
-                    <MudItem xs="12" sm="8">
-                        <MudSelect @bind-Value="_selectedBranch" 
-                                  Label="Select Branch" 
-                                  Variant="Variant.Outlined"
-                                  T="string">
-                            @foreach (var branch in _branches)
-                            {
-                                <MudSelectItem Value="@branch">@branch</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" sm="4">
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Primary" 
-                                  OnClick="SwitchBranch"
-                                  Disabled="@(string.IsNullOrEmpty(_selectedBranch) || _selectedBranch == _currentBranch)"
-                                  FullWidth="true"
-                                  StartIcon="@Icons.Material.Filled.Sync">
-                            Switch
-                        </MudButton>
-                    </MudItem>
-                </MudGrid>
-
-                <MudDivider Class="my-3" />
-
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Create New Branch:</MudText>
-                <MudGrid>
-                    <MudItem xs="12" sm="8">
-                        <MudTextField @bind-Value="_newBranchName" 
-                                     Label="Branch Name" 
-                                     Variant="Variant.Outlined" />
-                    </MudItem>
-                    <MudItem xs="12" sm="4">
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Success" 
-                                  OnClick="CreateBranch"
-                                  Disabled="@string.IsNullOrWhiteSpace(_newBranchName)"
-                                  FullWidth="true"
-                                  StartIcon="@Icons.Material.Filled.Add">
-                            Create
-                        </MudButton>
-                    </MudItem>
-                </MudGrid>
-
-                <MudDivider Class="my-3" />
-
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Delete Branch:</MudText>
-                <MudGrid>
-                    <MudItem xs="12" sm="8">
-                        <MudSelect @bind-Value="_branchToDelete" 
-                                  Label="Select Branch to Delete" 
-                                  Variant="Variant.Outlined"
-                                  T="string">
-                            @foreach (var branch in _branches.Where(b => b != _currentBranch))
-                            {
-                                <MudSelectItem Value="@branch">@branch</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" sm="4">
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Error" 
-                                  OnClick="DeleteBranch"
-                                  Disabled="@string.IsNullOrEmpty(_branchToDelete)"
-                                  FullWidth="true"
-                                  StartIcon="@Icons.Material.Filled.Delete">
-                            Delete
-                        </MudButton>
-                    </MudItem>
-                </MudGrid>
-            </MudCardContent>
-        </MudCard>
-
-        <!-- Commit Changes -->
-        <MudCard Class="mb-4">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Class="mb-3">Commit Changes</MudText>
-                
-                @if (_fileChanges.Any())
-                {
-                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
-                        <MudText Typo="Typo.subtitle2">Files to Commit:</MudText>
-                        @if (_fileChanges.Any(f => !f.IsStaged))
-                        {
-                            <MudButton Size="Size.Small" 
-                                      Variant="Variant.Outlined" 
-                                      Color="Color.Primary"
-                                      OnClick="StageAllFiles"
-                                      StartIcon="@Icons.Material.Filled.DoneAll">
-                                Stage All
-                            </MudButton>
-                        }
-                    </MudStack>
-                    <MudPaper Class="pa-3 mb-3" Outlined="true" Style="max-height: 18.75rem; overflow-y: auto;">
-                        <MudList T="string" Dense="true">
-                            @foreach (var file in _fileChanges)
-                            {
-                                <MudListItem T="string">
-                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                        <div style="flex-grow: 1;">
-                                            <MudText Typo="Typo.body2">
-                                                <MudChip Size="Size.Small" Color="@GetFileStatusColor(file.Status)" Variant="Variant.Text">
-                                                    @file.Status
-                                                </MudChip>
-                                                @file.FilePath
-                                            </MudText>
-                                        </div>
-                                        <MudStack Row="true" Spacing="1">
-                                            <MudButton Size="Size.Small" 
-                                                      Variant="Variant.Text" 
-                                                      Color="Color.Info"
-                                                      OnClick="@(() => ShowFileDiff(file.FilePath))"
-                                                      StartIcon="@Icons.Material.Filled.Difference">
-                                                Diff
-                                            </MudButton>
-                                            @if (!file.IsStaged)
-                                            {
-                                                <MudButton Size="Size.Small" 
-                                                          Variant="Variant.Text" 
-                                                          OnClick="@(() => StageFile(file.FilePath))"
-                                                          StartIcon="@Icons.Material.Filled.Add">
-                                                    Stage
-                                                </MudButton>
-                                            }
-                                            else
-                                            {
-                                                <MudButton Size="Size.Small" 
-                                                          Variant="Variant.Text" 
-                                                          OnClick="@(() => UnstageFile(file.FilePath))"
-                                                          StartIcon="@Icons.Material.Filled.Remove">
-                                                    Unstage
-                                                </MudButton>
-                                            }
-                                            <MudButton Size="Size.Small" 
-                                                      Variant="Variant.Text" 
-                                                      Color="Color.Error"
-                                                      OnClick="@(() => RevertFile(file.FilePath))"
-                                                      StartIcon="@Icons.Material.Filled.Undo">
-                                                Revert
-                                            </MudButton>
-                                        </MudStack>
-                                    </MudStack>
-                                </MudListItem>
-                            }
-                        </MudList>
-                    </MudPaper>
-                }
-                
-                <MudTextField @bind-Value="_commitMessage" 
-                             Label="Commit Message" 
-                             Variant="Variant.Outlined" 
-                             Lines="3"
-                             Class="mb-3" />
-                
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Primary" 
-                          OnClick="CommitChanges"
-                          Disabled="@(string.IsNullOrWhiteSpace(_commitMessage) || !_fileChanges.Any(f => f.IsStaged))"
-                          StartIcon="@Icons.Material.Filled.Save">
-                    Commit Staged Changes
-                </MudButton>
-            </MudCardContent>
-        </MudCard>
-
-        <!-- Commit History -->
-        <MudExpansionPanels Class="mb-4">
-            <MudExpansionPanel @bind-IsExpanded="_commitHistoryExpanded">
-                <TitleContent>
-                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
-                        <MudText Typo="Typo.h6">Commit History</MudText>
-                        <MudButton Variant="Variant.Outlined" 
-                                  Color="Color.Info" 
-                                  OnClick="RefreshCommitHistory"
-                                  StartIcon="@Icons.Material.Filled.Refresh"
-                                  Size="Size.Small"
-                                  Disabled="_isLoading"
-                                  OnClick:StopPropagation="true">
-                            Refresh
-                        </MudButton>
-                    </MudStack>
-                </TitleContent>
-                <ChildContent>
-                    @if (_commitHistory.Any())
-                    {
-                        <MudPaper Class="pa-3" Outlined="true" Style="max-height: 31.25rem; overflow-y: auto;">
-                            <MudList T="string" Dense="true">
-                                @foreach (var commit in _commitHistory)
-                                {
-                                    <MudListItem T="string">
-                                        <MudText Typo="Typo.body2">
-                                            <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@commit.ShortSha</MudChip>
-                                            <strong>@commit.Message</strong>
-                                            <br />
-                                            <span style="font-size: 0.8em; color: gray;">
-                                                @commit.Author - @commit.Date.ToString("yyyy-MM-dd HH:mm:ss")
-                                            </span>
-                                        </MudText>
-                                    </MudListItem>
-                                }
-                            </MudList>
-                        </MudPaper>
-                    }
-                    else
-                    {
-                        <MudAlert Severity="Severity.Info">No commit history available.</MudAlert>
-                    }
-                </ChildContent>
-            </MudExpansionPanel>
-        </MudExpansionPanels>
-
-        <!-- Remote Operations -->
-        <MudCard Class="mb-4">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Class="mb-3">Remote Operations</MudText>
-                
-                <MudText Typo="Typo.body2" Class="mb-3">
-                    Sync your changes with the remote repository.
-                </MudText>
-
-                <MudGrid>
-                    <MudItem xs="12" sm="4">
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Info" 
-                                  OnClick="Fetch"
-                                  StartIcon="@Icons.Material.Filled.CloudDownload"
-                                  FullWidth="true"
-                                  Disabled="_isLoading">
-                            @if (_isFetching)
-                            {
-                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
-                            }
-                            Fetch Changes
-                        </MudButton>
-                    </MudItem>
-                    
-                    <MudItem xs="12" sm="4">
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Primary" 
-                                  OnClick="Pull"
-                                  StartIcon="@Icons.Material.Filled.GetApp"
-                                  FullWidth="true"
-                                  Disabled="_isLoading">
-                            @if (_isPulling)
-                            {
-                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
-                            }
-                            Pull Changes
-                        </MudButton>
-                    </MudItem>
-                    
-                    <MudItem xs="12" sm="4">
-                        <MudButton Variant="Variant.Filled" 
-                                  Color="Color.Secondary" 
-                                  OnClick="Push"
-                                  StartIcon="@Icons.Material.Filled.Publish"
-                                  FullWidth="true"
-                                  Disabled="_isLoading">
-                            @if (_isPushing)
-                            {
-                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
-                            }
-                            Push Changes
-                        </MudButton>
-                    </MudItem>
-                </MudGrid>
-            </MudCardContent>
-        </MudCard>
+        <GitRemotesSection 
+            IsLoading="@_isLoading"
+            IsFetching="@_isFetching"
+            IsPulling="@_isPulling"
+            IsPushing="@_isPushing"
+            OnFetch="Fetch"
+            OnPull="Pull"
+            OnPush="Push" />
     }
 </MudContainer>
 
@@ -529,8 +132,6 @@
         _fileChanges = await GitService.GetFileChangesAsync();
         _isSecretsTracked = await GitService.IsSecretsTrackedAsync();
         _isHistoryTracked = await GitService.IsHistoryTrackedAsync();
-        
-        StateHasChanged();
     }
 
     private async Task InitializeRepository()
@@ -559,7 +160,6 @@
     private async Task RefreshStatus()
     {
         _isLoading = true;
-        StateHasChanged();
         try
         {
             await LoadRepositoryInfo();
@@ -572,7 +172,18 @@
         finally
         {
             _isLoading = false;
-            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshCommitHistory()
+    {
+        try
+        {
+            _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing commit history: {ex.Message}", Severity.Error);
         }
     }
 
@@ -683,7 +294,6 @@
     {
         _isFetching = true;
         _isLoading = true;
-        StateHasChanged();
         try
         {
             var success = await GitService.FetchAsync();
@@ -710,7 +320,6 @@
         {
             _isFetching = false;
             _isLoading = false;
-            StateHasChanged();
         }
     }
 
@@ -718,7 +327,6 @@
     {
         _isPulling = true;
         _isLoading = true;
-        StateHasChanged();
         try
         {
             var success = await GitService.PullAsync();
@@ -745,7 +353,6 @@
         {
             _isPulling = false;
             _isLoading = false;
-            StateHasChanged();
         }
     }
 
@@ -753,7 +360,6 @@
     {
         _isPushing = true;
         _isLoading = true;
-        StateHasChanged();
         try
         {
             var success = await GitService.PushAsync();
@@ -780,22 +386,6 @@
         {
             _isPushing = false;
             _isLoading = false;
-            StateHasChanged();
-        }
-    }
-
-
-    private async Task RefreshCommitHistory()
-    {
-        try
-        {
-            _commitHistory = await GitService.GetCommitHistoryAsync(COMMIT_HISTORY_MAX_COUNT);
-            Snackbar.Add("Commit history refreshed", Severity.Success);
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error refreshing commit history: {ex.Message}", Severity.Error);
         }
     }
 
@@ -809,7 +399,6 @@
             {
                 Snackbar.Add($"Staged {filePath}", Severity.Success);
                 _fileChanges = await GitService.GetFileChangesAsync();
-                StateHasChanged();
             }
             else
             {
@@ -832,7 +421,6 @@
             {
                 Snackbar.Add($"Unstaged {filePath}", Severity.Success);
                 _fileChanges = await GitService.GetFileChangesAsync();
-                StateHasChanged();
             }
             else
             {
@@ -862,7 +450,6 @@
             }
 
             _fileChanges = await GitService.GetFileChangesAsync();
-            StateHasChanged();
             
             if (successCount == unstagedFiles.Count)
             {
@@ -890,7 +477,6 @@
                 Snackbar.Add($"Reverted {filePath}", Severity.Success);
                 _fileChanges = await GitService.GetFileChangesAsync();
                 _status = await GitService.GetStatusAsync();
-                StateHasChanged();
             }
             else
             {
@@ -901,19 +487,6 @@
         {
             Snackbar.Add($"Error reverting file: {ex.Message}", Severity.Error);
         }
-    }
-
-    private Color GetFileStatusColor(string status)
-    {
-        return status switch
-        {
-            "Added" => Color.Success,
-            "Modified" => Color.Warning,
-            "Deleted" => Color.Error,
-            "Untracked" => Color.Info,
-            "Renamed" => Color.Primary,
-            _ => Color.Default
-        };
     }
 
     private async Task AddSecretsToGitignore()
