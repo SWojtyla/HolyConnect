@@ -6,74 +6,62 @@ namespace HolyConnect.Application.Services;
 
 public class RequestService : IRequestService
 {
-    private readonly IRepository<Request> _requestRepository;
-    private readonly IActiveEnvironmentService _activeEnvironmentService;
+    private readonly RepositoryAccessor _repositories;
+    private readonly RequestExecutionContext _executionContext;
     private readonly IEnvironmentService _environmentService;
     private readonly ICollectionService _collectionService;
-    private readonly IRepository<Collection> _collectionRepository;
-    private readonly IRequestExecutorFactory _executorFactory;
-    private readonly IVariableResolver _variableResolver;
     private readonly IRequestHistoryService? _historyService;
-    private readonly IResponseValueExtractor? _responseValueExtractor;
 
     public RequestService(
-        IRepository<Request> requestRepository,
-        IActiveEnvironmentService activeEnvironmentService,
+        RepositoryAccessor repositories,
+        RequestExecutionContext executionContext,
         IEnvironmentService environmentService,
         ICollectionService collectionService,
-        IRepository<Collection> collectionRepository,
-        IRequestExecutorFactory executorFactory,
-        IVariableResolver variableResolver,
-        IRequestHistoryService? historyService = null,
-        IResponseValueExtractor? responseValueExtractor = null)
+        IRequestHistoryService? historyService = null)
     {
-        _requestRepository = requestRepository;
-        _activeEnvironmentService = activeEnvironmentService;
+        _repositories = repositories;
+        _executionContext = executionContext;
         _environmentService = environmentService;
         _collectionService = collectionService;
-        _collectionRepository = collectionRepository;
-        _executorFactory = executorFactory;
-        _variableResolver = variableResolver;
         _historyService = historyService;
-        _responseValueExtractor = responseValueExtractor;
     }
 
     public async Task<Request> CreateRequestAsync(Request request)
     {
         request.Id = Guid.NewGuid();
         request.CreatedAt = DateTime.UtcNow;
-        return await _requestRepository.AddAsync(request);
+        return await _repositories.Requests.AddAsync(request);
     }
 
     public async Task<IEnumerable<Request>> GetAllRequestsAsync()
     {
-        return await _requestRepository.GetAllAsync();
+        return await _repositories.Requests.GetAllAsync();
     }
 
     public async Task<Request?> GetRequestByIdAsync(Guid id)
     {
-        return await _requestRepository.GetByIdAsync(id);
+        return await _repositories.Requests.GetByIdAsync(id);
     }
 
     public async Task<IEnumerable<Request>> GetRequestsByCollectionIdAsync(Guid collectionId)
     {
-        var allRequests = await _requestRepository.GetAllAsync();
+        var allRequests = await _repositories.Requests.GetAllAsync();
         return allRequests.Where(r => r.CollectionId == collectionId);
     }
 
     public async Task<Request> UpdateRequestAsync(Request request)
     {
-        return await _requestRepository.UpdateAsync(request);
+        return await _repositories.Requests.UpdateAsync(request);
     }
 
     public async Task DeleteRequestAsync(Guid id)
     {
-        await _requestRepository.DeleteAsync(id);
+        await _repositories.Requests.DeleteAsync(id);
     }
 
     public async Task<RequestResponse> ExecuteRequestAsync(Request request)
     {
-        var executor = _executorFactory.GetExecutor(request);
+        var executor = _executionContext.ExecutorFactory.GetExecutor(request);
 
         // Resolve variables before execution using active environment
         var resolvedRequest = await ResolveRequestVariablesAsync(request);
@@ -81,7 +69,7 @@ public class RequestService : IRequestService
         var response = await executor.ExecuteAsync(resolvedRequest);
 
         // Apply response extractions if configured
-        if (_responseValueExtractor != null && request.ResponseExtractions.Any(e => e.IsEnabled))
+        if (_executionContext.ResponseExtractor != null && request.ResponseExtractions.Any(e => e.IsEnabled))
         {
             await ApplyResponseExtractionsAsync(request, response);
         }
@@ -89,7 +77,7 @@ public class RequestService : IRequestService
         // Save to history if history service is available
         if (_historyService != null && response.SentRequest != null)
         {
-            var activeEnvId = await _activeEnvironmentService.GetActiveEnvironmentIdAsync();
+            var activeEnvId = await _executionContext.ActiveEnvironment.GetActiveEnvironmentIdAsync();
             var historyEntry = new RequestHistoryEntry
             {
                 RequestName = request.Name,
@@ -110,7 +98,7 @@ public class RequestService : IRequestService
     private async Task<Request> ResolveRequestVariablesAsync(Request request)
     {
         // Load active environment
-        var environment = await _activeEnvironmentService.GetActiveEnvironmentAsync();
+        var environment = await _executionContext.ActiveEnvironment.GetActiveEnvironmentAsync();
         if (environment == null)
         {
             // No active environment - continue without variable resolution
@@ -121,14 +109,14 @@ public class RequestService : IRequestService
         Collection? collection = null;
         if (request.CollectionId.HasValue)
         {
-            collection = await _collectionRepository.GetByIdAsync(request.CollectionId.Value);
+            collection = await _repositories.Collections.GetByIdAsync(request.CollectionId.Value);
         }
 
         // Create a clone to avoid modifying the original request
         var resolvedRequest = RequestCloner.Clone(request);
 
         // Resolve all variables using the helper
-        VariableResolutionHelper.ResolveAllVariables(resolvedRequest, _variableResolver, environment, collection);
+        VariableResolutionHelper.ResolveAllVariables(resolvedRequest, _executionContext.VariableResolver, environment, collection);
 
         return resolvedRequest;
     }
@@ -137,13 +125,13 @@ public class RequestService : IRequestService
 
     private async Task ApplyResponseExtractionsAsync(Request request, RequestResponse response)
     {
-        if (_responseValueExtractor == null || string.IsNullOrWhiteSpace(response.Body))
+        if (_executionContext.ResponseExtractor == null || string.IsNullOrWhiteSpace(response.Body))
         {
             return;
         }
 
         // Load active environment for variable saving
-        var environment = await _activeEnvironmentService.GetActiveEnvironmentAsync();
+        var environment = await _executionContext.ActiveEnvironment.GetActiveEnvironmentAsync();
         if (environment == null)
         {
             return;
@@ -152,7 +140,7 @@ public class RequestService : IRequestService
         Collection? collection = null;
         if (request.CollectionId.HasValue)
         {
-            collection = await _collectionRepository.GetByIdAsync(request.CollectionId.Value);
+            collection = await _repositories.Collections.GetByIdAsync(request.CollectionId.Value);
         }
 
         // Determine content type from headers
@@ -164,12 +152,12 @@ public class RequestService : IRequestService
         {
             try
             {
-                var extractedValue = _responseValueExtractor.ExtractValue(response.Body, extraction.Pattern, contentType);
+                var extractedValue = _executionContext.ResponseExtractor.ExtractValue(response.Body, extraction.Pattern, contentType);
                 
                 if (extractedValue != null && !string.IsNullOrEmpty(extraction.VariableName))
                 {
                     // Save to variable
-                    _variableResolver.SetVariableValue(
+                    _executionContext.VariableResolver.SetVariableValue(
                         extraction.VariableName, 
                         extractedValue, 
                         environment, 

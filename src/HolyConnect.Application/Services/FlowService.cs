@@ -10,30 +10,18 @@ namespace HolyConnect.Application.Services;
 /// </summary>
 public class FlowService : IFlowService
 {
-    private readonly IRepository<Flow> _flowRepository;
-    private readonly IRepository<Request> _requestRepository;
-    private readonly IActiveEnvironmentService _activeEnvironmentService;
-    private readonly IRepository<Collection> _collectionRepository;
+    private readonly RepositoryAccessor _repositories;
+    private readonly RequestExecutionContext _executionContext;
     private readonly IRequestService _requestService;
-    private readonly IVariableResolver _variableResolver;
-    private readonly IRepository<Domain.Entities.Environment> _environmentRepository;
 
     public FlowService(
-        IRepository<Flow> flowRepository,
-        IRepository<Request> requestRepository,
-        IActiveEnvironmentService activeEnvironmentService,
-        IRepository<Collection> collectionRepository,
-        IRequestService requestService,
-        IVariableResolver variableResolver,
-        IRepository<Domain.Entities.Environment> environmentRepository)
+        RepositoryAccessor repositories,
+        RequestExecutionContext executionContext,
+        IRequestService requestService)
     {
-        _flowRepository = flowRepository;
-        _requestRepository = requestRepository;
-        _activeEnvironmentService = activeEnvironmentService;
-        _collectionRepository = collectionRepository;
+        _repositories = repositories;
+        _executionContext = executionContext;
         _requestService = requestService;
-        _variableResolver = variableResolver;
-        _environmentRepository = environmentRepository;
     }
 
     public async Task<Flow> CreateFlowAsync(Flow flow)
@@ -48,45 +36,45 @@ public class FlowService : IFlowService
             step.FlowId = flow.Id;
         }
         
-        return await _flowRepository.AddAsync(flow);
+        return await _repositories.Flows.AddAsync(flow);
     }
 
     public async Task<IEnumerable<Flow>> GetAllFlowsAsync()
     {
-        return await _flowRepository.GetAllAsync();
+        return await _repositories.Flows.GetAllAsync();
     }
 
     public async Task<Flow?> GetFlowByIdAsync(Guid id)
     {
-        return await _flowRepository.GetByIdAsync(id);
+        return await _repositories.Flows.GetByIdAsync(id);
     }
 
     public async Task<IEnumerable<Flow>> GetFlowsByCollectionIdAsync(Guid collectionId)
     {
-        var allFlows = await _flowRepository.GetAllAsync();
+        var allFlows = await _repositories.Flows.GetAllAsync();
         return allFlows.Where(f => f.CollectionId == collectionId);
     }
 
     public async Task<Flow> UpdateFlowAsync(Flow flow)
     {
-        return await _flowRepository.UpdateAsync(flow);
+        return await _repositories.Flows.UpdateAsync(flow);
     }
 
     public async Task DeleteFlowAsync(Guid id)
     {
-        await _flowRepository.DeleteAsync(id);
+        await _repositories.Flows.DeleteAsync(id);
     }
 
     public async Task<FlowExecutionResult> ExecuteFlowAsync(Guid flowId, Guid environmentId, CancellationToken cancellationToken = default)
     {
-        var flow = await _flowRepository.GetByIdAsync(flowId);
+        var flow = await _repositories.Flows.GetByIdAsync(flowId);
         if (flow == null)
         {
             throw new InvalidOperationException($"Flow with ID {flowId} not found.");
         }
 
         // Get the specified environment
-        var environment = await _environmentRepository.GetByIdAsync(environmentId);
+        var environment = await _repositories.Environments.GetByIdAsync(environmentId);
         if (environment == null)
         {
             throw new InvalidOperationException($"Environment with ID {environmentId} not found.");
@@ -107,7 +95,7 @@ public class FlowService : IFlowService
             Collection? collection = null;
             if (flow.CollectionId.HasValue)
             {
-                collection = await _collectionRepository.GetByIdAsync(flow.CollectionId.Value);
+                collection = await _repositories.Collections.GetByIdAsync(flow.CollectionId.Value);
             }
 
             // Create a temporary variables dictionary for flow execution
@@ -228,7 +216,7 @@ public class FlowService : IFlowService
 
     private async Task<Request> GetStepRequestAsync(FlowStep step, FlowStepResult stepResult)
     {
-        var request = await _requestRepository.GetByIdAsync(step.RequestId);
+        var request = await _repositories.Requests.GetByIdAsync(step.RequestId);
         if (request == null)
         {
             throw new InvalidOperationException($"Request with ID {step.RequestId} not found.");

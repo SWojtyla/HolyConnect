@@ -1,3 +1,4 @@
+using HolyConnect.Application.Common;
 using HolyConnect.Application.Interfaces;
 using HolyConnect.Application.Services;
 using HolyConnect.Domain.Entities;
@@ -14,6 +15,8 @@ public class FlowServiceTests
     private readonly Mock<IRequestService> _mockRequestService;
     private readonly Mock<IVariableResolver> _mockVariableResolver;
     private readonly Mock<IRepository<Domain.Entities.Environment>> _mockEnvironmentRepository;
+    private readonly Mock<IRepository<RequestHistoryEntry>> _mockHistoryRepository;
+    private readonly Mock<IRequestExecutorFactory> _mockExecutorFactory;
     private readonly FlowService _service;
 
     public FlowServiceTests()
@@ -25,15 +28,25 @@ public class FlowServiceTests
         _mockRequestService = new Mock<IRequestService>();
         _mockVariableResolver = new Mock<IVariableResolver>();
         _mockEnvironmentRepository = new Mock<IRepository<Domain.Entities.Environment>>();
+        _mockHistoryRepository = new Mock<IRepository<RequestHistoryEntry>>();
+        _mockExecutorFactory = new Mock<IRequestExecutorFactory>();
+
+        var repositories = new RepositoryAccessor(
+            _mockRequestRepository.Object,
+            _mockCollectionRepository.Object,
+            _mockEnvironmentRepository.Object,
+            _mockFlowRepository.Object,
+            _mockHistoryRepository.Object);
+
+        var executionContext = new RequestExecutionContext(
+            _mockActiveEnvironmentService.Object,
+            _mockVariableResolver.Object,
+            _mockExecutorFactory.Object);
 
         _service = new FlowService(
-            _mockFlowRepository.Object,
-            _mockRequestRepository.Object,
-            _mockActiveEnvironmentService.Object,
-            _mockCollectionRepository.Object,
-            _mockRequestService.Object,
-            _mockVariableResolver.Object,
-            _mockEnvironmentRepository.Object);
+            repositories,
+            executionContext,
+            _mockRequestService.Object);
     }
 
     [Fact]
