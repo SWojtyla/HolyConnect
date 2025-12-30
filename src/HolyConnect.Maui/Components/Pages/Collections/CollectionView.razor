@@ -584,7 +584,7 @@
         _dragOverItemType = null;
     }
     
-    private async void HandleDrop(Guid dropTargetId, DraggableItemType dropTargetType)
+    private async Task HandleDrop(Guid dropTargetId, DraggableItemType dropTargetType)
     {
         if (_draggedItem == null)
         {
