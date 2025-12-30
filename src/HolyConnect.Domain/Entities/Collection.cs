@@ -16,5 +16,6 @@ public class Collection
     public Collection? ParentCollection { get; set; }
     public List<Collection> SubCollections { get; set; } = new();
     public List<Request> Requests { get; set; } = new();
+    public int Order { get; set; }
     public DateTime CreatedAt { get; set; }
 }

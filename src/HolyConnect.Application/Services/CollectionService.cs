@@ -50,6 +50,50 @@ public class CollectionService : CrudServiceBase<Collection>, ICollectionService
         await DeleteAsync(id);
     }
 
+    public async Task MoveCollectionAsync(Guid collectionId, Guid? newParentCollectionId, int newOrder)
+    {
+        var collection = await GetByIdAsync(collectionId);
+        if (collection == null)
+        {
+            throw new InvalidOperationException($"Collection with ID {collectionId} not found.");
+        }
+
+        var oldParentId = collection.ParentCollectionId;
+
+        // Update the collection's parent and order
+        collection.ParentCollectionId = newParentCollectionId;
+        collection.Order = newOrder;
+        await UpdateAsync(collection);
+
+        // Reorder other collections in the old parent
+        if (oldParentId != newParentCollectionId)
+        {
+            await ReorderCollectionsInParentAsync(oldParentId);
+        }
+
+        // Reorder collections in the new parent
+        await ReorderCollectionsInParentAsync(newParentCollectionId);
+    }
+
+    private async Task ReorderCollectionsInParentAsync(Guid? parentId)
+    {
+        var allCollections = await GetAllAsync();
+        var siblings = allCollections
+            .Where(c => c.ParentCollectionId == parentId)
+            .OrderBy(c => c.Order)
+            .ThenBy(c => c.CreatedAt)
+            .ToList();
+
+        for (int i = 0; i < siblings.Count; i++)
+        {
+            if (siblings[i].Order != i)
+            {
+                siblings[i].Order = i;
+                await UpdateAsync(siblings[i]);
+            }
+        }
+    }
+
     protected override Guid GetEntityId(Collection entity)
     {
         return entity.Id;

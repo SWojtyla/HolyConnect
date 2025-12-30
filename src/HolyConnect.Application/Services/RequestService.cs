@@ -59,6 +59,50 @@ public class RequestService : IRequestService
         await _repositories.Requests.DeleteAsync(id);
     }
 
+    public async Task MoveRequestAsync(Guid requestId, Guid? newCollectionId, int newOrder)
+    {
+        var request = await GetRequestByIdAsync(requestId);
+        if (request == null)
+        {
+            throw new InvalidOperationException($"Request with ID {requestId} not found.");
+        }
+
+        var oldCollectionId = request.CollectionId;
+
+        // Update the request's collection and order
+        request.CollectionId = newCollectionId;
+        request.Order = newOrder;
+        await UpdateRequestAsync(request);
+
+        // Reorder other requests in the old collection
+        if (oldCollectionId != newCollectionId)
+        {
+            await ReorderRequestsInCollectionAsync(oldCollectionId);
+        }
+
+        // Reorder requests in the new collection
+        await ReorderRequestsInCollectionAsync(newCollectionId);
+    }
+
+    private async Task ReorderRequestsInCollectionAsync(Guid? collectionId)
+    {
+        var allRequests = await GetAllRequestsAsync();
+        var siblings = allRequests
+            .Where(r => r.CollectionId == collectionId)
+            .OrderBy(r => r.Order)
+            .ThenBy(r => r.CreatedAt)
+            .ToList();
+
+        for (int i = 0; i < siblings.Count; i++)
+        {
+            if (siblings[i].Order != i)
+            {
+                siblings[i].Order = i;
+                await UpdateRequestAsync(siblings[i]);
+            }
+        }
+    }
+
     public async Task<RequestResponse> ExecuteRequestAsync(Request request)
     {
         var executor = _executionContext.ExecutorFactory.GetExecutor(request);

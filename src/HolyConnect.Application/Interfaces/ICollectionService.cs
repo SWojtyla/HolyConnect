@@ -12,4 +12,5 @@ public interface ICollectionService
     Task<Collection?> GetCollectionByIdAsync(Guid id);
     Task<Collection> UpdateCollectionAsync(Collection collection);
     Task DeleteCollectionAsync(Guid id);
+    Task MoveCollectionAsync(Guid collectionId, Guid? newParentCollectionId, int newOrder);
 }

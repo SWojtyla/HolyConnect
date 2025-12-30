@@ -38,8 +38,21 @@ public static class CollectionHierarchyHelper
             }
         }
         
-        // Return only root-level collections (those without a parent)
-        return collectionDict.Values.Where(c => !c.ParentCollectionId.HasValue).ToList();
+        // Sort subcollections by order
+        foreach (var collection in collectionDict.Values)
+        {
+            collection.SubCollections = collection.SubCollections
+                .OrderBy(c => c.Order)
+                .ThenBy(c => c.CreatedAt)
+                .ToList();
+        }
+        
+        // Return only root-level collections (those without a parent), sorted by order
+        return collectionDict.Values
+            .Where(c => !c.ParentCollectionId.HasValue)
+            .OrderBy(c => c.Order)
+            .ThenBy(c => c.CreatedAt)
+            .ToList();
     }
     
     /// <summary>
@@ -52,7 +65,7 @@ public static class CollectionHierarchyHelper
         var requestsByCollectionId = requests
             .Where(r => r.CollectionId.HasValue)
             .GroupBy(r => r.CollectionId!.Value)
-            .ToDictionary(g => g.Key, g => g.ToList());
+            .ToDictionary(g => g.Key, g => g.OrderBy(r => r.Order).ThenBy(r => r.CreatedAt).ToList());
         
         foreach (var collection in collections)
         {
