@@ -1,6 +1,7 @@
 @page "/variables/matrix"
 @inject IEnvironmentService EnvironmentService
 @inject IActiveEnvironmentService ActiveEnvironmentService
+@inject ISecretVariablesService SecretVariablesService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -134,6 +135,16 @@
         
         if (_environments != null && _environments.Any())
         {
+            // Load secrets for each environment to ensure values are populated
+            foreach (var env in _environments)
+            {
+                var secrets = await SecretVariablesService.GetEnvironmentSecretsAsync(env.Id);
+                foreach (var secret in secrets)
+                {
+                    env.Variables[secret.Key] = secret.Value;
+                }
+            }
+            
             var allKeys = _environments
                 .SelectMany(e => e.Variables.Keys)
                 .Distinct()
