@@ -4,7 +4,7 @@
 @inject IVariableResolver VariableResolver
 @implements IAsyncDisposable
 
-<MudPaper Elevation="2" Class="pa-0" Style="@(string.IsNullOrEmpty(Height) ? "height: 25rem;" : $"height: {Height};")">
+<MudPaper Elevation="2" Class="pa-0" Style="@(string.IsNullOrEmpty(Height) ? "height: 25rem; width: 100%;" : $"height: {Height}; width: 100%;")">
     <div style="display: flex; flex-direction: column; height: 100%;">
         @if (!string.IsNullOrEmpty(Title))
         {
@@ -34,9 +34,6 @@
 
     [Parameter]
     public bool ReadOnly { get; set; }
-
-    [Parameter]
-    public bool WordWrap { get; set; } = false;
 
     [Parameter]
     public string? Theme { get; set; }
@@ -75,8 +72,7 @@
                     Value ?? string.Empty,
                     _currentLanguage,
                     _currentTheme,
-                    ReadOnly,
-                    WordWrap
+                    ReadOnly
                 );
 
                 if (success)
