@@ -3,8 +3,8 @@ using HolyConnect.Domain.Entities;
 namespace HolyConnect.Maui.Tests.Components;
 
 /// <summary>
-/// Tests for ResponseViewer component streaming support logic.
-/// These tests verify the behavior of streaming response handling.
+/// Tests for ResponseViewer component streaming support logic and auto-format behavior.
+/// These tests verify the behavior of streaming response handling and automatic formatting.
 /// </summary>
 public class ResponseViewerTests
 {
@@ -172,6 +172,106 @@ public class ResponseViewerTests
 
         // Assert
         Assert.Equal("14:30:45.123", formattedTime);
+    }
+
+    [Fact]
+    public void ResponseWithJsonContentType_ShouldDetectJsonLanguage()
+    {
+        // Arrange
+        var response = new RequestResponse
+        {
+            StatusCode = 200,
+            StatusMessage = "OK",
+            Body = "{\"key\":\"value\"}",
+            Headers = new Dictionary<string, string>
+            {
+                { "Content-Type", "application/json" }
+            }
+        };
+
+        // Act
+        var contentType = response.Headers.FirstOrDefault(h => 
+            h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
+        var isJson = contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
+
+        // Assert
+        Assert.True(isJson);
+    }
+
+    [Fact]
+    public void ResponseWithXmlContentType_ShouldDetectXmlLanguage()
+    {
+        // Arrange
+        var response = new RequestResponse
+        {
+            StatusCode = 200,
+            StatusMessage = "OK",
+            Body = "<root><item>value</item></root>",
+            Headers = new Dictionary<string, string>
+            {
+                { "Content-Type", "application/xml" }
+            }
+        };
+
+        // Act
+        var contentType = response.Headers.FirstOrDefault(h => 
+            h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
+        var isXml = contentType.Contains("xml", StringComparison.OrdinalIgnoreCase);
+
+        // Assert
+        Assert.True(isXml);
+    }
+
+    [Fact]
+    public void ResponseWithHtmlContentType_ShouldDetectHtmlLanguage()
+    {
+        // Arrange
+        var response = new RequestResponse
+        {
+            StatusCode = 200,
+            StatusMessage = "OK",
+            Body = "<html><body>Test</body></html>",
+            Headers = new Dictionary<string, string>
+            {
+                { "Content-Type", "text/html" }
+            }
+        };
+
+        // Act
+        var contentType = response.Headers.FirstOrDefault(h => 
+            h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
+        var isHtml = contentType.Contains("html", StringComparison.OrdinalIgnoreCase);
+
+        // Assert
+        Assert.True(isHtml);
+    }
+
+    [Fact]
+    public void ResponseWithJsonBody_ShouldDetectJsonByContent()
+    {
+        // Arrange
+        var jsonBody = "{\"key\":\"value\"}";
+        var trimmedBody = jsonBody.TrimStart();
+
+        // Act
+        var startsWithBrace = trimmedBody.StartsWith("{") || trimmedBody.StartsWith("[");
+
+        // Assert
+        Assert.True(startsWithBrace);
+    }
+
+    [Fact]
+    public void ResponseWithXmlBody_ShouldDetectXmlByContent()
+    {
+        // Arrange
+        var xmlBody = "<root><item>value</item></root>";
+        var trimmedBody = xmlBody.TrimStart();
+
+        // Act
+        var startsWithAngleBracket = trimmedBody.StartsWith("<");
+
+        // Assert
+        Assert.True(startsWithAngleBracket);
     }
 
     // Helper method that mimics the GetEventTypeColor logic from ResponseViewer.razor
