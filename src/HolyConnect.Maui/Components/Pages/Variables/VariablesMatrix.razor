@@ -84,22 +84,6 @@
                             </MudPaper>
                         </MudStack>
                     </ChildContent>
-                    <ItemRenderer>
-                        <MudPaper Class="pa-2 cursor-move" Style="min-width: 180px;" Elevation="1">
-                            <MudStack Spacing="1">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Justify="Justify.SpaceBetween">
-                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Color="Color.Default" />
-                                        @if (context.Environment.Id == _activeEnvironmentId)
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
-                                        }
-                                        <MudText Typo="Typo.body2"><strong>@context.Environment.Name</strong></MudText>
-                                    </MudStack>
-                                </MudStack>
-                            </MudStack>
-                        </MudPaper>
-                    </ItemRenderer>
                 </MudDropContainer>
                 
                 <MudTable Items="@_variableRows" Hover="true" Dense="true" Striped="true">
@@ -284,7 +268,7 @@
         var settings = await SettingsService.GetSettingsAsync();
         settings.EnvironmentOrder = _environmentDropItems.OrderBy(e => e.Order).Select(e => e.Environment.Id).ToList();
         await SettingsService.SaveSettingsAsync(settings);
-        Snackbar.Add("Environment order saved", Severity.Success);
+        // Order is saved silently - no notification to avoid spam during multiple reorderings
     }
 
     private void AddVariable()
