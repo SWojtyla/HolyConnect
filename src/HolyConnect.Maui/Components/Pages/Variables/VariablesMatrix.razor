@@ -153,6 +153,7 @@
     private List<EnvironmentDropItem> _environmentDropItems = new();
     private bool _hasChanges = false;
     private System.Threading.CancellationTokenSource? _saveCancellationTokenSource;
+    private const int SaveDebounceMilliseconds = 500;
 
     protected override async Task OnInitializedAsync()
     {
@@ -207,6 +208,10 @@
         _hasChanges = false;
     }
 
+    /// <summary>
+    /// Orders environments based on saved preferences.
+    /// Handles potential duplicate IDs (which should not occur in normal operation) by taking the first occurrence.
+    /// </summary>
     private List<Domain.Entities.Environment> OrderEnvironments(IEnumerable<Domain.Entities.Environment> environments, List<Guid> order)
     {
         if (order == null || !order.Any())
@@ -215,7 +220,7 @@
             return environments.OrderBy(e => e.Name).ToList();
         }
         
-        // Use GroupBy to handle potential duplicate IDs, taking the first occurrence
+        // Use GroupBy to handle potential duplicate IDs (defensive programming)
         var envDict = environments.GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
         var orderedEnvs = new List<Domain.Entities.Environment>();
         
@@ -265,6 +270,10 @@
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Saves the current environment order to settings with debouncing.
+    /// Silent save (no notification) to avoid spam during multiple rapid reorderings.
+    /// </summary>
     private async Task SaveEnvironmentOrder()
     {
         // Cancel any pending save operation
@@ -274,15 +283,14 @@
         
         try
         {
-            // Debounce: wait 500ms before saving to avoid excessive I/O during rapid reordering
-            await Task.Delay(500, token);
+            // Debounce to avoid excessive I/O during rapid reordering
+            await Task.Delay(SaveDebounceMilliseconds, token);
             
             if (!token.IsCancellationRequested)
             {
                 var settings = await SettingsService.GetSettingsAsync();
                 settings.EnvironmentOrder = _environmentDropItems.OrderBy(e => e.Order).Select(e => e.Environment.Id).ToList();
                 await SettingsService.SaveSettingsAsync(settings);
-                // Order is saved silently - no notification to avoid spam during multiple reorderings
             }
         }
         catch (TaskCanceledException)
