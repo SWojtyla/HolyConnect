@@ -1,10 +1,19 @@
+@using HolyConnect.Maui.Models
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 
 @if (Collection != null)
 {
     <div>
-        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" Style="@GetCollectionStyle()">
+        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0 draggable-item" 
+             Style="@GetCollectionStyle()"
+             draggable="true"
+             @ondragstart="@(() => OnDragStart?.Invoke(CreateDraggableCollection()))"
+             @ondragenter="@(() => OnDragEnter?.Invoke(Collection.Id, DraggableItemType.Collection))"
+             @ondragleave="@(() => OnDragLeave?.Invoke())"
+             @ondragover:preventDefault
+             @ondrop="@(() => OnDrop?.Invoke(Collection.Id, DraggableItemType.Collection))"
+             @ondragend="@(() => OnDragEnd?.Invoke())">
             <MudText Style="flex: 1;" Class="d-flex align-center">
                 <span @onclick="@(() => ToggleExpanded())" style="cursor: pointer; display: inline-flex; align-items: center;">
                     @if (HasChildren)
@@ -35,7 +44,15 @@
                 {
                     @foreach (var request in Collection.Requests)
                     {
-                        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" Style="@GetRequestStyle(request)">
+                        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0 draggable-item" 
+                             Style="@GetRequestStyle(request)"
+                             draggable="true"
+                             @ondragstart="@(() => OnDragStart?.Invoke(CreateDraggableRequest(request)))"
+                             @ondragenter="@(() => OnDragEnter?.Invoke(request.Id, DraggableItemType.Request))"
+                             @ondragleave="@(() => OnDragLeave?.Invoke())"
+                             @ondragover:preventDefault
+                             @ondrop="@(() => OnDrop?.Invoke(request.Id, DraggableItemType.Request))"
+                             @ondragend="@(() => OnDragEnd?.Invoke())">
                             <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))" Class="d-flex align-center">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" Class="mr-1" />
                                 <span style="font-size: 0.875rem;">@request.Name</span>
@@ -58,7 +75,12 @@
                                           OnCollectionUpdated="@OnCollectionUpdated"
                                           OnRequestUpdated="@OnRequestUpdated"
                                           SelectedCollectionId="@SelectedCollectionId"
-                                          SelectedRequestId="@SelectedRequestId" />
+                                          SelectedRequestId="@SelectedRequestId"
+                                          OnDragStart="@OnDragStart"
+                                          OnDragEnd="@OnDragEnd"
+                                          OnDragEnter="@OnDragEnter"
+                                          OnDragLeave="@OnDragLeave"
+                                          OnDrop="@OnDrop" />
                     }
                 }
             </div>
@@ -87,6 +109,21 @@
 
     [Parameter]
     public Guid? SelectedRequestId { get; set; }
+    
+    [Parameter]
+    public Action<DraggableItem>? OnDragStart { get; set; }
+    
+    [Parameter]
+    public Action? OnDragEnd { get; set; }
+    
+    [Parameter]
+    public Action<Guid, DraggableItemType>? OnDragEnter { get; set; }
+    
+    [Parameter]
+    public Action? OnDragLeave { get; set; }
+    
+    [Parameter]
+    public Action<Guid, DraggableItemType>? OnDrop { get; set; }
 
     private bool _isExpanded = false;
 
@@ -264,6 +301,32 @@
         {
             await OnCollectionUpdated.InvokeAsync((Collection.Id, string.Empty, true));
         }
+    }
+    
+    private DraggableItem CreateDraggableCollection()
+    {
+        return new DraggableItem
+        {
+            Id = Collection!.Id,
+            Name = Collection.Name,
+            Type = DraggableItemType.Collection,
+            ParentId = Collection.ParentCollectionId,
+            Order = Collection.Order,
+            Item = Collection
+        };
+    }
+    
+    private DraggableItem CreateDraggableRequest(Request request)
+    {
+        return new DraggableItem
+        {
+            Id = request.Id,
+            Name = request.Name,
+            Type = DraggableItemType.Request,
+            ParentId = request.CollectionId,
+            Order = request.Order,
+            Item = request
+        };
     }
 
     private async Task RenameRequest(Request request)

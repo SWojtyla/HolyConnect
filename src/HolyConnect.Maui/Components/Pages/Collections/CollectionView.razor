@@ -1,6 +1,7 @@
 @page "/collection/{CollectionId:guid}"
 @using HolyConnect.Domain.Entities
 @using HolyConnect.Application.Common
+@using HolyConnect.Maui.Models
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
 @inject IActiveEnvironmentService ActiveEnvironmentService
@@ -31,8 +32,15 @@
                     <MudText Typo="Typo.body2" Class="pa-2 mt-2" Color="Color.Primary"><strong>Requests</strong></MudText>
                     @foreach (var request in _collectionRequests)
                     {
-                        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" 
+                        <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0 draggable-item" 
                              Style="@GetRequestStyle(request)"
+                             draggable="true"
+                             @ondragstart="@(() => HandleDragStart(CreateDraggableRequest(request)))"
+                             @ondragenter="@(() => HandleDragEnter(request.Id, DraggableItemType.Request))"
+                             @ondragleave="@HandleDragLeave"
+                             @ondragover:preventDefault
+                             @ondrop="@(() => HandleDrop(request.Id, DraggableItemType.Request))"
+                             @ondragend="@HandleDragEnd"
                              @onclick="@(() => SelectRequest(request))">
                             <MudText Style="flex: 1;" Class="d-flex align-center cursor-pointer">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" Class="mr-1" />
@@ -58,7 +66,12 @@
                                           OnCollectionUpdated="HandleCollectionUpdated"
                                           OnRequestUpdated="HandleRequestUpdated"
                                           SelectedCollectionId="@_selectedSubCollection?.Id"
-                                          SelectedRequestId="@_selectedRequest?.Id" />
+                                          SelectedRequestId="@_selectedRequest?.Id"
+                                          OnDragStart="@HandleDragStart"
+                                          OnDragEnd="@HandleDragEnd"
+                                          OnDragEnter="@HandleDragEnter"
+                                          OnDragLeave="@HandleDragLeave"
+                                          OnDrop="@HandleDrop" />
                     }
                 }
                 
@@ -219,6 +232,10 @@
     private Domain.Entities.Request? _selectedRequest;
     private Domain.Entities.Collection? _selectedRequestCollection;
     private Domain.Entities.Environment? _activeEnvironment;
+    
+    private DraggableItem? _draggedItem;
+    private Guid? _dragOverItemId;
+    private DraggableItemType? _dragOverItemType;
 
     protected override async Task OnInitializedAsync()
     {
@@ -542,6 +559,103 @@
         RequestType.WebSocket => Color.Tertiary,
         _ => Color.Default
     };
+    
+    private void HandleDragStart(DraggableItem item)
+    {
+        _draggedItem = item;
+    }
+    
+    private void HandleDragEnd()
+    {
+        _draggedItem = null;
+        _dragOverItemId = null;
+        _dragOverItemType = null;
+    }
+    
+    private void HandleDragEnter(Guid itemId, DraggableItemType itemType)
+    {
+        _dragOverItemId = itemId;
+        _dragOverItemType = itemType;
+    }
+    
+    private void HandleDragLeave()
+    {
+        _dragOverItemId = null;
+        _dragOverItemType = null;
+    }
+    
+    private async void HandleDrop(Guid dropTargetId, DraggableItemType dropTargetType)
+    {
+        if (_draggedItem == null)
+        {
+            return;
+        }
+        
+        try
+        {
+            // Don't allow dropping on self
+            if (_draggedItem.Id == dropTargetId)
+            {
+                return;
+            }
+            
+            // Handle different drag/drop scenarios
+            if (_draggedItem.Type == DraggableItemType.Collection && dropTargetType == DraggableItemType.Collection)
+            {
+                // Moving a collection into another collection
+                var targetCollection = await CollectionService.GetCollectionByIdAsync(dropTargetId);
+                if (targetCollection != null)
+                {
+                    // Move collection to be a child of the target
+                    await CollectionService.MoveCollectionAsync(_draggedItem.Id, dropTargetId, 0);
+                    Snackbar.Add($"Moved '{_draggedItem.Name}' into '{targetCollection.Name}'", Severity.Success);
+                }
+            }
+            else if (_draggedItem.Type == DraggableItemType.Request && dropTargetType == DraggableItemType.Collection)
+            {
+                // Moving a request into a collection
+                await RequestService.MoveRequestAsync(_draggedItem.Id, dropTargetId, 0);
+                var targetCollection = await CollectionService.GetCollectionByIdAsync(dropTargetId);
+                Snackbar.Add($"Moved '{_draggedItem.Name}' into '{targetCollection?.Name}'", Severity.Success);
+            }
+            else if (_draggedItem.Type == DraggableItemType.Request && dropTargetType == DraggableItemType.Request)
+            {
+                // Moving a request before/after another request
+                var targetRequest = await RequestService.GetRequestByIdAsync(dropTargetId);
+                if (targetRequest != null)
+                {
+                    // Move to the same collection, position after target
+                    await RequestService.MoveRequestAsync(_draggedItem.Id, targetRequest.CollectionId, targetRequest.Order + 1);
+                    Snackbar.Add($"Reordered request '{_draggedItem.Name}'", Severity.Success);
+                }
+            }
+            
+            // Reload data to reflect changes
+            await LoadData();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error moving item: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            HandleDragEnd();
+        }
+    }
+    
+    private DraggableItem CreateDraggableRequest(Domain.Entities.Request request)
+    {
+        return new DraggableItem
+        {
+            Id = request.Id,
+            Name = request.Name,
+            Type = DraggableItemType.Request,
+            ParentId = request.CollectionId,
+            Order = request.Order,
+            Item = request
+        };
+    }
 
     public void Dispose()
     {
