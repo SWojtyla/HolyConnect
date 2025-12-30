@@ -129,6 +129,7 @@ public class RestRequestExecutor : IRequestExecutor
         {
             if (File.Exists(file.FilePath))
             {
+                // StreamContent will dispose the stream when it's disposed
                 var fileStream = File.OpenRead(file.FilePath);
                 var fileName = Path.GetFileName(file.FilePath);
                 var fileContent = new StreamContent(fileStream);
