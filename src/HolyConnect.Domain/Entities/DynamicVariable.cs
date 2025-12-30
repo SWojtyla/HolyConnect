@@ -112,6 +112,12 @@ public enum ConstraintType
     MinimumDate,
     MaximumDate,
     
+    // Date/Time offset constraints (relative to now)
+    DaysOffset,
+    HoursOffset,
+    MinutesOffset,
+    SecondsOffset,
+    
     // String constraints
     MinLength,
     MaxLength,
