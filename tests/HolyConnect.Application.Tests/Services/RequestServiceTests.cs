@@ -209,7 +209,10 @@ public class RequestServiceTests
             Body = "Success"
         };
 
-        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentIdAsync())
+            .ReturnsAsync(environmentId);
+        
+        _mockEnvironmentService.Setup(s => s.GetEnvironmentByIdAsync(environmentId))
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
@@ -242,7 +245,10 @@ public class RequestServiceTests
             Id = Guid.NewGuid(), 
             Name = "Test Request",        };
 
-        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentIdAsync())
+            .ReturnsAsync(environmentId);
+        
+        _mockEnvironmentService.Setup(s => s.GetEnvironmentByIdAsync(environmentId))
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);
@@ -306,7 +312,10 @@ public class RequestServiceTests
 
         Request? executedRequest = null;
 
-        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentIdAsync())
+            .ReturnsAsync(environmentId);
+        
+        _mockEnvironmentService.Setup(s => s.GetEnvironmentByIdAsync(environmentId))
             .ReturnsAsync(environment);
 
         _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
@@ -357,7 +366,10 @@ public class RequestServiceTests
 
         Request? executedRequest = null;
 
-        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentIdAsync())
+            .ReturnsAsync(environmentId);
+        
+        _mockEnvironmentService.Setup(s => s.GetEnvironmentByIdAsync(environmentId))
             .ReturnsAsync(environment);
 
         _mockExecutor.Setup(e => e.CanExecute(It.IsAny<Request>()))
@@ -453,7 +465,10 @@ public class RequestServiceTests
             _mockCollectionService.Object,
             mockHistoryService.Object);
         
-        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentAsync())
+        _mockActiveEnvironmentService.Setup(s => s.GetActiveEnvironmentIdAsync())
+            .ReturnsAsync(environmentId);
+        
+        _mockEnvironmentService.Setup(s => s.GetEnvironmentByIdAsync(environmentId))
             .ReturnsAsync(environment);
         _mockVariableResolver.Setup(v => v.ResolveVariables(It.IsAny<string>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
             .Returns<string, Domain.Entities.Environment, Collection, Request>((input, env, coll, req) => input);

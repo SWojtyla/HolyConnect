@@ -4,6 +4,7 @@
 @inject ICollectionService CollectionService
 @inject IRequestService RequestService
 @inject IActiveEnvironmentService ActiveEnvironmentService
+@inject IEnvironmentService EnvironmentService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -268,8 +269,12 @@
         // Find requests directly in this collection
         _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId);
         
-        // Load the active environment for variable resolution
-        _activeEnvironment = await ActiveEnvironmentService.GetActiveEnvironmentAsync();
+        // Load the active environment with secrets for variable resolution
+        var activeEnvId = await ActiveEnvironmentService.GetActiveEnvironmentIdAsync();
+        if (activeEnvId.HasValue)
+        {
+            _activeEnvironment = await EnvironmentService.GetEnvironmentByIdAsync(activeEnvId.Value);
+        }
     }
 
     private void SelectSubCollection(Domain.Entities.Collection collection)

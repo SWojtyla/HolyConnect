@@ -1,6 +1,7 @@
 @page "/variables/matrix"
 @inject IEnvironmentService EnvironmentService
 @inject IActiveEnvironmentService ActiveEnvironmentService
+@inject ISecretVariablesService SecretVariablesService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -134,6 +135,16 @@
         
         if (_environments != null && _environments.Any())
         {
+            // Load secrets for each environment to ensure values are populated
+            foreach (var env in _environments)
+            {
+                var secrets = await SecretVariablesService.GetEnvironmentSecretsAsync(env.Id);
+                foreach (var secret in secrets)
+                {
+                    env.Variables[secret.Key] = secret.Value;
+                }
+            }
+            
             var allKeys = _environments
                 .SelectMany(e => e.Variables.Keys)
                 .Distinct()
@@ -202,13 +213,11 @@
                 foreach (var row in _variableRows.Where(r => !string.IsNullOrWhiteSpace(r.Key)))
                 {
                     var value = row.Values.GetValueOrDefault(env.Id, "");
-                    if (!string.IsNullOrWhiteSpace(value))
+                    // Always save the variable, even if empty, to preserve secret flags
+                    env.Variables[row.Key] = value;
+                    if (row.SecretFlags.GetValueOrDefault(env.Id, false))
                     {
-                        env.Variables[row.Key] = value;
-                        if (row.SecretFlags.GetValueOrDefault(env.Id, false))
-                        {
-                            env.SecretVariableNames.Add(row.Key);
-                        }
+                        env.SecretVariableNames.Add(row.Key);
                     }
                 }
 

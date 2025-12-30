@@ -97,19 +97,26 @@ public class RequestService : IRequestService
 
     private async Task<Request> ResolveRequestVariablesAsync(Request request)
     {
-        // Load active environment
-        var environment = await _executionContext.ActiveEnvironment.GetActiveEnvironmentAsync();
-        if (environment == null)
+        // Load active environment with secrets merged
+        var activeEnvId = await _executionContext.ActiveEnvironment.GetActiveEnvironmentIdAsync();
+        if (!activeEnvId.HasValue)
         {
             // No active environment - continue without variable resolution
             // Variables will remain as placeholders in the request
+            return request;
+        }
+        
+        var environment = await _environmentService.GetEnvironmentByIdAsync(activeEnvId.Value);
+        if (environment == null)
+        {
             return request;
         }
 
         Collection? collection = null;
         if (request.CollectionId.HasValue)
         {
-            collection = await _repositories.Collections.GetByIdAsync(request.CollectionId.Value);
+            // Use service to load collection with secrets merged
+            collection = await _collectionService.GetCollectionByIdAsync(request.CollectionId.Value);
         }
 
         // Create a clone to avoid modifying the original request
@@ -130,8 +137,14 @@ public class RequestService : IRequestService
             return;
         }
 
-        // Load active environment for variable saving
-        var environment = await _executionContext.ActiveEnvironment.GetActiveEnvironmentAsync();
+        // Load active environment with secrets for variable saving
+        var activeEnvId = await _executionContext.ActiveEnvironment.GetActiveEnvironmentIdAsync();
+        if (!activeEnvId.HasValue)
+        {
+            return;
+        }
+        
+        var environment = await _environmentService.GetEnvironmentByIdAsync(activeEnvId.Value);
         if (environment == null)
         {
             return;
@@ -140,7 +153,8 @@ public class RequestService : IRequestService
         Collection? collection = null;
         if (request.CollectionId.HasValue)
         {
-            collection = await _repositories.Collections.GetByIdAsync(request.CollectionId.Value);
+            // Use service to load collection with secrets merged
+            collection = await _collectionService.GetCollectionByIdAsync(request.CollectionId.Value);
         }
 
         // Determine content type from headers
