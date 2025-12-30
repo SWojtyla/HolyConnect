@@ -13,6 +13,11 @@ public class AppSettings
     /// The globally active environment ID. All requests use this environment for variable resolution.
     /// </summary>
     public Guid? ActiveEnvironmentId { get; set; }
+    
+    /// <summary>
+    /// The order of environments in the variables matrix. Contains environment IDs in display order.
+    /// </summary>
+    public List<Guid> EnvironmentOrder { get; set; } = new();
 }
 
 public enum RequestLayout

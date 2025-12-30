@@ -38,6 +38,12 @@ public class FileBasedSettingsService : ISettingsService
                 settings.GitFolders = new List<GitFolder>();
             }
             
+            // Ensure EnvironmentOrder is never null (for backward compatibility with old settings files)
+            if (settings.EnvironmentOrder == null)
+            {
+                settings.EnvironmentOrder = new List<Guid>();
+            }
+            
             return settings;
         }
         catch (JsonException ex)
@@ -74,6 +80,12 @@ public class FileBasedSettingsService : ISettingsService
                 if (settings.GitFolders == null)
                 {
                     settings.GitFolders = new List<GitFolder>();
+                }
+                
+                // Ensure EnvironmentOrder is never null
+                if (settings.EnvironmentOrder == null)
+                {
+                    settings.EnvironmentOrder = new List<Guid>();
                 }
                 
                 Console.WriteLine($"Successfully restored settings from backup with {settings.GitFolders.Count} git repositories");

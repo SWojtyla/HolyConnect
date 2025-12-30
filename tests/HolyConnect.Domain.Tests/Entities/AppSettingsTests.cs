@@ -80,4 +80,53 @@ public class AppSettingsTests
         // Assert
         Assert.Equal(layout, settings.Layout);
     }
+
+    [Fact]
+    public void EnvironmentOrder_ShouldBeInitializedAsEmptyList()
+    {
+        // Arrange & Act
+        var settings = new AppSettings();
+
+        // Assert
+        Assert.NotNull(settings.EnvironmentOrder);
+        Assert.Empty(settings.EnvironmentOrder);
+    }
+
+    [Fact]
+    public void EnvironmentOrder_ShouldBeModifiable()
+    {
+        // Arrange
+        var settings = new AppSettings();
+        var env1Id = Guid.NewGuid();
+        var env2Id = Guid.NewGuid();
+        var env3Id = Guid.NewGuid();
+
+        // Act
+        settings.EnvironmentOrder.Add(env1Id);
+        settings.EnvironmentOrder.Add(env2Id);
+        settings.EnvironmentOrder.Add(env3Id);
+
+        // Assert
+        Assert.Equal(3, settings.EnvironmentOrder.Count);
+        Assert.Equal(env1Id, settings.EnvironmentOrder[0]);
+        Assert.Equal(env2Id, settings.EnvironmentOrder[1]);
+        Assert.Equal(env3Id, settings.EnvironmentOrder[2]);
+    }
+
+    [Fact]
+    public void EnvironmentOrder_ShouldMaintainOrder()
+    {
+        // Arrange
+        var settings = new AppSettings();
+        var env1Id = Guid.NewGuid();
+        var env2Id = Guid.NewGuid();
+
+        // Act
+        settings.EnvironmentOrder.Add(env2Id);
+        settings.EnvironmentOrder.Add(env1Id);
+
+        // Assert
+        Assert.Equal(env2Id, settings.EnvironmentOrder[0]);
+        Assert.Equal(env1Id, settings.EnvironmentOrder[1]);
+    }
 }

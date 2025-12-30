@@ -2,6 +2,7 @@
 @inject IEnvironmentService EnvironmentService
 @inject IActiveEnvironmentService ActiveEnvironmentService
 @inject ISecretVariablesService SecretVariablesService
+@inject ISettingsService SettingsService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -47,22 +48,66 @@
         else
         {
             <MudPaper Elevation="2" Class="pa-4">
-                <MudTable Items="@_variableRows" Hover="true" Dense="true" Striped="true">
-                    <HeaderContent>
-                        <MudTh Style="width: 200px;">Variable Key</MudTh>
-                        @foreach (var env in _environments.OrderBy(e => e.Name))
-                        {
-                            <MudTh>
-                                <MudStack Spacing="1">
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    Drag and drop the environment column headers to reorder them. The order will be saved automatically.
+                </MudAlert>
+                
+                <MudDropContainer T="EnvironmentDropItem" Items="@_environmentDropItems" ItemsSelector="@((item, dropzone) => true)" ItemDropped="OnEnvironmentDropped" Class="mb-4">
+                    <ChildContent>
+                        <MudStack Row="true" Spacing="2" Class="mb-3">
+                            <MudPaper Class="pa-2" Style="width: 200px;">
+                                <MudText Typo="Typo.body2"><strong>Variable Key</strong></MudText>
+                            </MudPaper>
+                            <MudDropZone T="EnvironmentDropItem" Identifier="environments" Class="flex-grow-1">
+                                <MudStack Row="true" Spacing="2">
+                                    @foreach (var envItem in _environmentDropItems.OrderBy(e => e.Order))
+                                    {
+                                        <MudPaper Class="pa-2 cursor-move" Style="min-width: 180px;" Elevation="1">
+                                            <MudStack Spacing="1">
+                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Justify="Justify.SpaceBetween">
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Color="Color.Default" />
+                                                        @if (envItem.Environment.Id == _activeEnvironmentId)
+                                                        {
+                                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                                                        }
+                                                        <MudText Typo="Typo.body2"><strong>@envItem.Environment.Name</strong></MudText>
+                                                    </MudStack>
+                                                </MudStack>
+                                            </MudStack>
+                                        </MudPaper>
+                                    }
+                                </MudStack>
+                            </MudDropZone>
+                            <MudPaper Class="pa-2" Style="width: 80px;">
+                                <MudText Typo="Typo.body2"><strong>Actions</strong></MudText>
+                            </MudPaper>
+                        </MudStack>
+                    </ChildContent>
+                    <ItemRenderer>
+                        <MudPaper Class="pa-2 cursor-move" Style="min-width: 180px;" Elevation="1">
+                            <MudStack Spacing="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Justify="Justify.SpaceBetween">
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                        @if (env.Id == _activeEnvironmentId)
+                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Color="Color.Default" />
+                                        @if (context.Environment.Id == _activeEnvironmentId)
                                         {
                                             <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
                                         }
-                                        <MudText Typo="Typo.body2"><strong>@env.Name</strong></MudText>
+                                        <MudText Typo="Typo.body2"><strong>@context.Environment.Name</strong></MudText>
                                     </MudStack>
                                 </MudStack>
-                            </MudTh>
+                            </MudStack>
+                        </MudPaper>
+                    </ItemRenderer>
+                </MudDropContainer>
+                
+                <MudTable Items="@_variableRows" Hover="true" Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh Style="width: 200px;">Variable Key</MudTh>
+                        @foreach (var envItem in _environmentDropItems.OrderBy(e => e.Order))
+                        {
+                            <MudTh>@envItem.Environment.Name</MudTh>
                         }
                         <MudTh Style="width: 80px;">Actions</MudTh>
                     </HeaderContent>
@@ -74,15 +119,15 @@
                                         Placeholder="VARIABLE_KEY"
                                         OnKeyUp="@(() => MarkChanged())" />
                         </MudTd>
-                        @foreach (var env in _environments.OrderBy(e => e.Name))
+                        @foreach (var envItem in _environmentDropItems.OrderBy(e => e.Order))
                         {
-                            <MudTd DataLabel="@env.Name">
+                            <MudTd DataLabel="@envItem.Environment.Name">
                                 @{
-                                    var value = context.Values.GetValueOrDefault(env.Id, "");
-                                    var isSecret = context.SecretFlags.GetValueOrDefault(env.Id, false);
+                                    var value = context.Values.GetValueOrDefault(envItem.Environment.Id, "");
+                                    var isSecret = context.SecretFlags.GetValueOrDefault(envItem.Environment.Id, false);
                                 }
                                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                                    <MudTextField @bind-Value="@context.Values[env.Id]" 
+                                    <MudTextField @bind-Value="@context.Values[envItem.Environment.Id]" 
                                                 Variant="Variant.Outlined" 
                                                 Margin="Margin.Dense"
                                                 Placeholder="value"
@@ -92,7 +137,7 @@
                                     <MudIconButton Icon="@(isSecret ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)" 
                                                  Size="Size.Small"
                                                  Color="@(isSecret ? Color.Warning : Color.Default)"
-                                                 OnClick="@(() => ToggleSecret(context, env.Id))"
+                                                 OnClick="@(() => ToggleSecret(context, envItem.Environment.Id))"
                                                  Title="@(isSecret ? "Secret variable" : "Regular variable")" />
                                 </MudStack>
                             </MudTd>
@@ -121,6 +166,7 @@
     private IEnumerable<Domain.Entities.Environment>? _environments;
     private Guid? _activeEnvironmentId;
     private List<VariableRow> _variableRows = new();
+    private List<EnvironmentDropItem> _environmentDropItems = new();
     private bool _hasChanges = false;
 
     protected override async Task OnInitializedAsync()
@@ -145,6 +191,17 @@
                 }
             }
             
+            // Load environment order from settings
+            var settings = await SettingsService.GetSettingsAsync();
+            var orderedEnvironments = OrderEnvironments(_environments, settings.EnvironmentOrder);
+            
+            // Create drop items with order
+            _environmentDropItems = orderedEnvironments.Select((env, index) => new EnvironmentDropItem
+            {
+                Environment = env,
+                Order = index
+            }).ToList();
+            
             var allKeys = _environments
                 .SelectMany(e => e.Variables.Keys)
                 .Distinct()
@@ -163,6 +220,71 @@
         }
         
         _hasChanges = false;
+    }
+
+    private List<Domain.Entities.Environment> OrderEnvironments(IEnumerable<Domain.Entities.Environment> environments, List<Guid> order)
+    {
+        if (order == null || !order.Any())
+        {
+            // Default to alphabetical order by name
+            return environments.OrderBy(e => e.Name).ToList();
+        }
+        
+        var envDict = environments.ToDictionary(e => e.Id);
+        var orderedEnvs = new List<Domain.Entities.Environment>();
+        
+        // Add environments in the saved order
+        foreach (var id in order)
+        {
+            if (envDict.TryGetValue(id, out var env))
+            {
+                orderedEnvs.Add(env);
+                envDict.Remove(id);
+            }
+        }
+        
+        // Add any new environments that weren't in the saved order (alphabetically)
+        orderedEnvs.AddRange(envDict.Values.OrderBy(e => e.Name));
+        
+        return orderedEnvs;
+    }
+
+    private async Task OnEnvironmentDropped(MudItemDropInfo<EnvironmentDropItem> dropInfo)
+    {
+        if (dropInfo.Item == null) return;
+        
+        // Remove the dropped item from its current position
+        _environmentDropItems.Remove(dropInfo.Item);
+        
+        // Insert at the new position
+        var newIndex = dropInfo.IndexInZone;
+        if (newIndex >= _environmentDropItems.Count)
+        {
+            _environmentDropItems.Add(dropInfo.Item);
+        }
+        else
+        {
+            _environmentDropItems.Insert(newIndex, dropInfo.Item);
+        }
+        
+        // Update order values
+        for (int i = 0; i < _environmentDropItems.Count; i++)
+        {
+            _environmentDropItems[i].Order = i;
+        }
+        
+        // Save the new order to settings
+        await SaveEnvironmentOrder();
+        
+        StateHasChanged();
+    }
+
+    private async Task SaveEnvironmentOrder()
+    {
+        var settings = await SettingsService.GetSettingsAsync();
+        settings.EnvironmentOrder = _environmentDropItems.OrderBy(e => e.Order).Select(e => e.Environment.Id).ToList();
+        await SettingsService.SaveSettingsAsync(settings);
+        Snackbar.Add("Environment order saved", Severity.Success);
     }
 
     private void AddVariable()
@@ -238,5 +360,11 @@
         public string Key { get; set; } = string.Empty;
         public Dictionary<Guid, string> Values { get; set; } = new();
         public Dictionary<Guid, bool> SecretFlags { get; set; } = new();
+    }
+    
+    private class EnvironmentDropItem
+    {
+        public Domain.Entities.Environment Environment { get; set; } = null!;
+        public int Order { get; set; }
     }
 }
