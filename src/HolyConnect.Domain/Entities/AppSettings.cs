@@ -13,6 +13,11 @@ public class AppSettings
     /// The globally active environment ID. All requests use this environment for variable resolution.
     /// </summary>
     public Guid? ActiveEnvironmentId { get; set; }
+    
+    /// <summary>
+    /// When enabled, automatically saves request changes when navigating away from the editor.
+    /// </summary>
+    public bool AutoSaveOnNavigate { get; set; } = false;
 }
 
 public enum RequestLayout

@@ -2,6 +2,7 @@
 @inject IFormatterService FormatterService
 @inject ISnackbar Snackbar
 @inject SettingsService SettingsService
+@implements IDisposable
 
 @if (_layout == Domain.Entities.RequestLayout.Vertical)
 {
@@ -204,6 +205,30 @@ else
         catch (Exception ex)
         {
             Snackbar.Add($"Error converting request: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        // Auto-save when navigating away from the editor if the setting is enabled
+        if (Request != null)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var settings = await SettingsService.GetSettingsAsync();
+                    if (settings.AutoSaveOnNavigate)
+                    {
+                        await OnSave.InvokeAsync();
+                    }
+                }
+                catch
+                {
+                    // Silently ignore errors during auto-save on dispose
+                    // The component is being destroyed, so we can't show errors to the user
+                }
+            });
         }
     }
 }
