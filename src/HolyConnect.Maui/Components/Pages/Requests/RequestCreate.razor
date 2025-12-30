@@ -157,8 +157,20 @@
             
             Snackbar.Add($"Request '{_name}' created successfully", Severity.Success);
             
-            // Navigate to home
-            NavigationManager.NavigateTo("/");
+            // Navigate back to the collection or environment with the new request open
+            if (CollectionId.HasValue)
+            {
+                NavigationManager.NavigateTo($"/collection/{CollectionId.Value}?requestId={createdRequest.Id}");
+            }
+            else if (EnvironmentId.HasValue)
+            {
+                NavigationManager.NavigateTo($"/environment/{EnvironmentId.Value}?requestId={createdRequest.Id}");
+            }
+            else
+            {
+                // Fallback to home if neither is set
+                NavigationManager.NavigateTo("/");
+            }
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
         {
@@ -172,7 +184,19 @@
 
     private void Cancel()
     {
-        NavigationManager.NavigateTo("/");
+        // Navigate back to the collection or environment view
+        if (CollectionId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/collection/{CollectionId.Value}");
+        }
+        else if (EnvironmentId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/environment/{EnvironmentId.Value}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/");
+        }
     }
 
     private Color GetMethodColor(Domain.Entities.HttpMethod method)

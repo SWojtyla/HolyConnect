@@ -202,13 +202,11 @@
                 foreach (var row in _variableRows.Where(r => !string.IsNullOrWhiteSpace(r.Key)))
                 {
                     var value = row.Values.GetValueOrDefault(env.Id, "");
-                    if (!string.IsNullOrWhiteSpace(value))
+                    // Always save the variable, even if empty, to preserve secret flags
+                    env.Variables[row.Key] = value;
+                    if (row.SecretFlags.GetValueOrDefault(env.Id, false))
                     {
-                        env.Variables[row.Key] = value;
-                        if (row.SecretFlags.GetValueOrDefault(env.Id, false))
-                        {
-                            env.SecretVariableNames.Add(row.Key);
-                        }
+                        env.SecretVariableNames.Add(row.Key);
                     }
                 }
 
