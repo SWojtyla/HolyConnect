@@ -27,6 +27,7 @@ public static class HttpConstants
         public const string TextHtml = "text/html";
         public const string ApplicationJavaScript = "application/javascript";
         public const string ApplicationOctetStream = "application/octet-stream";
+        public const string MultipartFormData = "multipart/form-data";
     }
 
     /// <summary>

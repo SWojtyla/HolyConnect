@@ -98,14 +98,52 @@ public class RestRequestExecutor : IRequestExecutor
         // Apply enabled headers using helper
         HttpAuthenticationHelper.ApplyHeaders(httpRequest, request);
 
-        // Set content if body is provided
-        if (!string.IsNullOrEmpty(request.Body))
+        // Set content based on body type
+        if (request.BodyType == BodyType.FormData)
+        {
+            // Build multipart/form-data content
+            var multipartContent = CreateMultipartFormDataContent(request);
+            httpRequest.Content = multipartContent;
+        }
+        else if (!string.IsNullOrEmpty(request.Body))
         {
             var contentType = GetContentType(request);
             HttpRequestHelper.SetContent(httpRequest, request.Body, contentType, request);
         }
 
         return httpRequest;
+    }
+
+    private MultipartFormDataContent CreateMultipartFormDataContent(RestRequest request)
+    {
+        var multipartContent = new MultipartFormDataContent();
+
+        // Add text fields
+        foreach (var field in request.FormDataFields.Where(f => f.Enabled && !string.IsNullOrEmpty(f.Key)))
+        {
+            multipartContent.Add(new StringContent(field.Value), field.Key);
+        }
+
+        // Add file attachments
+        foreach (var file in request.FormDataFiles.Where(f => f.Enabled && !string.IsNullOrEmpty(f.Key) && !string.IsNullOrEmpty(f.FilePath)))
+        {
+            if (File.Exists(file.FilePath))
+            {
+                var fileStream = File.OpenRead(file.FilePath);
+                var fileName = Path.GetFileName(file.FilePath);
+                var fileContent = new StreamContent(fileStream);
+                
+                // Set content type if specified, otherwise let HttpClient infer it
+                if (!string.IsNullOrEmpty(file.ContentType))
+                {
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+                }
+                
+                multipartContent.Add(fileContent, file.Key, fileName);
+            }
+        }
+
+        return multipartContent;
     }
 
     private string GetContentType(RestRequest request)
@@ -124,6 +162,7 @@ public class RestRequestExecutor : IRequestExecutor
             BodyType.Html => HttpConstants.MediaTypes.TextHtml,
             BodyType.JavaScript => HttpConstants.MediaTypes.ApplicationJavaScript,
             BodyType.Text => HttpConstants.MediaTypes.TextPlain,
+            BodyType.FormData => HttpConstants.MediaTypes.MultipartFormData,
             _ => HttpConstants.MediaTypes.TextPlain
         };
     }

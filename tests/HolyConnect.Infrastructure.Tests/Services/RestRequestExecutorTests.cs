@@ -906,4 +906,256 @@ public class RestRequestExecutorTests
         Assert.NotNull(capturedRequest.Content);
         Assert.Null(capturedRequest.Content.Headers.ContentType);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldHandleFormData_WithFields()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("success")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/upload",
+            Method = Domain.Entities.HttpMethod.Post,
+            BodyType = BodyType.FormData,
+            FormDataFields = new List<FormDataField>
+            {
+                new FormDataField { Key = "username", Value = "john", Enabled = true },
+                new FormDataField { Key = "email", Value = "john@example.com", Enabled = true },
+                new FormDataField { Key = "disabled", Value = "ignored", Enabled = false }
+            }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest.Content);
+        Assert.IsType<MultipartFormDataContent>(capturedRequest.Content);
+        Assert.Equal(200, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldHandleFormData_WithFiles()
+    {
+        // Arrange
+        // Create a temporary test file
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, "test file content");
+
+        try
+        {
+            var mockHandler = new Mock<HttpMessageHandler>();
+            HttpRequestMessage? capturedRequest = null;
+
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent("success")
+                });
+
+            var httpClient = new HttpClient(mockHandler.Object);
+            var executor = new RestRequestExecutor(httpClient);
+            var request = new RestRequest
+            {
+                Url = "https://api.example.com/upload",
+                Method = Domain.Entities.HttpMethod.Post,
+                BodyType = BodyType.FormData,
+                FormDataFiles = new List<FormDataFile>
+                {
+                    new FormDataFile 
+                    { 
+                        Key = "document", 
+                        FilePath = tempFile, 
+                        ContentType = "text/plain",
+                        Enabled = true 
+                    }
+                }
+            };
+
+            // Act
+            var response = await executor.ExecuteAsync(request);
+
+            // Assert
+            Assert.NotNull(capturedRequest);
+            Assert.NotNull(capturedRequest.Content);
+            Assert.IsType<MultipartFormDataContent>(capturedRequest.Content);
+            Assert.Equal(200, response.StatusCode);
+        }
+        finally
+        {
+            // Clean up temp file
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldHandleFormData_WithFieldsAndFiles()
+    {
+        // Arrange
+        // Create a temporary test file
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, "test file content");
+
+        try
+        {
+            var mockHandler = new Mock<HttpMessageHandler>();
+            HttpRequestMessage? capturedRequest = null;
+
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent("success")
+                });
+
+            var httpClient = new HttpClient(mockHandler.Object);
+            var executor = new RestRequestExecutor(httpClient);
+            var request = new RestRequest
+            {
+                Url = "https://api.example.com/upload",
+                Method = Domain.Entities.HttpMethod.Post,
+                BodyType = BodyType.FormData,
+                FormDataFields = new List<FormDataField>
+                {
+                    new FormDataField { Key = "description", Value = "My document", Enabled = true }
+                },
+                FormDataFiles = new List<FormDataFile>
+                {
+                    new FormDataFile 
+                    { 
+                        Key = "file", 
+                        FilePath = tempFile, 
+                        ContentType = "text/plain",
+                        Enabled = true 
+                    }
+                }
+            };
+
+            // Act
+            var response = await executor.ExecuteAsync(request);
+
+            // Assert
+            Assert.NotNull(capturedRequest);
+            Assert.NotNull(capturedRequest.Content);
+            Assert.IsType<MultipartFormDataContent>(capturedRequest.Content);
+            Assert.Equal(200, response.StatusCode);
+        }
+        finally
+        {
+            // Clean up temp file
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldSkipDisabledFormDataFields()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("success")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/upload",
+            Method = Domain.Entities.HttpMethod.Post,
+            BodyType = BodyType.FormData,
+            FormDataFields = new List<FormDataField>
+            {
+                new FormDataField { Key = "enabled", Value = "yes", Enabled = true },
+                new FormDataField { Key = "disabled", Value = "no", Enabled = false }
+            }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert - Should succeed without error
+        Assert.Equal(200, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldSkipNonExistentFiles()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("success")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/upload",
+            Method = Domain.Entities.HttpMethod.Post,
+            BodyType = BodyType.FormData,
+            FormDataFiles = new List<FormDataFile>
+            {
+                new FormDataFile 
+                { 
+                    Key = "file", 
+                    FilePath = "/nonexistent/file.txt", 
+                    Enabled = true 
+                }
+            }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert - Should succeed without error (file just won't be included)
+        Assert.Equal(200, response.StatusCode);
+    }
 }
