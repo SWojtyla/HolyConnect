@@ -36,6 +36,9 @@
     public bool ReadOnly { get; set; }
 
     [Parameter]
+    public bool WordWrap { get; set; } = false;
+
+    [Parameter]
     public string? Theme { get; set; }
 
     [Parameter]
@@ -72,7 +75,8 @@
                     Value ?? string.Empty,
                     _currentLanguage,
                     _currentTheme,
-                    ReadOnly
+                    ReadOnly,
+                    WordWrap
                 );
 
                 if (success)

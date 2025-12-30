@@ -6,7 +6,7 @@ window.monacoEditorInterop = {
     inlayHintsProviders: {},
 
     // Initialize Monaco Editor
-    initializeEditor: function (editorId, initialValue, language, theme, readOnly) {
+    initializeEditor: function (editorId, initialValue, language, theme, readOnly, wordWrap) {
         try {
             const container = document.getElementById(editorId);
             if (!container) {
@@ -45,6 +45,7 @@ window.monacoEditorInterop = {
                 renderWhitespace: 'selection',
                 cursorBlinking: 'smooth',
                 smoothScrolling: true,
+                wordWrap: wordWrap ? 'on' : 'off',
                 scrollbar: {
                     useShadows: false,
                     verticalScrollbarSize: 10,

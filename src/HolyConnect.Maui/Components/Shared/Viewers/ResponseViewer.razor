@@ -57,7 +57,7 @@
                                            Color="Color.Primary" 
                                            Size="Size.Small" 
                                            StartIcon="@Icons.Material.Filled.AutoFixHigh"
-                                           OnClick="PrettifyResponseBody">
+                                           OnClick="() => PrettifyResponseBody(true)">
                                     Format
                                 </MudButton>
                             </MudStack>
@@ -65,7 +65,8 @@
                                  <CodeEditor @ref="_codeEditor"
                                              @bind-Value="_responseBodyDisplay"
                                              Language="@_responseLanguage" 
-                                             ReadOnly="true" 
+                                             ReadOnly="true"
+                                             WordWrap="true"
                                              Height="100%" />
                             </div>
                         </div>
@@ -209,10 +210,13 @@
             {
                 _responseLanguage = "json";
             }
+            
+            // Auto-format the response body when a new response arrives
+            PrettifyResponseBody();
         }
     }
 
-    private void PrettifyResponseBody()
+    private void PrettifyResponseBody(bool showNotifications = false)
     {
         if (Response == null || string.IsNullOrWhiteSpace(Response.Body))
         {
@@ -246,7 +250,10 @@
                     }
                     else
                     {
-                        Snackbar.Add("Could not format as JSON. Body appears to be plain text.", Severity.Info);
+                        if (showNotifications)
+                        {
+                            Snackbar.Add("Could not format as JSON. Body appears to be plain text.", Severity.Info);
+                        }
                         return;
                     }
                 }
@@ -259,13 +266,19 @@
                     }
                     else
                     {
-                        Snackbar.Add("Could not format as XML. Body appears to be plain text.", Severity.Info);
+                        if (showNotifications)
+                        {
+                            Snackbar.Add("Could not format as XML. Body appears to be plain text.", Severity.Info);
+                        }
                         return;
                     }
                 }
                 else
                 {
-                    Snackbar.Add("Could not detect format. Body appears to be plain text.", Severity.Info);
+                    if (showNotifications)
+                    {
+                        Snackbar.Add("Could not detect format. Body appears to be plain text.", Severity.Info);
+                    }
                     return;
                 }
             }
@@ -273,7 +286,10 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error formatting response: {ex.Message}", Severity.Warning);
+            if (showNotifications)
+            {
+                Snackbar.Add($"Error formatting response: {ex.Message}", Severity.Warning);
+            }
         }
     }
 
