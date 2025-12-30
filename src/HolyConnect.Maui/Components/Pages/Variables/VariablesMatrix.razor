@@ -152,6 +152,7 @@
     private List<VariableRow> _variableRows = new();
     private List<EnvironmentDropItem> _environmentDropItems = new();
     private bool _hasChanges = false;
+    private System.Threading.CancellationTokenSource? _saveCancellationTokenSource;
 
     protected override async Task OnInitializedAsync()
     {
@@ -214,7 +215,8 @@
             return environments.OrderBy(e => e.Name).ToList();
         }
         
-        var envDict = environments.ToDictionary(e => e.Id);
+        // Use GroupBy to handle potential duplicate IDs, taking the first occurrence
+        var envDict = environments.GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
         var orderedEnvs = new List<Domain.Entities.Environment>();
         
         // Add environments in the saved order
@@ -265,10 +267,28 @@
 
     private async Task SaveEnvironmentOrder()
     {
-        var settings = await SettingsService.GetSettingsAsync();
-        settings.EnvironmentOrder = _environmentDropItems.OrderBy(e => e.Order).Select(e => e.Environment.Id).ToList();
-        await SettingsService.SaveSettingsAsync(settings);
-        // Order is saved silently - no notification to avoid spam during multiple reorderings
+        // Cancel any pending save operation
+        _saveCancellationTokenSource?.Cancel();
+        _saveCancellationTokenSource = new System.Threading.CancellationTokenSource();
+        var token = _saveCancellationTokenSource.Token;
+        
+        try
+        {
+            // Debounce: wait 500ms before saving to avoid excessive I/O during rapid reordering
+            await Task.Delay(500, token);
+            
+            if (!token.IsCancellationRequested)
+            {
+                var settings = await SettingsService.GetSettingsAsync();
+                settings.EnvironmentOrder = _environmentDropItems.OrderBy(e => e.Order).Select(e => e.Environment.Id).ToList();
+                await SettingsService.SaveSettingsAsync(settings);
+                // Order is saved silently - no notification to avoid spam during multiple reorderings
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Canceled by a newer save operation, which is expected
+        }
     }
 
     private void AddVariable()
