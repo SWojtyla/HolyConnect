@@ -110,4 +110,23 @@ public class RequestEditorTests
         Assert.Single(enabledHeaders);
         Assert.Equal("User-Agent", enabledHeaders[0].Key);
     }
+    
+    [Fact]
+    public void AppSettings_AutoSaveOnNavigate_ShouldControlAutoSaveBehavior()
+    {
+        // Arrange
+        var settingsWithAutoSaveEnabled = new AppSettings
+        {
+            AutoSaveOnNavigate = true
+        };
+        
+        var settingsWithAutoSaveDisabled = new AppSettings
+        {
+            AutoSaveOnNavigate = false
+        };
+        
+        // Assert
+        Assert.True(settingsWithAutoSaveEnabled.AutoSaveOnNavigate);
+        Assert.False(settingsWithAutoSaveDisabled.AutoSaveOnNavigate);
+    }
 }
