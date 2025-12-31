@@ -5,9 +5,11 @@
 @inject IGitFolderService GitFolderService
 @inject IEnvironmentService EnvironmentService
 @inject IActiveEnvironmentService ActiveEnvironmentService
+@inject ISettingsService AppSettingsService
 @using HolyConnect.Application.Interfaces
 @using HolyConnect.Maui.Services
 @using HolyConnect.Domain.Entities
+@using HolyConnect.Application.Common
 @implements IDisposable
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="@_isDarkMode" />
@@ -46,7 +48,7 @@
                 </ActivatorContent>
                 <ChildContent>
                     <MudText Typo="Typo.caption" Class="px-4 py-2">Active Environment</MudText>
-                    @foreach (var env in _environments)
+                    @foreach (var env in _orderedEnvironments)
                     {
                         <MudMenuItem OnClick="@(() => SetActiveEnvironment(env.Id))"
                                     Disabled="@(env.Id == _activeEnvironmentId)">
@@ -141,6 +143,7 @@
     private string? _repositoryName;
     private IEnumerable<GitFolder> _gitFolders = Enumerable.Empty<GitFolder>();
     private IEnumerable<Domain.Entities.Environment>? _environments;
+    private List<Domain.Entities.Environment> _orderedEnvironments = new();
     private Domain.Entities.Environment? _activeEnvironment;
     private Guid? _activeEnvironmentId;
     private System.Threading.Timer? _gitStatusTimer;
@@ -178,6 +181,11 @@
         try
         {
             _environments = await EnvironmentService.GetAllEnvironmentsAsync();
+            
+            // Load environment order from settings
+            var appSettings = await AppSettingsService.GetSettingsAsync();
+            _orderedEnvironments = EnvironmentOrderHelper.OrderEnvironments(_environments, appSettings.EnvironmentOrder);
+            
             _activeEnvironmentId = await ActiveEnvironmentService.GetActiveEnvironmentIdAsync();
             if (_activeEnvironmentId.HasValue)
             {
@@ -186,9 +194,9 @@
             else
             {
                 // If no active environment and environments exist, set the first one as active
-                if (_environments != null && _environments.Any())
+                if (_orderedEnvironments != null && _orderedEnvironments.Any())
                 {
-                    var firstEnv = _environments.First();
+                    var firstEnv = _orderedEnvironments.First();
                     await ActiveEnvironmentService.SetActiveEnvironmentIdAsync(firstEnv.Id);
                     _activeEnvironmentId = firstEnv.Id;
                     _activeEnvironment = firstEnv;

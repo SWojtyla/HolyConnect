@@ -5,6 +5,7 @@
 @inject ISettingsService SettingsService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@using HolyConnect.Application.Common
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudStack Spacing="4">
@@ -163,7 +164,7 @@
             
             // Load environment order from settings
             var settings = await SettingsService.GetSettingsAsync();
-            _orderedEnvironments = OrderEnvironments(_environments, settings.EnvironmentOrder);
+            _orderedEnvironments = EnvironmentOrderHelper.OrderEnvironments(_environments, settings.EnvironmentOrder);
             
             var allKeys = _environments
                 .SelectMany(e => e.Variables.Keys)
@@ -183,38 +184,6 @@
         }
         
         _hasChanges = false;
-    }
-
-    /// <summary>
-    /// Orders environments based on saved preferences.
-    /// Handles potential duplicate IDs (which should not occur in normal operation) by taking the first occurrence.
-    /// </summary>
-    private List<Domain.Entities.Environment> OrderEnvironments(IEnumerable<Domain.Entities.Environment> environments, List<Guid> order)
-    {
-        if (order == null || !order.Any())
-        {
-            // Default to alphabetical order by name
-            return environments.OrderBy(e => e.Name).ToList();
-        }
-        
-        // Use GroupBy to handle potential duplicate IDs (defensive programming)
-        var envDict = environments.GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
-        var orderedEnvs = new List<Domain.Entities.Environment>();
-        
-        // Add environments in the saved order
-        foreach (var id in order)
-        {
-            if (envDict.TryGetValue(id, out var env))
-            {
-                orderedEnvs.Add(env);
-                envDict.Remove(id);
-            }
-        }
-        
-        // Add any new environments that weren't in the saved order (alphabetically)
-        orderedEnvs.AddRange(envDict.Values.OrderBy(e => e.Name));
-        
-        return orderedEnvs;
     }
 
     private async Task MoveEnvironmentLeft(Domain.Entities.Environment env)

@@ -1,9 +1,11 @@
 @page "/environments"
 @inject IEnvironmentService EnvironmentService
 @inject IActiveEnvironmentService ActiveEnvironmentService
+@inject ISettingsService SettingsService
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@using HolyConnect.Application.Common
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudStack Spacing="4">
@@ -35,7 +37,7 @@
         else
         {
             <MudGrid Spacing="3">
-                @foreach (var env in _environments)
+                @foreach (var env in _orderedEnvironments)
                 {
                     <MudItem xs="12" md="6" lg="4">
                         <MudCard Elevation="2" Class="environment-card">
@@ -47,12 +49,28 @@
                                                     Color="@(env.Id == _activeEnvironmentId ? Color.Success : Color.Default)" />
                                             <MudText Typo="Typo.h6">@env.Name</MudText>
                                         </MudStack>
-                                        @if (env.Id == _activeEnvironmentId)
-                                        {
-                                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
-                                        }
+                                        <MudStack Row="true" Spacing="0">
+                                            <MudTooltip Text="Move left">
+                                                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" 
+                                                             Size="Size.Small" 
+                                                             OnClick="@(() => MoveEnvironmentLeft(env))"
+                                                             Disabled="@(_orderedEnvironments.First().Id == env.Id)" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="Move right">
+                                                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" 
+                                                             Size="Size.Small" 
+                                                             OnClick="@(() => MoveEnvironmentRight(env))"
+                                                             Disabled="@(_orderedEnvironments.Last().Id == env.Id)" />
+                                            </MudTooltip>
+                                        </MudStack>
                                     </MudStack>
                                 </CardHeaderContent>
+                                <CardHeaderActions>
+                                    @if (env.Id == _activeEnvironmentId)
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                                    }
+                                </CardHeaderActions>
                             </MudCardHeader>
                             <MudCardContent>
                                 @if (!string.IsNullOrWhiteSpace(env.Description))
@@ -114,6 +132,7 @@
 
 @code {
     private IEnumerable<Domain.Entities.Environment>? _environments;
+    private List<Domain.Entities.Environment> _orderedEnvironments = new();
     private Guid? _activeEnvironmentId;
 
     protected override async Task OnInitializedAsync()
@@ -125,6 +144,40 @@
     {
         _environments = await EnvironmentService.GetAllEnvironmentsAsync();
         _activeEnvironmentId = await ActiveEnvironmentService.GetActiveEnvironmentIdAsync();
+        
+        // Load environment order from settings
+        var appSettings = await SettingsService.GetSettingsAsync();
+        _orderedEnvironments = EnvironmentOrderHelper.OrderEnvironments(_environments, appSettings.EnvironmentOrder);
+    }
+
+    private async Task MoveEnvironmentLeft(Domain.Entities.Environment env)
+    {
+        var currentIndex = _orderedEnvironments.IndexOf(env);
+        if (currentIndex > 0)
+        {
+            _orderedEnvironments.RemoveAt(currentIndex);
+            _orderedEnvironments.Insert(currentIndex - 1, env);
+            await SaveEnvironmentOrder();
+        }
+    }
+
+    private async Task MoveEnvironmentRight(Domain.Entities.Environment env)
+    {
+        var currentIndex = _orderedEnvironments.IndexOf(env);
+        if (currentIndex < _orderedEnvironments.Count - 1)
+        {
+            _orderedEnvironments.RemoveAt(currentIndex);
+            _orderedEnvironments.Insert(currentIndex + 1, env);
+            await SaveEnvironmentOrder();
+        }
+    }
+
+    private async Task SaveEnvironmentOrder()
+    {
+        var settings = await SettingsService.GetSettingsAsync();
+        settings.EnvironmentOrder = _orderedEnvironments.Select(e => e.Id).ToList();
+        await SettingsService.SaveSettingsAsync(settings);
+        Snackbar.Add("Environment order updated", Severity.Success);
     }
 
     private void CreateEnvironment()
