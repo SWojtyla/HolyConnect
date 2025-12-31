@@ -91,6 +91,17 @@
                     </MudText>
                 </MudRadio>
             </MudRadioGroup>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Auto-Save</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">
+                Automatically save request changes when navigating away from the editor.
+            </MudText>
+            <MudSwitch @bind-Value="_autoSaveOnNavigate" 
+                       @bind-Value:after="OnAutoSaveChanged"
+                       Color="Color.Primary" 
+                       Label="Enable auto-save when leaving request editor" />
         </MudCardContent>
     </MudCard>
 
@@ -182,6 +193,7 @@
 @code {
     private Domain.Entities.RequestLayout _requestLayout = Domain.Entities.RequestLayout.Horizontal;
     private Domain.Entities.ThemePreset _themePreset = Domain.Entities.ThemePreset.Default;
+    private bool _autoSaveOnNavigate = false;
     private List<GitFolder> _gitFolders = new();
     private string _newGitFolderName = string.Empty;
     private string _newGitFolderPath = string.Empty;
@@ -200,6 +212,7 @@
         var settings = await SettingsService.GetSettingsAsync();
         _requestLayout = settings.Layout;
         _themePreset = settings.Theme;
+        _autoSaveOnNavigate = settings.AutoSaveOnNavigate;
     }
 
     private async Task LoadGitFolders()
@@ -301,6 +314,13 @@
         await SaveCurrentSettingsAsync($"Layout changed to {layoutName}", "layout preference");
     }
 
+    private async Task OnAutoSaveChanged()
+    {
+        // Auto-save auto-save preference
+        var status = _autoSaveOnNavigate ? "enabled" : "disabled";
+        await SaveCurrentSettingsAsync($"Auto-save {status}", "auto-save preference");
+    }
+
     private async Task SaveCurrentSettingsAsync(string successMessage, string operationName)
     {
         try
@@ -309,6 +329,7 @@
             settings.Layout = _requestLayout;
             settings.Theme = _themePreset;
             settings.IsDarkMode = ThemeProvider.IsThemeDark(_themePreset);
+            settings.AutoSaveOnNavigate = _autoSaveOnNavigate;
             await SettingsService.SaveSettingsAsync(settings);
             Snackbar.Add(successMessage, Severity.Success);
         }
