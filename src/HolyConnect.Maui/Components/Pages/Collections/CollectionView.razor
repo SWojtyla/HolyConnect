@@ -33,7 +33,15 @@
                     {
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" 
                              Style="@GetRequestStyle(request)"
+                             draggable="true"
+                             @ondragstart="@(() => HandleRequestDragStart(request.Id))"
+                             @ondragover:preventDefault
+                             @ondrop="@(() => HandleRequestDrop(request.Id))"
+                             @ondragenter:preventDefault
+                             @ondragenter="@(() => _requestDragOver = request.Id)"
+                             @ondragleave="@(() => _requestDragOver = null)"
                              @onclick="@(() => SelectRequest(request))">
+                            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Class="mr-1" Style="cursor: grab;" Title="Drag to reorder" />
                             <MudText Style="flex: 1;" Class="d-flex align-center cursor-pointer">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" Class="mr-1" />
                                 <span style="font-size: 0.875rem;">@request.Name</span>
@@ -52,11 +60,12 @@
                     <MudText Typo="Typo.body2" Class="pa-2 mt-3" Color="Color.Primary"><strong>Sub-Collections</strong></MudText>
                     @foreach (var subCollection in _subCollections)
                     {
-                        <CollectionTreeItem Collection="@subCollection" 
+                        <DraggableCollectionTreeItem Collection="@subCollection" 
                                           OnSelect="SelectSubCollection" 
                                           OnRequestSelect="SelectRequest"
                                           OnCollectionUpdated="HandleCollectionUpdated"
                                           OnRequestUpdated="HandleRequestUpdated"
+                                          OnReorderNeeded="HandleReorderNeeded"
                                           SelectedCollectionId="@_selectedSubCollection?.Id"
                                           SelectedRequestId="@_selectedRequest?.Id" />
                     }
@@ -219,6 +228,8 @@
     private Domain.Entities.Request? _selectedRequest;
     private Domain.Entities.Collection? _selectedRequestCollection;
     private Domain.Entities.Environment? _activeEnvironment;
+    private Guid? _draggedRequestId;
+    private Guid? _requestDragOver;
 
     protected override async Task OnInitializedAsync()
     {
@@ -263,11 +274,11 @@
         // Populate Requests navigation property for all collections
         CollectionHierarchyHelper.PopulateRequests(_allCollections, allRequests);
         
-        // Find direct subcollections of the current collection
-        _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId);
+        // Find direct subcollections of the current collection and sort by order
+        _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId).OrderBy(c => c.Order);
         
-        // Find requests directly in this collection
-        _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId);
+        // Find requests directly in this collection and sort by order
+        _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId).OrderBy(r => r.Order);
         
         // Load the active environment with secrets for variable resolution
         var activeEnvId = await ActiveEnvironmentService.GetActiveEnvironmentIdAsync();
@@ -522,9 +533,70 @@
     private string GetRequestStyle(Domain.Entities.Request request)
     {
         var isSelected = _selectedRequest?.Id == request.Id;
+        var isDragOver = _requestDragOver == request.Id;
+        
+        if (isDragOver)
+        {
+            return "background-color: rgba(var(--mud-palette-primary-rgb), 0.08); border: 2px dashed var(--mud-palette-primary); cursor: pointer;";
+        }
+        
         return isSelected
             ? "background-color: var(--mud-palette-action-default-hover); cursor: pointer;"
             : "cursor: pointer;";
+    }
+
+    private void HandleRequestDragStart(Guid requestId)
+    {
+        _draggedRequestId = requestId;
+    }
+
+    private async Task HandleRequestDrop(Guid targetRequestId)
+    {
+        _requestDragOver = null;
+
+        if (_draggedRequestId == null || _draggedRequestId == targetRequestId)
+        {
+            _draggedRequestId = null;
+            return;
+        }
+
+        // Get the requests for the current collection
+        var requests = _collectionRequests?.OrderBy(r => r.Order).ToList();
+        if (requests == null || !requests.Any())
+        {
+            _draggedRequestId = null;
+            return;
+        }
+
+        var draggedIndex = requests.FindIndex(r => r.Id == _draggedRequestId);
+        var targetIndex = requests.FindIndex(r => r.Id == targetRequestId);
+
+        if (draggedIndex == -1 || targetIndex == -1)
+        {
+            _draggedRequestId = null;
+            return;
+        }
+
+        // Reorder the list
+        var draggedItem = requests[draggedIndex];
+        requests.RemoveAt(draggedIndex);
+        requests.Insert(targetIndex, draggedItem);
+
+        // Update order values and save
+        var orderedIds = requests.Select(r => r.Id);
+        await RequestService.ReorderRequestsAsync(orderedIds);
+
+        _draggedRequestId = null;
+
+        // Reload data to reflect changes
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task HandleReorderNeeded()
+    {
+        await LoadData();
+        StateHasChanged();
     }
 
     private string GetRequestIcon(RequestType requestType) => requestType switch
