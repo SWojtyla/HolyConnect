@@ -63,25 +63,28 @@ public class RequestService : IRequestService
     {
         var orderedIds = requestIds.ToList();
         
-        // Only load and update the requests that are being reordered
-        var requests = new List<Request>();
-        foreach (var id in orderedIds)
-        {
-            var request = await _repositories.Requests.GetByIdAsync(id);
-            if (request != null)
-            {
-                requests.Add(request);
-            }
-        }
+        // Load all requests in parallel
+        var loadTasks = orderedIds.Select(id => _repositories.Requests.GetByIdAsync(id));
+        var loadedRequests = await Task.WhenAll(loadTasks);
         
-        // Assign new order values and update only those that changed
+        // Filter out nulls and create list
+        var requests = loadedRequests.Where(r => r != null).Cast<Request>().ToList();
+        
+        // Assign new order values and collect items that need updating
+        var updateTasks = new List<Task<Request>>();
         for (int i = 0; i < requests.Count; i++)
         {
             if (requests[i].Order != i)
             {
                 requests[i].Order = i;
-                await _repositories.Requests.UpdateAsync(requests[i]);
+                updateTasks.Add(_repositories.Requests.UpdateAsync(requests[i]));
             }
+        }
+        
+        // Update all changed items in parallel
+        if (updateTasks.Any())
+        {
+            await Task.WhenAll(updateTasks);
         }
     }
 

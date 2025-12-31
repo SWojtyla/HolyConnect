@@ -54,25 +54,28 @@ public class CollectionService : CrudServiceBase<Collection>, ICollectionService
     {
         var orderedIds = collectionIds.ToList();
         
-        // Only load and update the collections that are being reordered
-        var collections = new List<Collection>();
-        foreach (var id in orderedIds)
-        {
-            var collection = await GetByIdAsync(id);
-            if (collection != null)
-            {
-                collections.Add(collection);
-            }
-        }
+        // Load all collections in parallel
+        var loadTasks = orderedIds.Select(id => GetByIdAsync(id));
+        var loadedCollections = await Task.WhenAll(loadTasks);
         
-        // Assign new order values and update only those that changed
+        // Filter out nulls and create list
+        var collections = loadedCollections.Where(c => c != null).Cast<Collection>().ToList();
+        
+        // Assign new order values and collect items that need updating
+        var updateTasks = new List<Task<Collection>>();
         for (int i = 0; i < collections.Count; i++)
         {
             if (collections[i].Order != i)
             {
                 collections[i].Order = i;
-                await Repository.UpdateAsync(collections[i]);
+                updateTasks.Add(Repository.UpdateAsync(collections[i]));
             }
+        }
+        
+        // Update all changed items in parallel
+        if (updateTasks.Any())
+        {
+            await Task.WhenAll(updateTasks);
         }
     }
 

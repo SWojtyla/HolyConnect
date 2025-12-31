@@ -232,6 +232,8 @@
 
     private async Task ReorderCollections(Guid draggedId, Guid targetId)
     {
+        // This method is only called for subcollections within the tree.
+        // Root-level collections are handled by CollectionView component.
         if (Collection?.ParentCollectionId == null)
             return;
 
