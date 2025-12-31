@@ -101,9 +101,15 @@ public class RestRequestExecutor : IRequestExecutor
         // Set content based on body type
         if (request.BodyType == BodyType.FormData)
         {
-            // Build multipart/form-data content
-            var multipartContent = CreateMultipartFormDataContent(request);
-            httpRequest.Content = multipartContent;
+            // Only create multipart content if there are fields or files to send
+            // Empty multipart content causes ASP.NET Core validation errors
+            if (request.FormDataFields.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key)) ||
+                request.FormDataFiles.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key) && !string.IsNullOrEmpty(f.FilePath)))
+            {
+                var multipartContent = CreateMultipartFormDataContent(request);
+                httpRequest.Content = multipartContent;
+            }
+            // If no fields or files, don't set any content (leave it null)
         }
         else if (!string.IsNullOrEmpty(request.Body))
         {
