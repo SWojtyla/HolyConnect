@@ -118,13 +118,18 @@ public class RestRequestExecutor : IRequestExecutor
     {
         var multipartContent = new MultipartFormDataContent();
 
-        // Add text fields with proper Content-Disposition header
+        // Add text fields with properly quoted names in Content-Disposition header
         foreach (var field in request.FormDataFields.Where(f => f.Enabled && !string.IsNullOrEmpty(f.Key)))
         {
             var stringContent = new StringContent(field.Value);
             // Remove default Content-Type header for form fields to avoid issues
             stringContent.Headers.ContentType = null;
-            multipartContent.Add(stringContent, field.Key);
+            // Manually set Content-Disposition with quoted name for ASP.NET Core compatibility
+            stringContent.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
+            {
+                Name = $"\"{field.Key}\""
+            };
+            multipartContent.Add(stringContent);
         }
 
         // Add file attachments
@@ -143,7 +148,13 @@ public class RestRequestExecutor : IRequestExecutor
                     fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
                 }
                 
-                multipartContent.Add(fileContent, file.Key, fileName);
+                // Manually set Content-Disposition with quoted name and filename for ASP.NET Core compatibility
+                fileContent.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
+                {
+                    Name = $"\"{file.Key}\"",
+                    FileName = $"\"{fileName}\""
+                };
+                multipartContent.Add(fileContent);
             }
         }
 
