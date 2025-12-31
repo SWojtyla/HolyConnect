@@ -10,7 +10,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 🔌 **WebSocket Support**: Connect to WebSocket servers for real-time bidirectional communication with streaming message log
 - 🗂️ **Environment Management**: Organize your API requests by environments
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
-- 🎯 **Drag-and-Drop Reordering**: Intuitively reorganize collections and requests with drag-and-drop support
+- 🎯 **Button-Based Reordering**: Reorganize collections and requests with up/down arrow buttons
 - 💾 **Request Storage**: Save and reuse your API requests
 - 🔤 **Variables**: Use environment and collection variables with `{{ variableName }}` syntax (like Postman/Bruno)
 - ✨ **Dynamic Test Data Generation**: Generate realistic fake data for testing with constraints (names, emails, dates, numbers, etc.)
