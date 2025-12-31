@@ -52,16 +52,26 @@ public class CollectionService : CrudServiceBase<Collection>, ICollectionService
 
     public async Task ReorderCollectionsAsync(IEnumerable<Guid> collectionIds)
     {
-        var collections = await GetAllCollectionsAsync();
-        var collectionDict = collections.ToDictionary(c => c.Id);
+        var orderedIds = collectionIds.ToList();
         
-        int order = 0;
-        foreach (var id in collectionIds)
+        // Only load and update the collections that are being reordered
+        var collections = new List<Collection>();
+        foreach (var id in orderedIds)
         {
-            if (collectionDict.TryGetValue(id, out var collection))
+            var collection = await GetByIdAsync(id);
+            if (collection != null)
             {
-                collection.Order = order++;
-                await Repository.UpdateAsync(collection);
+                collections.Add(collection);
+            }
+        }
+        
+        // Assign new order values and update only those that changed
+        for (int i = 0; i < collections.Count; i++)
+        {
+            if (collections[i].Order != i)
+            {
+                collections[i].Order = i;
+                await Repository.UpdateAsync(collections[i]);
             }
         }
     }

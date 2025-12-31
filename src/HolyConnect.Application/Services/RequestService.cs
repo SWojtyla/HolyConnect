@@ -61,16 +61,26 @@ public class RequestService : IRequestService
 
     public async Task ReorderRequestsAsync(IEnumerable<Guid> requestIds)
     {
-        var requests = await _repositories.Requests.GetAllAsync();
-        var requestDict = requests.ToDictionary(r => r.Id);
+        var orderedIds = requestIds.ToList();
         
-        int order = 0;
-        foreach (var id in requestIds)
+        // Only load and update the requests that are being reordered
+        var requests = new List<Request>();
+        foreach (var id in orderedIds)
         {
-            if (requestDict.TryGetValue(id, out var request))
+            var request = await _repositories.Requests.GetByIdAsync(id);
+            if (request != null)
             {
-                request.Order = order++;
-                await _repositories.Requests.UpdateAsync(request);
+                requests.Add(request);
+            }
+        }
+        
+        // Assign new order values and update only those that changed
+        for (int i = 0; i < requests.Count; i++)
+        {
+            if (requests[i].Order != i)
+            {
+                requests[i].Order = i;
+                await _repositories.Requests.UpdateAsync(requests[i]);
             }
         }
     }

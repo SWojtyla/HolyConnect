@@ -115,8 +115,17 @@
     private bool _isExpanded = false;
     private bool _isDragOver = false;
     private Guid? _requestDragOver = null;
+    
+    // Static fields are required for HTML5 drag-and-drop to work across component instances
+    // during a single drag operation. The browser's drag-and-drop API doesn't provide a way
+    // to pass data between ondragstart and ondrop events across different component instances,
+    // so we must use static state. This is thread-safe for UI operations as Blazor runs on a
+    // single UI thread per circuit.
     private static string? _dragType = null;
     private static Guid? _draggedItemId = null;
+
+    // Maximum nesting depth to prevent stack overflow in recursive hierarchy traversal
+    private const int MaxRecursionDepth = 50;
 
     private bool HasChildren => 
         (Collection?.SubCollections != null && Collection.SubCollections.Any()) || 
@@ -154,8 +163,8 @@
 
     private bool ContainsRequestInSubCollections(Collection collection, Guid requestId, int depth = 0)
     {
-        // Prevent excessive recursion (max 50 levels should be more than enough)
-        if (depth > 50)
+        // Prevent excessive recursion
+        if (depth > MaxRecursionDepth)
         {
             return false;
         }
