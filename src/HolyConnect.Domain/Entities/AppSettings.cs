@@ -15,6 +15,11 @@ public class AppSettings
     public Guid? ActiveEnvironmentId { get; set; }
     
     /// <summary>
+    /// When enabled, automatically saves request changes when navigating away from the editor.
+    /// </summary>
+    public bool AutoSaveOnNavigate { get; set; } = false;
+    
+    /// <summary>
     /// The order of environments in the variables matrix. Contains environment IDs in display order.
     /// </summary>
     public List<Guid> EnvironmentOrder { get; set; } = new();

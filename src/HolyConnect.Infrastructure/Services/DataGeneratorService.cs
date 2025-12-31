@@ -36,9 +36,9 @@ public class DataGeneratorService : IDataGeneratorService
 
                 // Dates
                 DataGeneratorType.Date => GenerateDate(dynamicVariable.Constraints),
-                DataGeneratorType.DatePast => _faker.Date.Past().ToString("yyyy-MM-dd"),
-                DataGeneratorType.DateFuture => _faker.Date.Future().ToString("yyyy-MM-dd"),
-                DataGeneratorType.DateTime => _faker.Date.Recent().ToString("yyyy-MM-ddTHH:mm:ss"),
+                DataGeneratorType.DatePast => GenerateDatePast(dynamicVariable.Constraints),
+                DataGeneratorType.DateFuture => GenerateDateFuture(dynamicVariable.Constraints),
+                DataGeneratorType.DateTime => GenerateDateTime(dynamicVariable.Constraints),
 
                 // Text
                 DataGeneratorType.Word => _faker.Lorem.Word(),
@@ -114,6 +114,16 @@ public class DataGeneratorService : IDataGeneratorService
                 case ConstraintType.MinimumDate:
                 case ConstraintType.MaximumDate:
                     if (!DateTime.TryParse(constraint.Value, out _))
+                    {
+                        return false;
+                    }
+                    break;
+
+                case ConstraintType.DaysOffset:
+                case ConstraintType.HoursOffset:
+                case ConstraintType.MinutesOffset:
+                case ConstraintType.SecondsOffset:
+                    if (!int.TryParse(constraint.Value, out _))
                     {
                         return false;
                     }
@@ -201,6 +211,20 @@ public class DataGeneratorService : IDataGeneratorService
         DateTime? maxDate = null;
         int? minAge = null;
         int? maxAge = null;
+        
+        // Check if there are offset constraints
+        var hasOffsets = constraints.Any(c => 
+            c.Type == ConstraintType.DaysOffset || 
+            c.Type == ConstraintType.HoursOffset || 
+            c.Type == ConstraintType.MinutesOffset || 
+            c.Type == ConstraintType.SecondsOffset);
+        
+        // If offsets are specified, use them instead of random generation
+        if (hasOffsets)
+        {
+            var baseDateTime = ApplyDateTimeOffsets(DateTime.Now, constraints);
+            return baseDateTime.ToString("yyyy-MM-dd");
+        }
 
         foreach (var constraint in constraints)
         {
@@ -253,5 +277,64 @@ public class DataGeneratorService : IDataGeneratorService
 
         // Default: random date in the past 30 years
         return _faker.Date.Past(30).ToString("yyyy-MM-dd");
+    }
+
+    private string GenerateDatePast(List<ConstraintRule> constraints)
+    {
+        var baseDateTime = ApplyDateTimeOffsets(DateTime.Now, constraints);
+        return baseDateTime.ToString("yyyy-MM-dd");
+    }
+
+    private string GenerateDateFuture(List<ConstraintRule> constraints)
+    {
+        var baseDateTime = ApplyDateTimeOffsets(DateTime.Now, constraints);
+        return baseDateTime.ToString("yyyy-MM-dd");
+    }
+
+    private string GenerateDateTime(List<ConstraintRule> constraints)
+    {
+        var baseDateTime = ApplyDateTimeOffsets(DateTime.Now, constraints);
+        
+        // Check if there's a custom format constraint
+        var formatConstraint = constraints.FirstOrDefault(c => c.Type == ConstraintType.Format);
+        if (formatConstraint != null && !string.IsNullOrEmpty(formatConstraint.Value))
+        {
+            try
+            {
+                return baseDateTime.ToString(formatConstraint.Value);
+            }
+            catch
+            {
+                // Fall back to default format if custom format is invalid
+            }
+        }
+        
+        return baseDateTime.ToString("yyyy-MM-ddTHH:mm:ss");
+    }
+
+    private DateTime ApplyDateTimeOffsets(DateTime baseDateTime, List<ConstraintRule> constraints)
+    {
+        var result = baseDateTime;
+        
+        foreach (var constraint in constraints)
+        {
+            switch (constraint.Type)
+            {
+                case ConstraintType.DaysOffset when int.TryParse(constraint.Value, out var days):
+                    result = result.AddDays(days);
+                    break;
+                case ConstraintType.HoursOffset when int.TryParse(constraint.Value, out var hours):
+                    result = result.AddHours(hours);
+                    break;
+                case ConstraintType.MinutesOffset when int.TryParse(constraint.Value, out var minutes):
+                    result = result.AddMinutes(minutes);
+                    break;
+                case ConstraintType.SecondsOffset when int.TryParse(constraint.Value, out var seconds):
+                    result = result.AddSeconds(seconds);
+                    break;
+            }
+        }
+        
+        return result;
     }
 }

@@ -14,6 +14,7 @@ public class AppSettingsTests
         Assert.Equal(string.Empty, settings.StoragePath);
         Assert.False(settings.IsDarkMode);
         Assert.Equal(RequestLayout.Horizontal, settings.Layout);
+        Assert.False(settings.AutoSaveOnNavigate);
     }
 
     [Fact]
@@ -79,6 +80,29 @@ public class AppSettingsTests
 
         // Assert
         Assert.Equal(layout, settings.Layout);
+    }
+
+    [Fact]
+    public void AutoSaveOnNavigate_ShouldBeSettable()
+    {
+        // Arrange
+        var settings = new AppSettings();
+
+        // Act
+        settings.AutoSaveOnNavigate = true;
+
+        // Assert
+        Assert.True(settings.AutoSaveOnNavigate);
+    }
+
+    [Fact]
+    public void AutoSaveOnNavigate_ShouldDefaultToFalse()
+    {
+        // Arrange & Act
+        var settings = new AppSettings();
+
+        // Assert
+        Assert.False(settings.AutoSaveOnNavigate);
     }
 
     [Fact]

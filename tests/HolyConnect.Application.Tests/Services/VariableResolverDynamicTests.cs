@@ -360,4 +360,117 @@ public class VariableResolverDynamicTests
         // Assert
         Assert.Equal("Static: StaticValue, Dynamic: {{ dynamic }}", result);
     }
+
+    [Fact]
+    public void ResolveVariables_WithDateTimeOffsetConstraint_ShouldGenerateOffsetDate()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Name = "Test",
+            Variables = new Dictionary<string, string>(),
+            DynamicVariables = new List<DynamicVariable>
+            {
+                new()
+                {
+                    Name = "tomorrow",
+                    GeneratorType = DataGeneratorType.DateTime,
+                    Constraints = new List<ConstraintRule>
+                    {
+                        new() { Type = ConstraintType.DaysOffset, Value = "1" }
+                    }
+                }
+            }
+        };
+
+        var expectedDate = DateTime.Now.AddDays(1);
+        _mockDataGenerator
+            .Setup(g => g.GenerateValue(It.IsAny<DynamicVariable>()))
+            .Returns(expectedDate.ToString("yyyy-MM-ddTHH:mm:ss"));
+
+        var input = "Date: {{ tomorrow }}";
+
+        // Act
+        var result = _variableResolver.ResolveVariables(input, environment);
+
+        // Assert
+        Assert.Contains(expectedDate.ToString("yyyy-MM-dd"), result);
+        _mockDataGenerator.Verify(g => g.GenerateValue(It.IsAny<DynamicVariable>()), Times.Once);
+    }
+
+    [Fact]
+    public void ResolveVariables_WithMultipleDateTimeOffsets_ShouldApplyAll()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Name = "Test",
+            Variables = new Dictionary<string, string>(),
+            DynamicVariables = new List<DynamicVariable>
+            {
+                new()
+                {
+                    Name = "complexDateTime",
+                    GeneratorType = DataGeneratorType.DateTime,
+                    Constraints = new List<ConstraintRule>
+                    {
+                        new() { Type = ConstraintType.DaysOffset, Value = "1" },
+                        new() { Type = ConstraintType.HoursOffset, Value = "2" },
+                        new() { Type = ConstraintType.MinutesOffset, Value = "30" }
+                    }
+                }
+            }
+        };
+
+        var expectedDate = DateTime.Now.AddDays(1).AddHours(2).AddMinutes(30);
+        _mockDataGenerator
+            .Setup(g => g.GenerateValue(It.IsAny<DynamicVariable>()))
+            .Returns(expectedDate.ToString("yyyy-MM-ddTHH:mm:ss"));
+
+        var input = "ComplexDate: {{ complexDateTime }}";
+
+        // Act
+        var result = _variableResolver.ResolveVariables(input, environment);
+
+        // Assert
+        Assert.Contains("ComplexDate:", result);
+        _mockDataGenerator.Verify(g => g.GenerateValue(It.IsAny<DynamicVariable>()), Times.Once);
+    }
+
+    [Fact]
+    public void ResolveVariables_WithDateOffsetForToday_ShouldGenerateToday()
+    {
+        // Arrange
+        var environment = new DomainEnvironment
+        {
+            Name = "Test",
+            Variables = new Dictionary<string, string>(),
+            DynamicVariables = new List<DynamicVariable>
+            {
+                new()
+                {
+                    Name = "today",
+                    GeneratorType = DataGeneratorType.Date,
+                    Constraints = new List<ConstraintRule>
+                    {
+                        new() { Type = ConstraintType.DaysOffset, Value = "0" }
+                    }
+                }
+            }
+        };
+
+        var todayDate = DateTime.Now;
+        _mockDataGenerator
+            .Setup(g => g.GenerateValue(It.IsAny<DynamicVariable>()))
+            .Returns(todayDate.ToString("yyyy-MM-dd"));
+
+        var input = "Today: {{ today }}";
+
+        // Act
+        var result = _variableResolver.ResolveVariables(input, environment);
+
+        // Assert
+        Assert.Contains(todayDate.ToString("yyyy-MM-dd"), result);
+        _mockDataGenerator.Verify(g => g.GenerateValue(It.IsAny<DynamicVariable>()), Times.Once);
+    }
 }

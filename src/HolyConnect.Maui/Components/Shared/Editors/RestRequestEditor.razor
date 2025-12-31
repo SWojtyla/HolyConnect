@@ -26,22 +26,124 @@
                         <MudSelectItem Value="@bodyType">@bodyType.ToString()</MudSelectItem>
                     }
                 </MudSelect>
-                <MudButton Variant="Variant.Outlined" 
-                           Color="Color.Primary" 
-                           Size="Size.Small" 
-                           StartIcon="@Icons.Material.Filled.AutoFixHigh"
-                           OnClick="@FormatRestBody">
-                    Format
-                </MudButton>
+                @if (Request.BodyType != BodyType.FormData && Request.BodyType != BodyType.None)
+                {
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Primary" 
+                               Size="Size.Small" 
+                               StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                               OnClick="@FormatRestBody">
+                        Format
+                    </MudButton>
+                }
             </MudStack>
-            <div style="flex: 1; overflow: hidden;">
-                <CodeEditor @ref="_restBodyEditor" 
-                            @bind-Value="Request.Body" 
-                            Language="@Request.BodyType.ToString()" 
-                            Height="100%"
-                            Environment="@Environment"
-                            Collection="@Collection" />
-            </div>
+            @if (Request.BodyType == BodyType.FormData)
+            {
+                <div style="flex: 1; overflow-y: auto;">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Form Fields</MudText>
+                    @foreach (var field in _formDataFields)
+                    {
+                        <MudGrid Class="mb-2">
+                            <MudItem xs="1" Class="d-flex align-center">
+                                <MudCheckBox Value="@field.Enabled" ValueChanged="@((bool v) => UpdateFormFieldEnabled(field, v))" Color="Color.Primary" />
+                            </MudItem>
+                            <MudItem xs="5">
+                                <VariableTextField Value="@field.Key" 
+                                                 ValueChanged="@((string v) => UpdateFormFieldKey(field, v))"
+                                                 Label="Field Name" 
+                                                 Variant="Variant.Outlined" 
+                                                 Disabled="@(!field.Enabled)" 
+                                                 Environment="@Environment" 
+                                                 Collection="@Collection" />
+                            </MudItem>
+                            <MudItem xs="4">
+                                <VariableTextField Value="@field.Value" 
+                                                 ValueChanged="@((string v) => UpdateFormFieldValue(field, v))"
+                                                 Label="Field Value" 
+                                                 Variant="Variant.Outlined" 
+                                                 Disabled="@(!field.Enabled)" 
+                                                 Environment="@Environment" 
+                                                 Collection="@Collection" />
+                            </MudItem>
+                            <MudItem xs="2" Class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveFormField(field))" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddFormField" StartIcon="@Icons.Material.Filled.Add" Class="mb-4">
+                        Add Field
+                    </MudButton>
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">Files</MudText>
+                    @foreach (var file in _formDataFiles)
+                    {
+                        <MudGrid Class="mb-2">
+                            <MudItem xs="1" Class="d-flex align-center">
+                                <MudCheckBox Value="@file.Enabled" ValueChanged="@((bool v) => UpdateFormFileEnabled(file, v))" Color="Color.Primary" />
+                            </MudItem>
+                            <MudItem xs="3">
+                                <MudTextField Value="@file.Key" 
+                                            ValueChanged="@((string v) => UpdateFormFileKey(file, v))"
+                                            Label="Field Name" 
+                                            Variant="Variant.Outlined" 
+                                            Disabled="@(!file.Enabled)" />
+                            </MudItem>
+                            <MudItem xs="5">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTextField Value="@GetFileName(file.FilePath)" 
+                                                Label="File" 
+                                                Variant="Variant.Outlined" 
+                                                ReadOnly="true"
+                                                Disabled="@(!file.Enabled)" 
+                                                Style="flex: 1;" />
+                                    <MudButton Variant="Variant.Outlined" 
+                                             Color="Color.Primary" 
+                                             OnClick="@(() => PickFile(file))"
+                                             Disabled="@(!file.Enabled)"
+                                             StartIcon="@Icons.Material.Filled.AttachFile">
+                                        Browse
+                                    </MudButton>
+                                </MudStack>
+                                @if (!string.IsNullOrEmpty(file.FilePath) && file.Enabled)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                        @GetFileInfo(file.FilePath)
+                                    </MudText>
+                                }
+                            </MudItem>
+                            <MudItem xs="2">
+                                <MudTextField Value="@file.ContentType" 
+                                            ValueChanged="@((string v) => UpdateFormFileContentType(file, v))"
+                                            Label="Content Type" 
+                                            Variant="Variant.Outlined" 
+                                            Disabled="@(!file.Enabled)"
+                                            Placeholder="auto" />
+                            </MudItem>
+                            <MudItem xs="1" Class="d-flex align-center">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveFormFile(file))" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddFormFile" StartIcon="@Icons.Material.Filled.Add">
+                        Add File
+                    </MudButton>
+                </div>
+            }
+            else if (Request.BodyType != BodyType.None)
+            {
+                <div style="flex: 1; overflow: hidden;">
+                    <CodeEditor @ref="_restBodyEditor" 
+                                @bind-Value="Request.Body" 
+                                Language="@Request.BodyType.ToString()" 
+                                Height="100%"
+                                Environment="@Environment"
+                                Collection="@Collection" />
+                </div>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No body for this request</MudText>
+            }
         </div>
     </MudTabPanel>
     
@@ -192,6 +294,8 @@
     private CodeEditor? _restBodyEditor;
     private List<HeaderModel> _headers = new();
     private List<ParamModel> _queryParams = new();
+    private List<FormFieldModel> _formDataFields = new();
+    private List<FormFileModel> _formDataFiles = new();
 
     private class HeaderModel
     {
@@ -206,6 +310,21 @@
         public string Key { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
+    }
+
+    private class FormFieldModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+    }
+
+    private class FormFileModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string FilePath { get; set; } = string.Empty;
+        public string? ContentType { get; set; }
+        public bool Enabled { get; set; } = true;
     }    
     
     // We use OnParametersSet to react to external Request changes, but we need to be careful not to overwrite local edits
@@ -219,6 +338,7 @@
             _lastRequestId = Request.Id;
             InitializeHeaders();
             InitializeQueryParams();
+            InitializeFormData();
         }
     }
 
@@ -449,6 +569,171 @@
             {
                 Request.DisabledQueryParameters.Add(param.Key);
             }
+        }
+    }
+
+    // --- Form Data Management ---
+
+    private void InitializeFormData()
+    {
+        _formDataFields = Request.FormDataFields.Select(f => new FormFieldModel
+        {
+            Key = f.Key,
+            Value = f.Value,
+            Enabled = f.Enabled
+        }).ToList();
+
+        _formDataFiles = Request.FormDataFiles.Select(f => new FormFileModel
+        {
+            Key = f.Key,
+            FilePath = f.FilePath,
+            ContentType = f.ContentType,
+            Enabled = f.Enabled
+        }).ToList();
+    }
+
+    private void AddFormField()
+    {
+        _formDataFields.Add(new FormFieldModel());
+        SyncFormDataToRequest();
+    }
+
+    private void RemoveFormField(FormFieldModel field)
+    {
+        _formDataFields.Remove(field);
+        SyncFormDataToRequest();
+    }
+
+    private void UpdateFormFieldKey(FormFieldModel field, string newKey)
+    {
+        field.Key = newKey;
+        SyncFormDataToRequest();
+    }
+
+    private void UpdateFormFieldValue(FormFieldModel field, string newValue)
+    {
+        field.Value = newValue;
+        SyncFormDataToRequest();
+    }
+
+    private void UpdateFormFieldEnabled(FormFieldModel field, bool enabled)
+    {
+        field.Enabled = enabled;
+        SyncFormDataToRequest();
+    }
+
+    private void AddFormFile()
+    {
+        _formDataFiles.Add(new FormFileModel());
+        SyncFormDataToRequest();
+    }
+
+    private void RemoveFormFile(FormFileModel file)
+    {
+        _formDataFiles.Remove(file);
+        SyncFormDataToRequest();
+    }
+
+    private void UpdateFormFileKey(FormFileModel file, string newKey)
+    {
+        file.Key = newKey;
+        SyncFormDataToRequest();
+    }
+
+    private void UpdateFormFileContentType(FormFileModel file, string? contentType)
+    {
+        file.ContentType = contentType;
+        SyncFormDataToRequest();
+    }
+
+    private void UpdateFormFileEnabled(FormFileModel file, bool enabled)
+    {
+        file.Enabled = enabled;
+        SyncFormDataToRequest();
+    }
+
+    private async Task PickFile(FormFileModel file)
+    {
+        try
+        {
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Select a file"
+            });
+
+            if (result != null)
+            {
+                file.FilePath = result.FullPath;
+                
+                // Try to infer content type from file extension if not set
+                if (string.IsNullOrEmpty(file.ContentType))
+                {
+                    file.ContentType = result.ContentType;
+                }
+                
+                SyncFormDataToRequest();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error picking file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void SyncFormDataToRequest()
+    {
+        Request.FormDataFields.Clear();
+        Request.FormDataFiles.Clear();
+
+        foreach (var field in _formDataFields.Where(f => !string.IsNullOrWhiteSpace(f.Key)))
+        {
+            Request.FormDataFields.Add(new FormDataField
+            {
+                Key = field.Key,
+                Value = field.Value,
+                Enabled = field.Enabled
+            });
+        }
+
+        foreach (var file in _formDataFiles.Where(f => !string.IsNullOrWhiteSpace(f.Key)))
+        {
+            Request.FormDataFiles.Add(new FormDataFile
+            {
+                Key = file.Key,
+                FilePath = file.FilePath,
+                ContentType = file.ContentType,
+                Enabled = file.Enabled
+            });
+        }
+    }
+
+    private string GetFileName(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return "No file selected";
+        
+        return Path.GetFileName(filePath);
+    }
+
+    private string GetFileInfo(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            return string.Empty;
+
+        try
+        {
+            var fileInfo = new FileInfo(filePath);
+            var sizeKb = fileInfo.Length / 1024.0;
+            var size = sizeKb < 1024 
+                ? $"{sizeKb:F2} KB" 
+                : $"{sizeKb / 1024.0:F2} MB";
+            
+            return $"{size}";
+        }
+        catch
+        {
+            return string.Empty;
         }
     }
 }

@@ -155,6 +155,52 @@ public class FileBasedSettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveSettingsAsync_WithAutoSaveOnNavigate_ShouldPersistAutoSavePreference()
+    {
+        // Arrange
+        var settings = new AppSettings
+        {
+            StoragePath = "/test/path",
+            AutoSaveOnNavigate = true
+        };
+
+        // Act
+        await _service.SaveSettingsAsync(settings);
+        var loadedSettings = await _service.GetSettingsAsync();
+
+        // Assert
+        Assert.True(loadedSettings.AutoSaveOnNavigate);
+    }
+
+    [Fact]
+    public async Task SaveSettingsAsync_WithAutoSaveDisabled_ShouldPersistAutoSavePreference()
+    {
+        // Arrange
+        var settingsEnabled = new AppSettings
+        {
+            StoragePath = "/test/path",
+            AutoSaveOnNavigate = true
+        };
+
+        var settingsDisabled = new AppSettings
+        {
+            StoragePath = "/test/path",
+            AutoSaveOnNavigate = false
+        };
+
+        // Act - Enable first, then disable
+        await _service.SaveSettingsAsync(settingsEnabled);
+        var loadedSettingsEnabled = await _service.GetSettingsAsync();
+        
+        await _service.SaveSettingsAsync(settingsDisabled);
+        var loadedSettingsDisabled = await _service.GetSettingsAsync();
+
+        // Assert
+        Assert.True(loadedSettingsEnabled.AutoSaveOnNavigate);
+        Assert.False(loadedSettingsDisabled.AutoSaveOnNavigate);
+    }
+
+    [Fact]
     public async Task SaveSettingsAsync_ShouldCreateBackup()
     {
         // Arrange

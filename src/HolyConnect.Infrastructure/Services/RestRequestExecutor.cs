@@ -98,14 +98,75 @@ public class RestRequestExecutor : IRequestExecutor
         // Apply enabled headers using helper
         HttpAuthenticationHelper.ApplyHeaders(httpRequest, request);
 
-        // Set content if body is provided
-        if (!string.IsNullOrEmpty(request.Body))
+        // Set content based on body type
+        if (request.BodyType == BodyType.FormData)
+        {
+            // Only create multipart content if there are enabled fields or files with valid keys
+            // Empty multipart content (with no parts at all) causes ASP.NET Core validation errors
+            var hasFields = request.FormDataFields.Any(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key));
+            var hasFiles = request.FormDataFiles.Any(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key));
+            
+            if (hasFields || hasFiles)
+            {
+                var multipartContent = CreateMultipartFormDataContent(request);
+                httpRequest.Content = multipartContent;
+            }
+            // If no fields or files with valid keys, don't set any content (leave it null)
+        }
+        else if (!string.IsNullOrEmpty(request.Body))
         {
             var contentType = GetContentType(request);
             HttpRequestHelper.SetContent(httpRequest, request.Body, contentType, request);
         }
 
         return httpRequest;
+    }
+
+    private MultipartFormDataContent CreateMultipartFormDataContent(RestRequest request)
+    {
+        var multipartContent = new MultipartFormDataContent();
+
+        // Add text fields with properly quoted names in Content-Disposition header
+        foreach (var field in request.FormDataFields.Where(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key)))
+        {
+            var stringContent = new StringContent(field.Value ?? string.Empty);
+            // Remove default Content-Type header for form fields to avoid issues
+            stringContent.Headers.ContentType = null;
+            // Manually set Content-Disposition with quoted name for ASP.NET Core compatibility
+            stringContent.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
+            {
+                Name = $"\"{field.Key}\""
+            };
+            multipartContent.Add(stringContent);
+        }
+
+        // Add file attachments
+        foreach (var file in request.FormDataFiles.Where(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key) && !string.IsNullOrWhiteSpace(f.FilePath)))
+        {
+            if (File.Exists(file.FilePath))
+            {
+                // StreamContent will dispose the stream when it's disposed
+                var fileStream = File.OpenRead(file.FilePath);
+                var fileName = Path.GetFileName(file.FilePath);
+                var fileContent = new StreamContent(fileStream);
+                
+                // Set content type if specified, otherwise let HttpClient infer it
+                if (!string.IsNullOrEmpty(file.ContentType))
+                {
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+                }
+                
+                // Manually set Content-Disposition with quoted name and filename for ASP.NET Core compatibility
+                fileContent.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
+                {
+                    Name = $"\"{file.Key}\"",
+                    FileName = $"\"{fileName}\""
+                };
+                multipartContent.Add(fileContent);
+            }
+        }
+
+        return multipartContent;
     }
 
     private string GetContentType(RestRequest request)
@@ -124,6 +185,7 @@ public class RestRequestExecutor : IRequestExecutor
             BodyType.Html => HttpConstants.MediaTypes.TextHtml,
             BodyType.JavaScript => HttpConstants.MediaTypes.ApplicationJavaScript,
             BodyType.Text => HttpConstants.MediaTypes.TextPlain,
+            BodyType.FormData => HttpConstants.MediaTypes.MultipartFormData,
             _ => HttpConstants.MediaTypes.TextPlain
         };
     }

@@ -51,7 +51,20 @@ public static class RequestCloner
             ContentType = source.ContentType,
             BodyType = source.BodyType,
             QueryParameters = new Dictionary<string, string>(source.QueryParameters),
-            DisabledQueryParameters = new HashSet<string>(source.DisabledQueryParameters)
+            DisabledQueryParameters = new HashSet<string>(source.DisabledQueryParameters),
+            FormDataFields = new List<FormDataField>(source.FormDataFields.Select(f => new FormDataField
+            {
+                Key = f.Key,
+                Value = f.Value,
+                Enabled = f.Enabled
+            })),
+            FormDataFiles = new List<FormDataFile>(source.FormDataFiles.Select(f => new FormDataFile
+            {
+                Key = f.Key,
+                FilePath = f.FilePath,
+                ContentType = f.ContentType,
+                Enabled = f.Enabled
+            }))
         };
 
         CloneBaseProperties(source, clone);
