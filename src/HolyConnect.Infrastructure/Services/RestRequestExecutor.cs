@@ -118,10 +118,13 @@ public class RestRequestExecutor : IRequestExecutor
     {
         var multipartContent = new MultipartFormDataContent();
 
-        // Add text fields
+        // Add text fields with proper Content-Disposition header
         foreach (var field in request.FormDataFields.Where(f => f.Enabled && !string.IsNullOrEmpty(f.Key)))
         {
-            multipartContent.Add(new StringContent(field.Value), field.Key);
+            var stringContent = new StringContent(field.Value);
+            // Remove default Content-Type header for form fields to avoid issues
+            stringContent.Headers.ContentType = null;
+            multipartContent.Add(stringContent, field.Key);
         }
 
         // Add file attachments

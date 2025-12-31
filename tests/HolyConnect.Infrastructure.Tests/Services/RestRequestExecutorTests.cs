@@ -1158,4 +1158,50 @@ public class RestRequestExecutorTests
         // Assert - Should succeed without error (file just won't be included)
         Assert.Equal(200, response.StatusCode);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldHandleFormDataWithJsonContent()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        HttpRequestMessage? capturedRequest = null;
+
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, token) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("success")
+            });
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var executor = new RestRequestExecutor(httpClient);
+        
+        // JSON content that might cause Content-Disposition issues
+        var jsonContent = "{\"Id\":\"11ad2725-f0f1-48c1-844c-37b7ecea2cef\", \"Name\":\"Test.pdf\", \"Language\":\"fr\"}";
+        
+        var request = new RestRequest
+        {
+            Url = "https://api.example.com/upload",
+            Method = Domain.Entities.HttpMethod.Post,
+            BodyType = BodyType.FormData,
+            FormDataFields = new List<FormDataField>
+            {
+                new FormDataField { Key = "document", Value = jsonContent, Enabled = true }
+            }
+        };
+
+        // Act
+        var response = await executor.ExecuteAsync(request);
+
+        // Assert
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest.Content);
+        Assert.IsType<MultipartFormDataContent>(capturedRequest.Content);
+        Assert.Equal(200, response.StatusCode);
+    }
 }
