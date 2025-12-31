@@ -131,16 +131,50 @@
             }
             else if (IsDateType(_selectedVariable.GeneratorType))
             {
-                <MudTextField @bind-Value="_minAge" 
-                              Label="Minimum Age (years)" 
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Date/Time Offsets (relative to now)</MudText>
+                <MudTextField @bind-Value="_daysOffset" 
+                              Label="Days Offset" 
                               Variant="Variant.Outlined"
                               Class="mb-3"
-                              HelperText="For generating birthdates" />
-                <MudTextField @bind-Value="_maxAge" 
-                              Label="Maximum Age (years)" 
+                              HelperText="e.g., 0 = today, 1 = tomorrow, -1 = yesterday" />
+                <MudTextField @bind-Value="_hoursOffset" 
+                              Label="Hours Offset" 
                               Variant="Variant.Outlined"
-                              Class="mb-3" 
-                              HelperText="For generating birthdates" />
+                              Class="mb-3"
+                              HelperText="e.g., 1 = 1 hour from now, -2 = 2 hours ago" />
+                <MudTextField @bind-Value="_minutesOffset" 
+                              Label="Minutes Offset" 
+                              Variant="Variant.Outlined"
+                              Class="mb-3"
+                              HelperText="e.g., 30 = 30 minutes from now" />
+                <MudTextField @bind-Value="_secondsOffset" 
+                              Label="Seconds Offset" 
+                              Variant="Variant.Outlined"
+                              Class="mb-3"
+                              HelperText="e.g., 45 = 45 seconds from now" />
+                
+                @if (_selectedVariable.GeneratorType == DataGeneratorType.Date)
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Age Constraints (for birthdates)</MudText>
+                    <MudTextField @bind-Value="_minAge" 
+                                  Label="Minimum Age (years)" 
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  HelperText="For generating birthdates" />
+                    <MudTextField @bind-Value="_maxAge" 
+                                  Label="Maximum Age (years)" 
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3" 
+                                  HelperText="For generating birthdates" />
+                }
+                
+                <MudDivider Class="my-3" />
+                <MudTextField @bind-Value="_formatString" 
+                              Label="Custom Format (optional)" 
+                              Variant="Variant.Outlined"
+                              Class="mb-3"
+                              HelperText="e.g., yyyy-MM-dd HH:mm or MM/dd/yyyy" />
             }
             else
             {
@@ -166,6 +200,11 @@
     private string _maxValue = string.Empty;
     private string _minAge = string.Empty;
     private string _maxAge = string.Empty;
+    private string _daysOffset = string.Empty;
+    private string _hoursOffset = string.Empty;
+    private string _minutesOffset = string.Empty;
+    private string _secondsOffset = string.Empty;
+    private string _formatString = string.Empty;
 
     private readonly DialogOptions _dialogOptions = new()
     {
@@ -201,6 +240,11 @@
         _maxValue = string.Empty;
         _minAge = string.Empty;
         _maxAge = string.Empty;
+        _daysOffset = string.Empty;
+        _hoursOffset = string.Empty;
+        _minutesOffset = string.Empty;
+        _secondsOffset = string.Empty;
+        _formatString = string.Empty;
 
         // Load existing constraints
         foreach (var constraint in dynamicVar.Constraints)
@@ -218,6 +262,21 @@
                     break;
                 case ConstraintType.MaximumAge:
                     _maxAge = constraint.Value;
+                    break;
+                case ConstraintType.DaysOffset:
+                    _daysOffset = constraint.Value;
+                    break;
+                case ConstraintType.HoursOffset:
+                    _hoursOffset = constraint.Value;
+                    break;
+                case ConstraintType.MinutesOffset:
+                    _minutesOffset = constraint.Value;
+                    break;
+                case ConstraintType.SecondsOffset:
+                    _secondsOffset = constraint.Value;
+                    break;
+                case ConstraintType.Format:
+                    _formatString = constraint.Value;
                     break;
             }
         }
@@ -258,20 +317,68 @@
         }
         else if (IsDateType(_selectedVariable.GeneratorType))
         {
-            if (!string.IsNullOrWhiteSpace(_minAge))
+            // Add offset constraints
+            if (!string.IsNullOrWhiteSpace(_daysOffset))
             {
                 _selectedVariable.Constraints.Add(new ConstraintRule
                 {
-                    Type = ConstraintType.MinimumAge,
-                    Value = _minAge
+                    Type = ConstraintType.DaysOffset,
+                    Value = _daysOffset
                 });
             }
-            if (!string.IsNullOrWhiteSpace(_maxAge))
+            if (!string.IsNullOrWhiteSpace(_hoursOffset))
             {
                 _selectedVariable.Constraints.Add(new ConstraintRule
                 {
-                    Type = ConstraintType.MaximumAge,
-                    Value = _maxAge
+                    Type = ConstraintType.HoursOffset,
+                    Value = _hoursOffset
+                });
+            }
+            if (!string.IsNullOrWhiteSpace(_minutesOffset))
+            {
+                _selectedVariable.Constraints.Add(new ConstraintRule
+                {
+                    Type = ConstraintType.MinutesOffset,
+                    Value = _minutesOffset
+                });
+            }
+            if (!string.IsNullOrWhiteSpace(_secondsOffset))
+            {
+                _selectedVariable.Constraints.Add(new ConstraintRule
+                {
+                    Type = ConstraintType.SecondsOffset,
+                    Value = _secondsOffset
+                });
+            }
+            
+            // Add age constraints (for Date type only)
+            if (_selectedVariable.GeneratorType == DataGeneratorType.Date)
+            {
+                if (!string.IsNullOrWhiteSpace(_minAge))
+                {
+                    _selectedVariable.Constraints.Add(new ConstraintRule
+                    {
+                        Type = ConstraintType.MinimumAge,
+                        Value = _minAge
+                    });
+                }
+                if (!string.IsNullOrWhiteSpace(_maxAge))
+                {
+                    _selectedVariable.Constraints.Add(new ConstraintRule
+                    {
+                        Type = ConstraintType.MaximumAge,
+                        Value = _maxAge
+                    });
+                }
+            }
+            
+            // Add format constraint
+            if (!string.IsNullOrWhiteSpace(_formatString))
+            {
+                _selectedVariable.Constraints.Add(new ConstraintRule
+                {
+                    Type = ConstraintType.Format,
+                    Value = _formatString
                 });
             }
         }
@@ -287,6 +394,11 @@
             ConstraintType.Maximum => $"Max: {constraint.Value}",
             ConstraintType.MinimumAge => $"Min Age: {constraint.Value} years",
             ConstraintType.MaximumAge => $"Max Age: {constraint.Value} years",
+            ConstraintType.DaysOffset => $"Days: {(constraint.Value.StartsWith("-") ? "" : "+")}{constraint.Value}",
+            ConstraintType.HoursOffset => $"Hours: {(constraint.Value.StartsWith("-") ? "" : "+")}{constraint.Value}",
+            ConstraintType.MinutesOffset => $"Minutes: {(constraint.Value.StartsWith("-") ? "" : "+")}{constraint.Value}",
+            ConstraintType.SecondsOffset => $"Seconds: {(constraint.Value.StartsWith("-") ? "" : "+")}{constraint.Value}",
+            ConstraintType.Format => $"Format: {constraint.Value}",
             _ => $"{constraint.Type}: {constraint.Value}"
         };
     }
@@ -300,6 +412,7 @@
     {
         return type == DataGeneratorType.Date || 
                type == DataGeneratorType.DatePast || 
-               type == DataGeneratorType.DateFuture;
+               type == DataGeneratorType.DateFuture ||
+               type == DataGeneratorType.DateTime;
     }
 }
