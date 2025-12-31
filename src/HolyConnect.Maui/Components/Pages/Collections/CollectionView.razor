@@ -29,8 +29,11 @@
                 @if (_collectionRequests != null && _collectionRequests.Any())
                 {
                     <MudText Typo="Typo.body2" Class="pa-2 mt-2" Color="Color.Primary"><strong>Requests</strong></MudText>
-                    @foreach (var request in _collectionRequests)
+                    var orderedRequests = _collectionRequests.ToList();
+                    @for (int i = 0; i < orderedRequests.Count; i++)
                     {
+                        var request = orderedRequests[i];
+                        var index = i;
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" 
                              Style="@GetRequestStyle(request)"
                              @onclick="@(() => SelectRequest(request))">
@@ -39,6 +42,8 @@
                                 <span style="font-size: 0.875rem;">@request.Name</span>
                             </MudText>
                             <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" OnClick="@(() => MoveRequestUp(request, orderedRequests))" title="Move up" Class="pa-1" Disabled="@(index == 0)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" OnClick="@(() => MoveRequestDown(request, orderedRequests))" title="Move down" Class="pa-1" Disabled="@(index == orderedRequests.Count - 1)" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" title="Rename request" Class="pa-1" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" title="Delete request" Class="pa-1" />
                             </div>
@@ -53,10 +58,13 @@
                     @foreach (var subCollection in _subCollections)
                     {
                         <CollectionTreeItem Collection="@subCollection" 
+                                          ParentCollection="@_collection"
+                                          ShowReorderButtons="true"
                                           OnSelect="SelectSubCollection" 
                                           OnRequestSelect="SelectRequest"
                                           OnCollectionUpdated="HandleCollectionUpdated"
                                           OnRequestUpdated="HandleRequestUpdated"
+                                          OnReorderNeeded="HandleReorderNeeded"
                                           SelectedCollectionId="@_selectedSubCollection?.Id"
                                           SelectedRequestId="@_selectedRequest?.Id" />
                     }
@@ -263,11 +271,11 @@
         // Populate Requests navigation property for all collections
         CollectionHierarchyHelper.PopulateRequests(_allCollections, allRequests);
         
-        // Find direct subcollections of the current collection
-        _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId);
+        // Find direct subcollections of the current collection and sort by order
+        _subCollections = _allCollections.Where(c => c.ParentCollectionId == CollectionId).OrderBy(c => c.Order);
         
-        // Find requests directly in this collection
-        _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId);
+        // Find requests directly in this collection and sort by order
+        _collectionRequests = allRequests.Where(r => r.CollectionId == CollectionId).OrderBy(r => r.Order);
         
         // Load the active environment with secrets for variable resolution
         var activeEnvId = await ActiveEnvironmentService.GetActiveEnvironmentIdAsync();
@@ -522,9 +530,56 @@
     private string GetRequestStyle(Domain.Entities.Request request)
     {
         var isSelected = _selectedRequest?.Id == request.Id;
+        
         return isSelected
             ? "background-color: var(--mud-palette-action-default-hover); cursor: pointer;"
             : "cursor: pointer;";
+    }
+
+    private async Task MoveRequestUp(Domain.Entities.Request request, List<Domain.Entities.Request> orderedRequests)
+    {
+        var currentIndex = orderedRequests.FindIndex(r => r.Id == request.Id);
+        
+        if (currentIndex <= 0) return;
+
+        // Swap with previous request
+        var previousRequest = orderedRequests[currentIndex - 1];
+        var tempOrder = request.Order;
+        request.Order = previousRequest.Order;
+        previousRequest.Order = tempOrder;
+
+        await RequestService.UpdateRequestAsync(request);
+        await RequestService.UpdateRequestAsync(previousRequest);
+        
+        // Reload data to reflect changes
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task MoveRequestDown(Domain.Entities.Request request, List<Domain.Entities.Request> orderedRequests)
+    {
+        var currentIndex = orderedRequests.FindIndex(r => r.Id == request.Id);
+        
+        if (currentIndex < 0 || currentIndex >= orderedRequests.Count - 1) return;
+
+        // Swap with next request
+        var nextRequest = orderedRequests[currentIndex + 1];
+        var tempOrder = request.Order;
+        request.Order = nextRequest.Order;
+        nextRequest.Order = tempOrder;
+
+        await RequestService.UpdateRequestAsync(request);
+        await RequestService.UpdateRequestAsync(nextRequest);
+        
+        // Reload data to reflect changes
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task HandleReorderNeeded()
+    {
+        await LoadData();
+        StateHasChanged();
     }
 
     private string GetRequestIcon(RequestType requestType) => requestType switch

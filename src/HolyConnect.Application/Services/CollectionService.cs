@@ -50,6 +50,35 @@ public class CollectionService : CrudServiceBase<Collection>, ICollectionService
         await DeleteAsync(id);
     }
 
+    public async Task ReorderCollectionsAsync(IEnumerable<Guid> collectionIds)
+    {
+        var orderedIds = collectionIds.ToList();
+        
+        // Load all collections in parallel
+        var loadTasks = orderedIds.Select(id => GetByIdAsync(id));
+        var loadedCollections = await Task.WhenAll(loadTasks);
+        
+        // Filter out nulls and create list
+        var collections = loadedCollections.Where(c => c != null).Cast<Collection>().ToList();
+        
+        // Assign new order values and collect items that need updating
+        var updateTasks = new List<Task<Collection>>();
+        for (int i = 0; i < collections.Count; i++)
+        {
+            if (collections[i].Order != i)
+            {
+                collections[i].Order = i;
+                updateTasks.Add(Repository.UpdateAsync(collections[i]));
+            }
+        }
+        
+        // Update all changed items in parallel
+        if (updateTasks.Any())
+        {
+            await Task.WhenAll(updateTasks);
+        }
+    }
+
     protected override Guid GetEntityId(Collection entity)
     {
         return entity.Id;

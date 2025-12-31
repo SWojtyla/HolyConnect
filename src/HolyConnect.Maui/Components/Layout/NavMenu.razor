@@ -9,7 +9,7 @@
     <MudNavGroup Title="Collections" Icon="@Icons.Material.Filled.Folder" Expanded="true">
         @if (_collections != null && _collections.Any())
         {
-            @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
+            @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null).OrderBy(c => c.Order))
             {
                 <MudNavLink Href="@($"/collection/{collection.Id}")" Icon="@Icons.Material.Filled.Folder">
                     @collection.Name

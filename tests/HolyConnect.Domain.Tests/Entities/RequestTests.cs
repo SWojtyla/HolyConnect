@@ -375,4 +375,28 @@ public class RequestTests
         Assert.Equal(1, (int)AuthenticationType.Basic);
         Assert.Equal(2, (int)AuthenticationType.BearerToken);
     }
+
+    [Fact]
+    public void Request_Order_ShouldBeSettable()
+    {
+        // Arrange & Act
+        var request = new RestRequest
+        {
+            Name = "Test",
+            Order = 5
+        };
+
+        // Assert
+        Assert.Equal(5, request.Order);
+    }
+
+    [Fact]
+    public void Request_Order_ShouldDefaultToZero()
+    {
+        // Arrange & Act
+        var request = new RestRequest { Name = "Test" };
+
+        // Assert
+        Assert.Equal(0, request.Order);
+    }
 }

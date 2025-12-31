@@ -59,6 +59,35 @@ public class RequestService : IRequestService
         await _repositories.Requests.DeleteAsync(id);
     }
 
+    public async Task ReorderRequestsAsync(IEnumerable<Guid> requestIds)
+    {
+        var orderedIds = requestIds.ToList();
+        
+        // Load all requests in parallel
+        var loadTasks = orderedIds.Select(id => _repositories.Requests.GetByIdAsync(id));
+        var loadedRequests = await Task.WhenAll(loadTasks);
+        
+        // Filter out nulls and create list
+        var requests = loadedRequests.Where(r => r != null).Cast<Request>().ToList();
+        
+        // Assign new order values and collect items that need updating
+        var updateTasks = new List<Task<Request>>();
+        for (int i = 0; i < requests.Count; i++)
+        {
+            if (requests[i].Order != i)
+            {
+                requests[i].Order = i;
+                updateTasks.Add(_repositories.Requests.UpdateAsync(requests[i]));
+            }
+        }
+        
+        // Update all changed items in parallel
+        if (updateTasks.Any())
+        {
+            await Task.WhenAll(updateTasks);
+        }
+    }
+
     public async Task<RequestResponse> ExecuteRequestAsync(Request request)
     {
         var executor = _executionContext.ExecutorFactory.GetExecutor(request);

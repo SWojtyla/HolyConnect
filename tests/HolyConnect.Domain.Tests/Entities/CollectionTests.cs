@@ -129,4 +129,28 @@ public class CollectionTests
         // Assert
         Assert.Single(collection.SecretVariableNames);
     }
+
+    [Fact]
+    public void Order_ShouldBeSettable()
+    {
+        // Arrange & Act
+        var collection = new Collection
+        {
+            Name = "Test",
+            Order = 5
+        };
+
+        // Assert
+        Assert.Equal(5, collection.Order);
+    }
+
+    [Fact]
+    public void Order_ShouldDefaultToZero()
+    {
+        // Arrange & Act
+        var collection = new Collection { Name = "Test" };
+
+        // Assert
+        Assert.Equal(0, collection.Order);
+    }
 }
