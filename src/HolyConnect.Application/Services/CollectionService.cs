@@ -50,6 +50,22 @@ public class CollectionService : CrudServiceBase<Collection>, ICollectionService
         await DeleteAsync(id);
     }
 
+    public async Task ReorderCollectionsAsync(IEnumerable<Guid> collectionIds)
+    {
+        var collections = await GetAllCollectionsAsync();
+        var collectionDict = collections.ToDictionary(c => c.Id);
+        
+        int order = 0;
+        foreach (var id in collectionIds)
+        {
+            if (collectionDict.TryGetValue(id, out var collection))
+            {
+                collection.Order = order++;
+                await Repository.UpdateAsync(collection);
+            }
+        }
+    }
+
     protected override Guid GetEntityId(Collection entity)
     {
         return entity.Id;

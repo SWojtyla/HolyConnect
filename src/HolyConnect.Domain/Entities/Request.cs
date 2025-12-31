@@ -15,6 +15,7 @@ public abstract class Request
     public List<DynamicVariable> DynamicVariables { get; set; } = new();
     public Guid? CollectionId { get; set; }
     public Collection? Collection { get; set; }
+    public int Order { get; set; }
     public DateTime CreatedAt { get; set; }
     public abstract RequestType Type { get; }
     public AuthenticationType AuthType { get; set; } = AuthenticationType.None;

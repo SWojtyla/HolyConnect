@@ -11,4 +11,5 @@ public interface IRequestService
     Task<Request> UpdateRequestAsync(Request request);
     Task DeleteRequestAsync(Guid id);
     Task<RequestResponse> ExecuteRequestAsync(Request request);
+    Task ReorderRequestsAsync(IEnumerable<Guid> requestIds);
 }

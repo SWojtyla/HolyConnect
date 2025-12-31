@@ -59,6 +59,22 @@ public class RequestService : IRequestService
         await _repositories.Requests.DeleteAsync(id);
     }
 
+    public async Task ReorderRequestsAsync(IEnumerable<Guid> requestIds)
+    {
+        var requests = await _repositories.Requests.GetAllAsync();
+        var requestDict = requests.ToDictionary(r => r.Id);
+        
+        int order = 0;
+        foreach (var id in requestIds)
+        {
+            if (requestDict.TryGetValue(id, out var request))
+            {
+                request.Order = order++;
+                await _repositories.Requests.UpdateAsync(request);
+            }
+        }
+    }
+
     public async Task<RequestResponse> ExecuteRequestAsync(Request request)
     {
         var executor = _executionContext.ExecutorFactory.GetExecutor(request);
