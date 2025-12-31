@@ -8,6 +8,8 @@ public class RestRequest : Request
     public BodyType BodyType { get; set; } = BodyType.Json;
     public Dictionary<string, string> QueryParameters { get; set; } = new();
     public HashSet<string> DisabledQueryParameters { get; set; } = new();
+    public List<FormDataField> FormDataFields { get; set; } = new();
+    public List<FormDataFile> FormDataFiles { get; set; } = new();
     public override RequestType Type => RequestType.Rest;
 }
 
@@ -29,5 +31,6 @@ public enum BodyType
     Xml,
     Text,
     Html,
-    JavaScript
+    JavaScript,
+    FormData
 }

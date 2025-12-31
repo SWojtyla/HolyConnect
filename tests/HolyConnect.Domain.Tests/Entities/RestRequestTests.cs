@@ -162,4 +162,72 @@ public class RestRequestTests
         Assert.Contains("Accept", request.DisabledHeaders);
         Assert.Contains("limit", request.DisabledQueryParameters);
     }
+
+    [Fact]
+    public void FormDataFields_ShouldInitializeEmpty()
+    {
+        // Arrange & Act
+        var request = new RestRequest();
+
+        // Assert
+        Assert.NotNull(request.FormDataFields);
+        Assert.Empty(request.FormDataFields);
+    }
+
+    [Fact]
+    public void FormDataFiles_ShouldInitializeEmpty()
+    {
+        // Arrange & Act
+        var request = new RestRequest();
+
+        // Assert
+        Assert.NotNull(request.FormDataFiles);
+        Assert.Empty(request.FormDataFiles);
+    }
+
+    [Fact]
+    public void FormDataFields_ShouldBeModifiable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        var field1 = new FormDataField { Key = "username", Value = "john" };
+        var field2 = new FormDataField { Key = "email", Value = "john@example.com" };
+
+        // Act
+        request.FormDataFields.Add(field1);
+        request.FormDataFields.Add(field2);
+
+        // Assert
+        Assert.Equal(2, request.FormDataFields.Count);
+        Assert.Contains(field1, request.FormDataFields);
+        Assert.Contains(field2, request.FormDataFields);
+    }
+
+    [Fact]
+    public void FormDataFiles_ShouldBeModifiable()
+    {
+        // Arrange
+        var request = new RestRequest();
+        var file1 = new FormDataFile { Key = "document", FilePath = "/path/to/file.pdf" };
+        var file2 = new FormDataFile { Key = "image", FilePath = "/path/to/image.png" };
+
+        // Act
+        request.FormDataFiles.Add(file1);
+        request.FormDataFiles.Add(file2);
+
+        // Assert
+        Assert.Equal(2, request.FormDataFiles.Count);
+        Assert.Contains(file1, request.FormDataFiles);
+        Assert.Contains(file2, request.FormDataFiles);
+    }
+
+    [Fact]
+    public void BodyType_ShouldSupportFormData()
+    {
+        // Arrange
+        var request = new RestRequest { BodyType = BodyType.FormData };
+
+        // Assert
+        Assert.Equal(BodyType.FormData, request.BodyType);
+    }
 }
