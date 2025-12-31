@@ -101,15 +101,17 @@ public class RestRequestExecutor : IRequestExecutor
         // Set content based on body type
         if (request.BodyType == BodyType.FormData)
         {
-            // Only create multipart content if there are fields or files to send
-            // Empty multipart content causes ASP.NET Core validation errors
-            if (request.FormDataFields.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key)) ||
-                request.FormDataFiles.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key) && !string.IsNullOrEmpty(f.FilePath)))
+            // Only create multipart content if there are enabled fields or files with valid keys
+            // Empty multipart content (with no parts at all) causes ASP.NET Core validation errors
+            var hasFields = request.FormDataFields.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key));
+            var hasFiles = request.FormDataFiles.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key));
+            
+            if (hasFields || hasFiles)
             {
                 var multipartContent = CreateMultipartFormDataContent(request);
                 httpRequest.Content = multipartContent;
             }
-            // If no fields or files, don't set any content (leave it null)
+            // If no fields or files with valid keys, don't set any content (leave it null)
         }
         else if (!string.IsNullOrEmpty(request.Body))
         {
@@ -127,7 +129,7 @@ public class RestRequestExecutor : IRequestExecutor
         // Add text fields with properly quoted names in Content-Disposition header
         foreach (var field in request.FormDataFields.Where(f => f.Enabled && !string.IsNullOrEmpty(f.Key)))
         {
-            var stringContent = new StringContent(field.Value);
+            var stringContent = new StringContent(field.Value ?? string.Empty);
             // Remove default Content-Type header for form fields to avoid issues
             stringContent.Headers.ContentType = null;
             // Manually set Content-Disposition with quoted name for ASP.NET Core compatibility
