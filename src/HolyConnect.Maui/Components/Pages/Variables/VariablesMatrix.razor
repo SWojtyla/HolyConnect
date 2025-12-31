@@ -2,8 +2,10 @@
 @inject IEnvironmentService EnvironmentService
 @inject IActiveEnvironmentService ActiveEnvironmentService
 @inject ISecretVariablesService SecretVariablesService
+@inject ISettingsService SettingsService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@using HolyConnect.Application.Common
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudStack Spacing="4">
@@ -50,16 +52,30 @@
                 <MudTable Items="@_variableRows" Hover="true" Dense="true" Striped="true">
                     <HeaderContent>
                         <MudTh Style="width: 200px;">Variable Key</MudTh>
-                        @foreach (var env in _environments.OrderBy(e => e.Name))
+                        @foreach (var env in _orderedEnvironments)
                         {
                             <MudTh>
                                 <MudStack Spacing="1">
-                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                        @if (env.Id == _activeEnvironmentId)
-                                        {
-                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
-                                        }
-                                        <MudText Typo="Typo.body2"><strong>@env.Name</strong></MudText>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Justify="Justify.SpaceBetween">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                            @if (env.Id == _activeEnvironmentId)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                                            }
+                                            <MudText Typo="Typo.body2"><strong>@env.Name</strong></MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Spacing="0">
+                                            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" 
+                                                         Size="Size.Small" 
+                                                         OnClick="@(() => MoveEnvironmentLeft(env))"
+                                                         Disabled="@(_orderedEnvironments.First().Id == env.Id)"
+                                                         Title="Move left" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" 
+                                                         Size="Size.Small" 
+                                                         OnClick="@(() => MoveEnvironmentRight(env))"
+                                                         Disabled="@(_orderedEnvironments.Last().Id == env.Id)"
+                                                         Title="Move right" />
+                                        </MudStack>
                                     </MudStack>
                                 </MudStack>
                             </MudTh>
@@ -74,7 +90,7 @@
                                         Placeholder="VARIABLE_KEY"
                                         OnKeyUp="@(() => MarkChanged())" />
                         </MudTd>
-                        @foreach (var env in _environments.OrderBy(e => e.Name))
+                        @foreach (var env in _orderedEnvironments)
                         {
                             <MudTd DataLabel="@env.Name">
                                 @{
@@ -119,6 +135,7 @@
 
 @code {
     private IEnumerable<Domain.Entities.Environment>? _environments;
+    private List<Domain.Entities.Environment> _orderedEnvironments = new();
     private Guid? _activeEnvironmentId;
     private List<VariableRow> _variableRows = new();
     private bool _hasChanges = false;
@@ -145,6 +162,10 @@
                 }
             }
             
+            // Load environment order from settings
+            var settings = await SettingsService.GetSettingsAsync();
+            _orderedEnvironments = EnvironmentOrderHelper.OrderEnvironments(_environments, settings.EnvironmentOrder);
+            
             var allKeys = _environments
                 .SelectMany(e => e.Variables.Keys)
                 .Distinct()
@@ -163,6 +184,38 @@
         }
         
         _hasChanges = false;
+    }
+
+    private async Task MoveEnvironmentLeft(Domain.Entities.Environment env)
+    {
+        var currentIndex = _orderedEnvironments.IndexOf(env);
+        if (currentIndex > 0)
+        {
+            _orderedEnvironments.RemoveAt(currentIndex);
+            _orderedEnvironments.Insert(currentIndex - 1, env);
+            await SaveEnvironmentOrder();
+        }
+    }
+
+    private async Task MoveEnvironmentRight(Domain.Entities.Environment env)
+    {
+        var currentIndex = _orderedEnvironments.IndexOf(env);
+        if (currentIndex < _orderedEnvironments.Count - 1)
+        {
+            _orderedEnvironments.RemoveAt(currentIndex);
+            _orderedEnvironments.Insert(currentIndex + 1, env);
+            await SaveEnvironmentOrder();
+        }
+    }
+
+    /// <summary>
+    /// Saves the current environment order to settings.
+    /// </summary>
+    private async Task SaveEnvironmentOrder()
+    {
+        var settings = await SettingsService.GetSettingsAsync();
+        settings.EnvironmentOrder = _orderedEnvironments.Select(e => e.Id).ToList();
+        await SettingsService.SaveSettingsAsync(settings);
     }
 
     private void AddVariable()
