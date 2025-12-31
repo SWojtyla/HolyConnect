@@ -52,7 +52,7 @@
                     Drag and drop the environment column headers to reorder them. The order will be saved automatically.
                 </MudAlert>
                 
-                <MudDropContainer T="EnvironmentDropItem" Items="@_environmentDropItems" ItemsSelector="@((item, dropzone) => true)" ItemDropped="OnEnvironmentDropped" Class="mb-4">
+                <MudDropContainer T="EnvironmentDropItem" Items="@_environmentDropItems" ItemsSelector="@((item, dropzone) => item.Selector == dropzone)" ItemDropped="OnEnvironmentDropped" Class="mb-4">
                     <ChildContent>
                         <MudStack Row="true" Spacing="2" Class="mb-3">
                             <MudPaper Class="pa-2" Style="width: 200px;">
@@ -244,24 +244,14 @@
     {
         if (dropInfo.Item == null) return;
         
-        // Remove the dropped item from its current position
-        _environmentDropItems.Remove(dropInfo.Item);
+        // Update the item's selector to match the dropzone
+        dropInfo.Item.Selector = dropInfo.DropzoneIdentifier;
         
-        // Insert at the new position
-        var newIndex = dropInfo.IndexInZone;
-        if (newIndex >= _environmentDropItems.Count)
+        // Update order values based on current position in the list
+        var orderedItems = _environmentDropItems.Where(x => x.Selector == "environments").OrderBy(x => x.Order).ToList();
+        for (int i = 0; i < orderedItems.Count; i++)
         {
-            _environmentDropItems.Add(dropInfo.Item);
-        }
-        else
-        {
-            _environmentDropItems.Insert(newIndex, dropInfo.Item);
-        }
-        
-        // Update order values
-        for (int i = 0; i < _environmentDropItems.Count; i++)
-        {
-            _environmentDropItems[i].Order = i;
+            orderedItems[i].Order = i;
         }
         
         // Save the new order to settings
@@ -378,5 +368,6 @@
     {
         public Domain.Entities.Environment Environment { get; set; } = null!;
         public int Order { get; set; }
+        public string Selector { get; set; } = "environments";
     }
 }
