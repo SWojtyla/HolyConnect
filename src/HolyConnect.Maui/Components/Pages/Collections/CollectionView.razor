@@ -29,24 +29,21 @@
                 @if (_collectionRequests != null && _collectionRequests.Any())
                 {
                     <MudText Typo="Typo.body2" Class="pa-2 mt-2" Color="Color.Primary"><strong>Requests</strong></MudText>
-                    @foreach (var request in _collectionRequests)
+                    var orderedRequests = _collectionRequests.ToList();
+                    @for (int i = 0; i < orderedRequests.Count; i++)
                     {
+                        var request = orderedRequests[i];
+                        var index = i;
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" 
                              Style="@GetRequestStyle(request)"
-                             draggable="true"
-                             @ondragstart="@(() => HandleRequestDragStart(request.Id))"
-                             @ondragover:preventDefault
-                             @ondrop="@(() => HandleRequestDrop(request.Id))"
-                             @ondragenter:preventDefault
-                             @ondragenter="@(() => _requestDragOver = request.Id)"
-                             @ondragleave="@(() => _requestDragOver = null)"
                              @onclick="@(() => SelectRequest(request))">
-                            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Class="mr-1" Style="cursor: grab;" Title="Drag to reorder" />
                             <MudText Style="flex: 1;" Class="d-flex align-center cursor-pointer">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" Class="mr-1" />
                                 <span style="font-size: 0.875rem;">@request.Name</span>
                             </MudText>
                             <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" OnClick="@(() => MoveRequestUp(request, orderedRequests))" title="Move up" Class="pa-1" Disabled="@(index == 0)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" OnClick="@(() => MoveRequestDown(request, orderedRequests))" title="Move down" Class="pa-1" Disabled="@(index == orderedRequests.Count - 1)" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" title="Rename request" Class="pa-1" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" title="Delete request" Class="pa-1" />
                             </div>
@@ -60,7 +57,9 @@
                     <MudText Typo="Typo.body2" Class="pa-2 mt-3" Color="Color.Primary"><strong>Sub-Collections</strong></MudText>
                     @foreach (var subCollection in _subCollections)
                     {
-                        <DraggableCollectionTreeItem Collection="@subCollection" 
+                        <CollectionTreeItem Collection="@subCollection" 
+                                          ParentCollection="@_collection"
+                                          ShowReorderButtons="true"
                                           OnSelect="SelectSubCollection" 
                                           OnRequestSelect="SelectRequest"
                                           OnCollectionUpdated="HandleCollectionUpdated"
@@ -228,8 +227,6 @@
     private Domain.Entities.Request? _selectedRequest;
     private Domain.Entities.Collection? _selectedRequestCollection;
     private Domain.Entities.Environment? _activeEnvironment;
-    private Guid? _draggedRequestId;
-    private Guid? _requestDragOver;
 
     protected override async Task OnInitializedAsync()
     {
@@ -533,61 +530,47 @@
     private string GetRequestStyle(Domain.Entities.Request request)
     {
         var isSelected = _selectedRequest?.Id == request.Id;
-        var isDragOver = _requestDragOver == request.Id;
-        
-        if (isDragOver)
-        {
-            return "background-color: rgba(var(--mud-palette-primary-rgb), 0.08); border: 2px dashed var(--mud-palette-primary); cursor: pointer;";
-        }
         
         return isSelected
             ? "background-color: var(--mud-palette-action-default-hover); cursor: pointer;"
             : "cursor: pointer;";
     }
 
-    private void HandleRequestDragStart(Guid requestId)
+    private async Task MoveRequestUp(Domain.Entities.Request request, List<Domain.Entities.Request> orderedRequests)
     {
-        _draggedRequestId = requestId;
+        var currentIndex = orderedRequests.FindIndex(r => r.Id == request.Id);
+        
+        if (currentIndex <= 0) return;
+
+        // Swap with previous request
+        var previousRequest = orderedRequests[currentIndex - 1];
+        var tempOrder = request.Order;
+        request.Order = previousRequest.Order;
+        previousRequest.Order = tempOrder;
+
+        await RequestService.UpdateRequestAsync(request);
+        await RequestService.UpdateRequestAsync(previousRequest);
+        
+        // Reload data to reflect changes
+        await LoadData();
+        StateHasChanged();
     }
 
-    private async Task HandleRequestDrop(Guid targetRequestId)
+    private async Task MoveRequestDown(Domain.Entities.Request request, List<Domain.Entities.Request> orderedRequests)
     {
-        _requestDragOver = null;
+        var currentIndex = orderedRequests.FindIndex(r => r.Id == request.Id);
+        
+        if (currentIndex < 0 || currentIndex >= orderedRequests.Count - 1) return;
 
-        if (_draggedRequestId == null || _draggedRequestId == targetRequestId)
-        {
-            _draggedRequestId = null;
-            return;
-        }
+        // Swap with next request
+        var nextRequest = orderedRequests[currentIndex + 1];
+        var tempOrder = request.Order;
+        request.Order = nextRequest.Order;
+        nextRequest.Order = tempOrder;
 
-        // Get the requests for the current collection
-        var requests = _collectionRequests?.OrderBy(r => r.Order).ToList();
-        if (requests == null || !requests.Any())
-        {
-            _draggedRequestId = null;
-            return;
-        }
-
-        var draggedIndex = requests.FindIndex(r => r.Id == _draggedRequestId);
-        var targetIndex = requests.FindIndex(r => r.Id == targetRequestId);
-
-        if (draggedIndex == -1 || targetIndex == -1)
-        {
-            _draggedRequestId = null;
-            return;
-        }
-
-        // Reorder the list
-        var draggedItem = requests[draggedIndex];
-        requests.RemoveAt(draggedIndex);
-        requests.Insert(targetIndex, draggedItem);
-
-        // Update order values and save
-        var orderedIds = requests.Select(r => r.Id);
-        await RequestService.ReorderRequestsAsync(orderedIds);
-
-        _draggedRequestId = null;
-
+        await RequestService.UpdateRequestAsync(request);
+        await RequestService.UpdateRequestAsync(nextRequest);
+        
         // Reload data to reflect changes
         await LoadData();
         StateHasChanged();

@@ -1,5 +1,7 @@
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
+@inject ICollectionService CollectionService
+@inject IRequestService RequestService
 
 @if (Collection != null)
 {
@@ -22,6 +24,13 @@
                 </span>
             </MudText>
             <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
+                @if (ShowReorderButtons && ParentCollection != null)
+                {
+                    var siblings = ParentCollection.SubCollections.OrderBy(c => c.Order).ToList();
+                    var currentIndex = siblings.FindIndex(c => c.Id == Collection.Id);
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" OnClick="@(() => MoveCollectionUp())" aria-label="Move up" Class="pa-1" Disabled="@(currentIndex == 0)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" OnClick="@(() => MoveCollectionDown())" aria-label="Move down" Class="pa-1" Disabled="@(currentIndex == siblings.Count - 1)" />
+                }
                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="@(() => ShowAddMenu())" aria-label="Add sub-collection or request" Class="pa-1" />
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditCollection())" aria-label="Edit collection" Class="pa-1" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCollection())" aria-label="Delete collection" Class="pa-1" />
@@ -33,14 +42,19 @@
             <div Class="ml-2">
                 @if (Collection.Requests != null && Collection.Requests.Any())
                 {
-                    @foreach (var request in Collection.Requests.OrderBy(r => r.Order))
+                    var orderedRequests = Collection.Requests.OrderBy(r => r.Order).ToList();
+                    @for (int i = 0; i < orderedRequests.Count; i++)
                     {
+                        var request = orderedRequests[i];
+                        var index = i;
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" Style="@GetRequestStyle(request)">
                             <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))" Class="d-flex align-center">
                                 <MudIcon Icon="@GetRequestIcon(request.Type)" Size="Size.Small" Color="@GetRequestColor(request.Type)" Class="mr-1" />
                                 <span style="font-size: 0.875rem;">@request.Name</span>
                             </MudText>
                             <div style="display: flex; gap: 0.25rem;" @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" OnClick="@(() => MoveRequestUp(request, orderedRequests))" aria-label="Move up" Class="pa-1" Disabled="@(index == 0)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" OnClick="@(() => MoveRequestDown(request, orderedRequests))" aria-label="Move down" Class="pa-1" Disabled="@(index == orderedRequests.Count - 1)" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => RenameRequest(request))" aria-label="Rename request" Class="pa-1" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteRequest(request))" aria-label="Delete request" Class="pa-1" />
                             </div>
@@ -53,10 +67,13 @@
                     @foreach (var subCollection in Collection.SubCollections.OrderBy(c => c.Order))
                     {
                         <CollectionTreeItem Collection="@subCollection" 
+                                          ParentCollection="@Collection"
+                                          ShowReorderButtons="true"
                                           OnSelect="@OnSelect" 
                                           OnRequestSelect="@OnRequestSelect"
                                           OnCollectionUpdated="@OnCollectionUpdated"
                                           OnRequestUpdated="@OnRequestUpdated"
+                                          OnReorderNeeded="@OnReorderNeeded"
                                           SelectedCollectionId="@SelectedCollectionId"
                                           SelectedRequestId="@SelectedRequestId" />
                     }
@@ -71,6 +88,12 @@
     public Collection? Collection { get; set; }
 
     [Parameter]
+    public Collection? ParentCollection { get; set; }
+
+    [Parameter]
+    public bool ShowReorderButtons { get; set; }
+
+    [Parameter]
     public EventCallback<Collection> OnSelect { get; set; }
 
     [Parameter]
@@ -81,6 +104,9 @@
 
     [Parameter]
     public EventCallback<(Guid RequestId, string NewName, bool IsDelete)> OnRequestUpdated { get; set; }
+
+    [Parameter]
+    public EventCallback OnReorderNeeded { get; set; }
 
     [Parameter]
     public Guid? SelectedCollectionId { get; set; }
@@ -298,5 +324,79 @@
         {
             await OnRequestUpdated.InvokeAsync((request.Id, string.Empty, true));
         }
+    }
+
+    private async Task MoveCollectionUp()
+    {
+        if (Collection == null || ParentCollection == null) return;
+
+        var siblings = ParentCollection.SubCollections.OrderBy(c => c.Order).ToList();
+        var currentIndex = siblings.FindIndex(c => c.Id == Collection.Id);
+        
+        if (currentIndex <= 0) return;
+
+        // Swap with previous sibling
+        var previousSibling = siblings[currentIndex - 1];
+        var tempOrder = Collection.Order;
+        Collection.Order = previousSibling.Order;
+        previousSibling.Order = tempOrder;
+
+        await CollectionService.UpdateCollectionAsync(Collection);
+        await CollectionService.UpdateCollectionAsync(previousSibling);
+        await OnReorderNeeded.InvokeAsync();
+    }
+
+    private async Task MoveCollectionDown()
+    {
+        if (Collection == null || ParentCollection == null) return;
+
+        var siblings = ParentCollection.SubCollections.OrderBy(c => c.Order).ToList();
+        var currentIndex = siblings.FindIndex(c => c.Id == Collection.Id);
+        
+        if (currentIndex < 0 || currentIndex >= siblings.Count - 1) return;
+
+        // Swap with next sibling
+        var nextSibling = siblings[currentIndex + 1];
+        var tempOrder = Collection.Order;
+        Collection.Order = nextSibling.Order;
+        nextSibling.Order = tempOrder;
+
+        await CollectionService.UpdateCollectionAsync(Collection);
+        await CollectionService.UpdateCollectionAsync(nextSibling);
+        await OnReorderNeeded.InvokeAsync();
+    }
+
+    private async Task MoveRequestUp(Request request, List<Request> orderedRequests)
+    {
+        var currentIndex = orderedRequests.FindIndex(r => r.Id == request.Id);
+        
+        if (currentIndex <= 0) return;
+
+        // Swap with previous request
+        var previousRequest = orderedRequests[currentIndex - 1];
+        var tempOrder = request.Order;
+        request.Order = previousRequest.Order;
+        previousRequest.Order = tempOrder;
+
+        await RequestService.UpdateRequestAsync(request);
+        await RequestService.UpdateRequestAsync(previousRequest);
+        await OnReorderNeeded.InvokeAsync();
+    }
+
+    private async Task MoveRequestDown(Request request, List<Request> orderedRequests)
+    {
+        var currentIndex = orderedRequests.FindIndex(r => r.Id == request.Id);
+        
+        if (currentIndex < 0 || currentIndex >= orderedRequests.Count - 1) return;
+
+        // Swap with next request
+        var nextRequest = orderedRequests[currentIndex + 1];
+        var tempOrder = request.Order;
+        request.Order = nextRequest.Order;
+        nextRequest.Order = tempOrder;
+
+        await RequestService.UpdateRequestAsync(request);
+        await RequestService.UpdateRequestAsync(nextRequest);
+        await OnReorderNeeded.InvokeAsync();
     }
 }
