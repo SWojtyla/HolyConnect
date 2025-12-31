@@ -166,4 +166,130 @@ public class RequestClonerTests
         Assert.Equal("user@example.com", clone.BasicAuthUsername);
         Assert.Equal("secret123", clone.BasicAuthPassword);
     }
+
+    [Fact]
+    public void Clone_RestRequest_ShouldCopyFormDataFields()
+    {
+        // Arrange
+        var original = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Form Data Test",
+            Url = "https://api.example.com/upload",
+            Method = Domain.Entities.HttpMethod.Post,
+            BodyType = BodyType.FormData,
+            FormDataFields = new List<FormDataField>
+            {
+                new FormDataField { Key = "username", Value = "john_doe", Enabled = true },
+                new FormDataField { Key = "email", Value = "john@example.com", Enabled = true },
+                new FormDataField { Key = "disabled", Value = "should copy", Enabled = false }
+            }
+        };
+
+        // Act
+        var clone = RequestCloner.Clone(original) as RestRequest;
+
+        // Assert
+        Assert.NotNull(clone);
+        Assert.NotSame(original, clone);
+        Assert.Equal(3, clone!.FormDataFields.Count);
+        
+        // Verify fields are copied, not referenced
+        Assert.NotSame(original.FormDataFields, clone.FormDataFields);
+        
+        // Verify field values
+        Assert.Equal("username", clone.FormDataFields[0].Key);
+        Assert.Equal("john_doe", clone.FormDataFields[0].Value);
+        Assert.True(clone.FormDataFields[0].Enabled);
+        
+        Assert.Equal("email", clone.FormDataFields[1].Key);
+        Assert.Equal("john@example.com", clone.FormDataFields[1].Value);
+        Assert.True(clone.FormDataFields[1].Enabled);
+        
+        Assert.Equal("disabled", clone.FormDataFields[2].Key);
+        Assert.False(clone.FormDataFields[2].Enabled);
+        
+        // Modifying clone should not affect original
+        clone.FormDataFields[0].Value = "modified";
+        Assert.Equal("john_doe", original.FormDataFields[0].Value);
+    }
+
+    [Fact]
+    public void Clone_RestRequest_ShouldCopyFormDataFiles()
+    {
+        // Arrange
+        var original = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "File Upload Test",
+            Url = "https://api.example.com/upload",
+            Method = Domain.Entities.HttpMethod.Post,
+            BodyType = BodyType.FormData,
+            FormDataFiles = new List<FormDataFile>
+            {
+                new FormDataFile 
+                { 
+                    Key = "document", 
+                    FilePath = "/path/to/file.pdf", 
+                    ContentType = "application/pdf",
+                    Enabled = true 
+                },
+                new FormDataFile 
+                { 
+                    Key = "image", 
+                    FilePath = "/path/to/image.png", 
+                    ContentType = "image/png",
+                    Enabled = false 
+                }
+            }
+        };
+
+        // Act
+        var clone = RequestCloner.Clone(original) as RestRequest;
+
+        // Assert
+        Assert.NotNull(clone);
+        Assert.NotSame(original, clone);
+        Assert.Equal(2, clone!.FormDataFiles.Count);
+        
+        // Verify files are copied, not referenced
+        Assert.NotSame(original.FormDataFiles, clone.FormDataFiles);
+        
+        // Verify file values
+        Assert.Equal("document", clone.FormDataFiles[0].Key);
+        Assert.Equal("/path/to/file.pdf", clone.FormDataFiles[0].FilePath);
+        Assert.Equal("application/pdf", clone.FormDataFiles[0].ContentType);
+        Assert.True(clone.FormDataFiles[0].Enabled);
+        
+        Assert.Equal("image", clone.FormDataFiles[1].Key);
+        Assert.False(clone.FormDataFiles[1].Enabled);
+        
+        // Modifying clone should not affect original
+        clone.FormDataFiles[0].FilePath = "/different/path.pdf";
+        Assert.Equal("/path/to/file.pdf", original.FormDataFiles[0].FilePath);
+    }
+
+    [Fact]
+    public void Clone_RestRequest_WithEmptyFormData_ShouldNotThrow()
+    {
+        // Arrange
+        var original = new RestRequest
+        {
+            Id = Guid.NewGuid(),
+            Name = "Empty Form Data",
+            Url = "https://api.example.com",
+            Method = Domain.Entities.HttpMethod.Post,
+            BodyType = BodyType.FormData,
+            FormDataFields = new List<FormDataField>(),
+            FormDataFiles = new List<FormDataFile>()
+        };
+
+        // Act
+        var clone = RequestCloner.Clone(original) as RestRequest;
+
+        // Assert
+        Assert.NotNull(clone);
+        Assert.Empty(clone!.FormDataFields);
+        Assert.Empty(clone.FormDataFiles);
+    }
 }

@@ -103,8 +103,8 @@ public class RestRequestExecutor : IRequestExecutor
         {
             // Only create multipart content if there are enabled fields or files with valid keys
             // Empty multipart content (with no parts at all) causes ASP.NET Core validation errors
-            var hasFields = request.FormDataFields.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key));
-            var hasFiles = request.FormDataFiles.Any(f => f.Enabled && !string.IsNullOrEmpty(f.Key));
+            var hasFields = request.FormDataFields.Any(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key));
+            var hasFiles = request.FormDataFiles.Any(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key));
             
             if (hasFields || hasFiles)
             {
@@ -127,7 +127,7 @@ public class RestRequestExecutor : IRequestExecutor
         var multipartContent = new MultipartFormDataContent();
 
         // Add text fields with properly quoted names in Content-Disposition header
-        foreach (var field in request.FormDataFields.Where(f => f.Enabled && !string.IsNullOrEmpty(f.Key)))
+        foreach (var field in request.FormDataFields.Where(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key)))
         {
             var stringContent = new StringContent(field.Value ?? string.Empty);
             // Remove default Content-Type header for form fields to avoid issues
@@ -141,7 +141,7 @@ public class RestRequestExecutor : IRequestExecutor
         }
 
         // Add file attachments
-        foreach (var file in request.FormDataFiles.Where(f => f.Enabled && !string.IsNullOrEmpty(f.Key) && !string.IsNullOrEmpty(f.FilePath)))
+        foreach (var file in request.FormDataFiles.Where(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Key) && !string.IsNullOrWhiteSpace(f.FilePath)))
         {
             if (File.Exists(file.FilePath))
             {
