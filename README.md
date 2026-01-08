@@ -8,6 +8,8 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 📊 **GraphQL Support**: Test GraphQL queries and mutations with ease
 - 🔔 **GraphQL Subscriptions**: Support for GraphQL subscriptions via WebSocket (graphql-transport-ws protocol) and Server-Sent Events (SSE)
 - 🔌 **WebSocket Support**: Connect to WebSocket servers for real-time bidirectional communication with streaming message log
+- ⌨️ **Keyboard Shortcuts**: Navigate quickly with keyboard shortcuts (Ctrl+K for global search, Ctrl+H for home, and more)
+- 🔍 **Global Search**: Fast fuzzy search across all environments, collections, requests, and flows (Ctrl+K)
 - 🗂️ **Environment Management**: Organize your API requests by environments
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests
@@ -328,6 +330,37 @@ HolyConnect supports importing requests from various formats to help you migrate
 7. **Coming soon**:
    - Postman collection import
    - OpenAPI/Swagger import
+
+### Keyboard Shortcuts
+
+HolyConnect provides comprehensive keyboard shortcuts to speed up your workflow. Press `?` from anywhere in the app to see all available shortcuts.
+
+#### Navigation Shortcuts
+- **Ctrl+K** (⌘K on Mac): Open global search - quickly find and navigate to environments, collections, requests, or flows
+- **Ctrl+H**: Go to home page
+- **Ctrl+E**: Go to environments/manage variables
+- **Ctrl+G**: Go to Git management
+- **Ctrl+Shift+H**: Go to request history
+- **Ctrl+Shift+I**: Go to import page
+- **Ctrl+Shift+F**: Go to flows
+- **Ctrl+,**: Go to settings
+
+#### Quick Actions
+- **Ctrl+N**: Create new request
+- **Ctrl+Shift+N**: Create new collection
+- **Ctrl+Shift+E**: Create new environment
+
+#### Help
+- **?**: Show keyboard shortcuts reference
+
+**Note**: On Mac, use **⌘** (Command) instead of **Ctrl** for all shortcuts.
+
+**Global Search** (Ctrl+K):
+- Search across all environments, collections, requests, and flows
+- Fuzzy matching automatically finds relevant items
+- Navigate results with arrow keys, select with Enter
+- Shows contextual information like parent collections and request types
+- Results are sorted by relevance
 
 ## Extending the Application
 
