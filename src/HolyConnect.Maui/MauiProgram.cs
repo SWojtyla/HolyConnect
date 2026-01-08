@@ -222,6 +222,8 @@ public static class MauiProgram
         builder.Services.AddScoped<IResponseValueExtractor, ResponseValueExtractor>();
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IGraphQLSchemaService, GraphQLSchemaService>();
+        builder.Services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
+        builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
         
         // Register import strategies
         builder.Services.AddScoped<IImportStrategy, CurlImportStrategy>();
