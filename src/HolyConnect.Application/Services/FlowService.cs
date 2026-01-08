@@ -303,8 +303,8 @@ public class FlowService : IFlowService
             // Merge flow variables into environment (temporary)
             MergeFlowVariables(environment, collection, flowVariables);
 
-            // Execute the request
-            var response = await _requestService.ExecuteRequestAsync(request);
+            // Execute the request with the environment that has flow variables merged
+            var response = await _requestService.ExecuteRequestAsync(request, environment, collection);
             stepResult.Response = response;
 
             // Extract updated variables after request execution
