@@ -78,6 +78,19 @@ public static class VariableResolutionHelper
             resolvedQueryParams[resolvedKey] = resolvedValue;
         }
         request.QueryParameters = resolvedQueryParams;
+
+        // Resolve form data fields
+        foreach (var field in request.FormDataFields)
+        {
+            field.Key = variableResolver.ResolveVariables(field.Key, environment, collection, request);
+            field.Value = variableResolver.ResolveVariables(field.Value ?? string.Empty, environment, collection, request);
+        }
+
+        // Resolve form data file field names (not file paths - those should remain as-is)
+        foreach (var file in request.FormDataFiles)
+        {
+            file.Key = variableResolver.ResolveVariables(file.Key, environment, collection, request);
+        }
     }
 
     private static void ResolveGraphQLRequestProperties(GraphQLRequest request, IVariableResolver variableResolver, Domain.Entities.Environment environment, Collection? collection)
