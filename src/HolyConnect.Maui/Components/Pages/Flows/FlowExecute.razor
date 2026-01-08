@@ -108,6 +108,18 @@
                             </MudChip>
                         </MudStack>
 
+                        @if (stepResult.Response?.SentRequest != null)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                                <MudStack Spacing="1">
+                                    <div>
+                                        <strong>@stepResult.Response.SentRequest.Method</strong>
+                                        <span style="margin-left: 8px;">@stepResult.Response.SentRequest.Url</span>
+                                    </div>
+                                </MudStack>
+                            </MudAlert>
+                        }
+
                         <MudGrid Class="mb-2">
                             <MudItem xs="12" sm="4">
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">Duration</MudText>
@@ -140,7 +152,7 @@
                                     <MudTabs>
                                         <MudTabPanel Text="Body">
                                             <MudPaper Class="pa-2 mt-2" Outlined="true" Style="max-height: 25rem; overflow-y: auto;">
-                                                <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">@stepResult.Response.Body</pre>
+                                                <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">@FormatResponseBody(stepResult.Response.Body, stepResult.Response.Headers)</pre>
                                             </MudPaper>
                                         </MudTabPanel>
                                         <MudTabPanel Text="Headers">
@@ -277,6 +289,55 @@
             FlowStepStatus.Skipped => Color.Secondary,
             _ => Color.Default
         };
+    }
+
+    private string FormatResponseBody(string body, Dictionary<string, string> headers)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return body;
+        }
+
+        // Check content type from headers
+        var contentType = headers.FirstOrDefault(h => 
+            h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value?.ToLower() ?? string.Empty;
+
+        try
+        {
+            // Try to format JSON
+            if (contentType.Contains("application/json") || contentType.Contains("text/json") || 
+                (body.TrimStart().StartsWith("{") || body.TrimStart().StartsWith("[")))
+            {
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(body);
+                return System.Text.Json.JsonSerializer.Serialize(jsonDoc, new System.Text.Json.JsonSerializerOptions 
+                { 
+                    WriteIndented = true 
+                });
+            }
+            
+            // Try to format XML
+            if (contentType.Contains("application/xml") || contentType.Contains("text/xml") || 
+                body.TrimStart().StartsWith("<"))
+            {
+                var xmlDoc = new System.Xml.XmlDocument();
+                xmlDoc.LoadXml(body);
+                
+                using var stringWriter = new System.IO.StringWriter();
+                using var xmlWriter = System.Xml.XmlWriter.Create(stringWriter, new System.Xml.XmlWriterSettings 
+                { 
+                    Indent = true,
+                    IndentChars = "  "
+                });
+                xmlDoc.Save(xmlWriter);
+                return stringWriter.ToString();
+            }
+        }
+        catch
+        {
+            // If formatting fails, return original body
+        }
+
+        return body;
     }
 
     public void Dispose()

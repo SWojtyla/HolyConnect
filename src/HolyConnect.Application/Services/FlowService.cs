@@ -109,6 +109,10 @@ public class FlowService : IFlowService
                 }
             }
 
+            // Pre-generate dynamic variables for the entire flow to ensure consistency across steps
+            // This ensures that a dynamic variable like {{ guid }} generates the same value in all steps
+            await PreGenerateDynamicVariablesAsync(flow, environment, collection, flowVariables);
+
             // Execute steps in order
             var sortedSteps = flow.Steps.OrderBy(s => s.Order).ToList();
             
@@ -145,6 +149,59 @@ public class FlowService : IFlowService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Pre-generates all dynamic variables used in the flow to ensure consistent values across steps.
+    /// For example, if a flow uses {{ guid }} in multiple steps, all steps will use the same GUID value.
+    /// </summary>
+    private async Task PreGenerateDynamicVariablesAsync(
+        Flow flow,
+        Domain.Entities.Environment environment,
+        Collection? collection,
+        Dictionary<string, string> flowVariables)
+    {
+        var variableResolver = _executionContext.VariableResolver;
+
+        // Collect all unique dynamic variable names from all steps
+        var dynamicVariableNames = new HashSet<string>();
+        
+        foreach (var step in flow.Steps)
+        {
+            var request = await _repositories.Requests.GetByIdAsync(step.RequestId);
+            if (request == null) continue;
+
+            // Get dynamic variables from environment, collection, and request
+            var allDynamicVars = new List<DynamicVariable>();
+            allDynamicVars.AddRange(environment.DynamicVariables);
+            if (collection != null)
+            {
+                allDynamicVars.AddRange(collection.DynamicVariables);
+            }
+            allDynamicVars.AddRange(request.DynamicVariables);
+
+            foreach (var dv in allDynamicVars)
+            {
+                dynamicVariableNames.Add(dv.Name);
+            }
+        }
+
+        // Generate values for each dynamic variable and store in flowVariables
+        foreach (var varName in dynamicVariableNames)
+        {
+            // Only generate if not already in flowVariables (static variables take precedence)
+            if (!flowVariables.ContainsKey(varName))
+            {
+                // Generate the value using the variable resolver
+                // This will call the data generator service to create a new value
+                var value = variableResolver.GetVariableValue(varName, environment, collection, null);
+                if (value != null)
+                {
+                    // Store in flowVariables so it's reused across all steps
+                    flowVariables[varName] = value;
+                }
+            }
+        }
     }
 
     private async Task<FlowStepResult> ExecuteStepAsync(
@@ -246,8 +303,8 @@ public class FlowService : IFlowService
             // Merge flow variables into environment (temporary)
             MergeFlowVariables(environment, collection, flowVariables);
 
-            // Execute the request
-            var response = await _requestService.ExecuteRequestAsync(request);
+            // Execute the request with the environment that has flow variables merged
+            var response = await _requestService.ExecuteRequestAsync(request, environment, collection);
             stepResult.Response = response;
 
             // Extract updated variables after request execution

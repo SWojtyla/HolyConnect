@@ -61,10 +61,15 @@ public class RequestService : IRequestService
 
     public async Task<RequestResponse> ExecuteRequestAsync(Request request)
     {
+        return await ExecuteRequestAsync(request, null, null);
+    }
+
+    public async Task<RequestResponse> ExecuteRequestAsync(Request request, Domain.Entities.Environment? environment, Collection? collection)
+    {
         var executor = _executionContext.ExecutorFactory.GetExecutor(request);
 
-        // Resolve variables before execution using active environment
-        var resolvedRequest = await ResolveRequestVariablesAsync(request);
+        // Resolve variables before execution using provided or active environment
+        var resolvedRequest = await ResolveRequestVariablesAsync(request, environment, collection);
 
         var response = await executor.ExecuteAsync(resolvedRequest);
 
@@ -95,25 +100,31 @@ public class RequestService : IRequestService
         return response;
     }
 
-    private async Task<Request> ResolveRequestVariablesAsync(Request request)
+    private async Task<Request> ResolveRequestVariablesAsync(Request request, Domain.Entities.Environment? providedEnvironment = null, Collection? providedCollection = null)
     {
-        // Load active environment with secrets merged
-        var activeEnvId = await _executionContext.ActiveEnvironment.GetActiveEnvironmentIdAsync();
-        if (!activeEnvId.HasValue)
-        {
-            // No active environment - continue without variable resolution
-            // Variables will remain as placeholders in the request
-            return request;
-        }
-        
-        var environment = await _environmentService.GetEnvironmentByIdAsync(activeEnvId.Value);
+        Domain.Entities.Environment? environment = providedEnvironment;
+        Collection? collection = providedCollection;
+
+        // If environment not provided, load active environment with secrets merged
         if (environment == null)
         {
-            return request;
+            var activeEnvId = await _executionContext.ActiveEnvironment.GetActiveEnvironmentIdAsync();
+            if (!activeEnvId.HasValue)
+            {
+                // No active environment - continue without variable resolution
+                // Variables will remain as placeholders in the request
+                return request;
+            }
+            
+            environment = await _environmentService.GetEnvironmentByIdAsync(activeEnvId.Value);
+            if (environment == null)
+            {
+                return request;
+            }
         }
 
-        Collection? collection = null;
-        if (request.CollectionId.HasValue)
+        // If collection not provided, load it if request has a collection ID
+        if (collection == null && request.CollectionId.HasValue)
         {
             // Use service to load collection with secrets merged
             collection = await _collectionService.GetCollectionByIdAsync(request.CollectionId.Value);

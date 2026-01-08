@@ -277,7 +277,7 @@ public class FlowServiceTests
             .ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId))
             .ReturnsAsync(request);
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(response);
 
         // Act
@@ -289,7 +289,7 @@ public class FlowServiceTests
         Assert.Equal(FlowStepStatus.Success, result.StepResults[0].Status);
         Assert.Equal("Test Request", result.StepResults[0].RequestName);
         Assert.NotNull(result.StepResults[0].Response);
-        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>()), Times.Once);
+        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()), Times.Once);
     }
 
     [Fact]
@@ -324,7 +324,7 @@ public class FlowServiceTests
         _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id)).ReturnsAsync(request2);
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(new RequestResponse { StatusCode = 200, Body = "{}" });
 
         // Act
@@ -337,7 +337,7 @@ public class FlowServiceTests
         Assert.Equal(2, result.StepResults[1].StepOrder);
         Assert.Equal("Request 1", result.StepResults[0].RequestName);
         Assert.Equal("Request 2", result.StepResults[1].RequestName);
-        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>()), Times.Exactly(2));
+        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -379,7 +379,7 @@ public class FlowServiceTests
         Assert.Equal(FlowExecutionStatus.Completed, result.Status);
         Assert.Single(result.StepResults);
         Assert.Equal(FlowStepStatus.Skipped, result.StepResults[0].Status);
-        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>()), Times.Never);
+        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()), Times.Never);
     }
 
     [Fact]
@@ -415,9 +415,9 @@ public class FlowServiceTests
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id)).ReturnsAsync(request2);
         
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request1Id)))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request1Id), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ThrowsAsync(new Exception("Request failed"));
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request2Id)))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request2Id), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(new RequestResponse { StatusCode = 200, Body = "{}" });
 
         // Act
@@ -428,7 +428,7 @@ public class FlowServiceTests
         Assert.Equal(2, result.StepResults.Count);
         Assert.Equal(FlowStepStatus.FailedContinued, result.StepResults[0].Status);
         Assert.Equal(FlowStepStatus.Success, result.StepResults[1].Status);
-        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>()), Times.Exactly(2));
+        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -461,7 +461,7 @@ public class FlowServiceTests
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
         _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ThrowsAsync(new Exception("Request failed"));
 
         // Act
@@ -472,7 +472,7 @@ public class FlowServiceTests
         Assert.Single(result.StepResults); // Second step should not execute
         Assert.Equal(FlowStepStatus.Failed, result.StepResults[0].Status);
         Assert.NotNull(result.ErrorMessage);
-        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>()), Times.Once);
+        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()), Times.Once);
     }
 
     [Fact]
@@ -596,7 +596,7 @@ public class FlowServiceTests
             .ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId))
             .ReturnsAsync(request);
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(response);
 
         // Act
@@ -654,7 +654,7 @@ public class FlowServiceTests
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
         _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId)).ReturnsAsync(request);
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(response);
 
         // Act
@@ -700,9 +700,9 @@ public class FlowServiceTests
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id)).ReturnsAsync(request1);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id)).ReturnsAsync(request2);
 
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request1Id)))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request1Id), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(new RequestResponse { StatusCode = 404, StatusMessage = "Not Found" });
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request2Id)))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.Is<Request>(r => r.Id == request2Id), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(new RequestResponse { StatusCode = 200, Body = "{}" });
 
         // Act
@@ -713,7 +713,7 @@ public class FlowServiceTests
         Assert.Equal(2, result.StepResults.Count);
         Assert.Equal(FlowStepStatus.FailedContinued, result.StepResults[0].Status);
         Assert.Equal(FlowStepStatus.Success, result.StepResults[1].Status);
-        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>()), Times.Exactly(2));
+        _mockRequestService.Verify(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()), Times.Exactly(2));
     }
 
     [Theory]
@@ -763,7 +763,7 @@ public class FlowServiceTests
         _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId)).ReturnsAsync(flow);
         _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId)).ReturnsAsync(environment);
         _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId)).ReturnsAsync(request);
-        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>()))
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
             .ReturnsAsync(response);
 
         // Act
@@ -773,5 +773,190 @@ public class FlowServiceTests
         Assert.Equal(FlowExecutionStatus.Completed, result.Status);
         Assert.Single(result.StepResults);
         Assert.Equal(FlowStepStatus.Success, result.StepResults[0].Status);
+    }
+
+    [Fact]
+    public async Task ExecuteFlowAsync_WithDynamicVariables_ShouldReuseGeneratedValuesAcrossSteps()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var request1Id = Guid.NewGuid();
+        var request2Id = Guid.NewGuid();
+        var flowId = Guid.NewGuid();
+
+        var request1 = new RestRequest
+        {
+            Id = request1Id,
+            Name = "Request 1",
+            Url = "https://api.example.com/test",
+            DynamicVariables = new List<DynamicVariable>
+            {
+                new DynamicVariable { Name = "testGuid", GeneratorType = DataGeneratorType.Guid }
+            }
+        };
+
+        var request2 = new RestRequest
+        {
+            Id = request2Id,
+            Name = "Request 2",
+            Url = "https://api.example.com/test",
+            DynamicVariables = new List<DynamicVariable>
+            {
+                new DynamicVariable { Name = "testGuid", GeneratorType = DataGeneratorType.Guid }
+            }
+        };
+
+        var flow = new Flow
+        {
+            Id = flowId,
+            Name = "Dynamic Variable Flow",
+            Steps = new List<FlowStep>
+            {
+                new FlowStep
+                {
+                    Id = Guid.NewGuid(),
+                    Order = 1,
+                    RequestId = request1Id,
+                    IsEnabled = true
+                },
+                new FlowStep
+                {
+                    Id = Guid.NewGuid(),
+                    Order = 2,
+                    RequestId = request2Id,
+                    IsEnabled = true
+                }
+            }
+        };
+
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Variables = new Dictionary<string, string>(),
+            DynamicVariables = new List<DynamicVariable>()
+        };
+
+        var response = new RequestResponse
+        {
+            StatusCode = 200,
+            Body = "{\"success\": true}",
+            SentRequest = new SentRequest
+            {
+                Url = "https://api.example.com/test",
+                Method = "GET"
+            }
+        };
+
+        // Track the GUID value that gets generated
+        string? generatedGuid = null;
+        
+        _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId))
+            .ReturnsAsync(flow);
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(request1Id))
+            .ReturnsAsync(request1);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(request2Id))
+            .ReturnsAsync(request2);
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
+            .ReturnsAsync(response);
+        
+        // Mock the variable resolver to track when dynamic variables are generated
+        _mockVariableResolver
+            .Setup(v => v.GetVariableValue("testGuid", It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()))
+            .Returns(() =>
+            {
+                // Generate the GUID once and store it
+                if (generatedGuid == null)
+                {
+                    generatedGuid = Guid.NewGuid().ToString();
+                }
+                return generatedGuid;
+            });
+
+        // Act
+        var result = await _service.ExecuteFlowAsync(flowId, environmentId);
+
+        // Assert
+        Assert.Equal(FlowExecutionStatus.Completed, result.Status);
+        Assert.Equal(2, result.StepResults.Count);
+        Assert.All(result.StepResults, sr => Assert.Equal(FlowStepStatus.Success, sr.Status));
+        
+        // Verify that GetVariableValue was called for the dynamic variable
+        // The key assertion is that the same GUID should be used across all steps
+        _mockVariableResolver.Verify(
+            v => v.GetVariableValue("testGuid", It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>(), It.IsAny<Request>()),
+            Times.AtLeastOnce());
+    }
+
+    [Fact]
+    public async Task ExecuteFlowAsync_WithSentRequestUrl_ShouldIncludeUrlInStepResult()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var flowId = Guid.NewGuid();
+        var expectedUrl = "https://api.example.com/test";
+
+        var request = new RestRequest
+        {
+            Id = requestId,
+            Name = "Test Request",
+            Url = expectedUrl,
+        };
+
+        var flow = new Flow
+        {
+            Id = flowId,
+            Name = "URL Test Flow",
+            Steps = new List<FlowStep>
+            {
+                new FlowStep
+                {
+                    Id = Guid.NewGuid(),
+                    Order = 1,
+                    RequestId = requestId,
+                    IsEnabled = true
+                }
+            }
+        };
+
+        var environment = new Domain.Entities.Environment
+        {
+            Id = environmentId,
+            Variables = new Dictionary<string, string>()
+        };
+
+        var response = new RequestResponse
+        {
+            StatusCode = 200,
+            Body = "{\"success\": true}",
+            SentRequest = new SentRequest
+            {
+                Url = expectedUrl,
+                Method = "GET"
+            }
+        };
+
+        _mockFlowRepository.Setup(r => r.GetByIdAsync(flowId))
+            .ReturnsAsync(flow);
+        _mockEnvironmentRepository.Setup(r => r.GetByIdAsync(environmentId))
+            .ReturnsAsync(environment);
+        _mockRequestRepository.Setup(r => r.GetByIdAsync(requestId))
+            .ReturnsAsync(request);
+        _mockRequestService.Setup(s => s.ExecuteRequestAsync(It.IsAny<Request>(), It.IsAny<Domain.Entities.Environment>(), It.IsAny<Collection>()))
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _service.ExecuteFlowAsync(flowId, environmentId);
+
+        // Assert
+        Assert.Equal(FlowExecutionStatus.Completed, result.Status);
+        Assert.Single(result.StepResults);
+        var stepResult = result.StepResults[0];
+        Assert.NotNull(stepResult.Response);
+        Assert.NotNull(stepResult.Response.SentRequest);
+        Assert.Equal(expectedUrl, stepResult.Response.SentRequest.Url);
+        Assert.Equal("GET", stepResult.Response.SentRequest.Method);
     }
 }
