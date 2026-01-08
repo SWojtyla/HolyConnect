@@ -226,4 +226,121 @@ public class VariableResolutionHelperTests
         Assert.Equal("value-test-key-123", request.QueryParameters["key-test-key-123"]);
         Assert.Equal("1", request.QueryParameters["page"]);
     }
+
+    [Fact]
+    public void ResolveAllVariables_FormDataFields_ShouldResolveKeysAndValues()
+    {
+        // Arrange
+        var request = new RestRequest
+        {
+            Url = "{{ baseUrl }}",
+            BodyType = BodyType.FormData,
+            FormDataFields = new List<FormDataField>
+            {
+                new FormDataField { Key = "username", Value = "{{ apiKey }}", Enabled = true },
+                new FormDataField { Key = "field-{{ apiKey }}", Value = "value-{{ baseUrl }}", Enabled = true },
+                new FormDataField { Key = "static", Value = "no-variables", Enabled = false }
+            }
+        };
+
+        // Act
+        VariableResolutionHelper.ResolveAllVariables(request, _mockResolver.Object, _environment, _collection);
+
+        // Assert
+        Assert.Equal(3, request.FormDataFields.Count);
+        
+        // First field - value should be resolved
+        Assert.Equal("username", request.FormDataFields[0].Key);
+        Assert.Equal("test-key-123", request.FormDataFields[0].Value);
+        
+        // Second field - both key and value should be resolved
+        Assert.Equal("field-test-key-123", request.FormDataFields[1].Key);
+        Assert.Equal("value-https://api.example.com", request.FormDataFields[1].Value);
+        
+        // Third field - still resolved even if disabled
+        Assert.Equal("static", request.FormDataFields[2].Key);
+        Assert.Equal("no-variables", request.FormDataFields[2].Value);
+    }
+
+    [Fact]
+    public void ResolveAllVariables_FormDataFiles_ShouldResolveKeys()
+    {
+        // Arrange
+        var request = new RestRequest
+        {
+            Url = "{{ baseUrl }}",
+            BodyType = BodyType.FormData,
+            FormDataFiles = new List<FormDataFile>
+            {
+                new FormDataFile { Key = "file-{{ apiKey }}", FilePath = "/path/to/file.txt", Enabled = true },
+                new FormDataFile { Key = "avatar", FilePath = "/path/to/avatar.png", ContentType = "image/png", Enabled = true }
+            }
+        };
+
+        // Act
+        VariableResolutionHelper.ResolveAllVariables(request, _mockResolver.Object, _environment, _collection);
+
+        // Assert
+        Assert.Equal(2, request.FormDataFiles.Count);
+        
+        // First file - key should be resolved, but file path should remain unchanged
+        Assert.Equal("file-test-key-123", request.FormDataFiles[0].Key);
+        Assert.Equal("/path/to/file.txt", request.FormDataFiles[0].FilePath);
+        
+        // Second file - key should remain as-is
+        Assert.Equal("avatar", request.FormDataFiles[1].Key);
+        Assert.Equal("/path/to/avatar.png", request.FormDataFiles[1].FilePath);
+    }
+
+    [Fact]
+    public void ResolveAllVariables_FormDataFields_WithEmptyOrNullValues_ShouldHandleGracefully()
+    {
+        // Arrange
+        var request = new RestRequest
+        {
+            Url = "{{ baseUrl }}",
+            BodyType = BodyType.FormData,
+            FormDataFields = new List<FormDataField>
+            {
+                new FormDataField { Key = "key1", Value = null!, Enabled = true },
+                new FormDataField { Key = "key2", Value = "", Enabled = true },
+                new FormDataField { Key = "{{ apiKey }}", Value = "test", Enabled = true }
+            }
+        };
+
+        // Act
+        VariableResolutionHelper.ResolveAllVariables(request, _mockResolver.Object, _environment, _collection);
+
+        // Assert - should not throw
+        Assert.Equal(3, request.FormDataFields.Count);
+        Assert.Equal("key1", request.FormDataFields[0].Key);
+        Assert.Equal("", request.FormDataFields[0].Value); // null becomes empty string
+        Assert.Equal("key2", request.FormDataFields[1].Key);
+        Assert.Equal("", request.FormDataFields[1].Value);
+        Assert.Equal("test-key-123", request.FormDataFields[2].Key);
+        Assert.Equal("test", request.FormDataFields[2].Value);
+    }
+
+    [Fact]
+    public void ResolveAllVariables_FormDataFieldsAndRegularBody_ShouldResolveFormDataFieldsOnly()
+    {
+        // Arrange - simulate edge case where both body and form data are set (form data takes precedence)
+        var request = new RestRequest
+        {
+            Url = "{{ baseUrl }}",
+            BodyType = BodyType.FormData,
+            Body = "{{ apiKey }}", // This should still be resolved
+            FormDataFields = new List<FormDataField>
+            {
+                new FormDataField { Key = "username", Value = "{{ apiKey }}", Enabled = true }
+            }
+        };
+
+        // Act
+        VariableResolutionHelper.ResolveAllVariables(request, _mockResolver.Object, _environment, _collection);
+
+        // Assert - both body and form data should be resolved
+        Assert.Equal("test-key-123", request.Body);
+        Assert.Equal("test-key-123", request.FormDataFields[0].Value);
+    }
 }

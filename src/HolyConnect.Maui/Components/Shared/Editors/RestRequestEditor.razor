@@ -40,93 +40,176 @@
             @if (Request.BodyType == BodyType.FormData)
             {
                 <div style="flex: 1; overflow-y: auto;">
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Form Fields</MudText>
-                    @foreach (var field in _formDataFields)
-                    {
-                        <MudGrid Class="mb-2">
-                            <MudItem xs="1" Class="d-flex align-center">
-                                <MudCheckBox Value="@field.Enabled" ValueChanged="@((bool v) => UpdateFormFieldEnabled(field, v))" Color="Color.Primary" />
-                            </MudItem>
-                            <MudItem xs="5">
-                                <VariableTextField Value="@field.Key" 
-                                                 ValueChanged="@((string v) => UpdateFormFieldKey(field, v))"
-                                                 Label="Field Name" 
-                                                 Variant="Variant.Outlined" 
-                                                 Disabled="@(!field.Enabled)" 
-                                                 Environment="@Environment" 
-                                                 Collection="@Collection" />
-                            </MudItem>
-                            <MudItem xs="4">
-                                <VariableTextField Value="@field.Value" 
-                                                 ValueChanged="@((string v) => UpdateFormFieldValue(field, v))"
-                                                 Label="Field Value" 
-                                                 Variant="Variant.Outlined" 
-                                                 Disabled="@(!field.Enabled)" 
-                                                 Environment="@Environment" 
-                                                 Collection="@Collection" />
-                            </MudItem>
-                            <MudItem xs="2" Class="d-flex align-center">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveFormField(field))" />
-                            </MudItem>
-                        </MudGrid>
-                    }
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddFormField" StartIcon="@Icons.Material.Filled.Add" Class="mb-4">
-                        Add Field
-                    </MudButton>
+                    <!-- Form Fields Section -->
+                    <MudStack Spacing="2" Class="mb-3">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Form Fields</MudText>
+                            <MudButton Variant="Variant.Text" 
+                                      Color="Color.Primary" 
+                                      OnClick="AddFormField" 
+                                      StartIcon="@Icons.Material.Filled.Add"
+                                      Size="Size.Small">
+                                Add Field
+                            </MudButton>
+                        </MudStack>
+                        
+                        @if (!_formDataFields.Any())
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pl-1">
+                                No form fields. Click "Add Field" to create one.
+                            </MudText>
+                        }
+                        else
+                        {
+                            @foreach (var field in _formDataFields)
+                            {
+                                <MudGrid Spacing="1" Style="border-bottom: 1px solid var(--mud-palette-divider); padding-bottom: 8px; align-items: start;">
+                                    <MudItem xs="1" sm="1" Style="display: flex; align-items: center; justify-content: center; min-height: 40px;">
+                                        <MudCheckBox Value="@field.Enabled" 
+                                                    ValueChanged="@((bool v) => UpdateFormFieldEnabled(field, v))" 
+                                                    Color="Color.Primary"
+                                                    Size="Size.Small"
+                                                    Dense="true" />
+                                    </MudItem>
+                                    <MudItem xs="5" sm="5">
+                                        <VariableTextField Value="@field.Key" 
+                                                          ValueChanged="@((string v) => UpdateFormFieldKey(field, v))"
+                                                          Label="Field Name" 
+                                                          Variant="Variant.Outlined" 
+                                                          Margin="Margin.Dense"
+                                                          Disabled="@(!field.Enabled)" 
+                                                          Environment="@Environment" 
+                                                          Collection="@Collection" />
+                                    </MudItem>
+                                    <MudItem xs="5" sm="5">
+                                        <VariableTextField Value="@field.Value" 
+                                                          ValueChanged="@((string v) => UpdateFormFieldValue(field, v))"
+                                                          Label="Field Value" 
+                                                          Variant="Variant.Outlined" 
+                                                          Margin="Margin.Dense"
+                                                          Disabled="@(!field.Enabled)" 
+                                                          Environment="@Environment" 
+                                                          Collection="@Collection" />
+                                    </MudItem>
+                                    <MudItem xs="1" sm="1" Style="display: flex; align-items: center; justify-content: center; min-height: 40px;">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                      Color="Color.Error" 
+                                                      Size="Size.Small"
+                                                      OnClick="@(() => RemoveFormField(field))" />
+                                    </MudItem>
+                                </MudGrid>
+                            }
+                        }
+                    </MudStack>
 
-                    <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">Files</MudText>
-                    @foreach (var file in _formDataFiles)
-                    {
-                        <MudGrid Class="mb-2">
-                            <MudItem xs="1" Class="d-flex align-center">
-                                <MudCheckBox Value="@file.Enabled" ValueChanged="@((bool v) => UpdateFormFileEnabled(file, v))" Color="Color.Primary" />
-                            </MudItem>
-                            <MudItem xs="3">
-                                <MudTextField Value="@file.Key" 
-                                            ValueChanged="@((string v) => UpdateFormFileKey(file, v))"
-                                            Label="Field Name" 
-                                            Variant="Variant.Outlined" 
-                                            Disabled="@(!file.Enabled)" />
-                            </MudItem>
-                            <MudItem xs="5">
-                                <MudStack Row="true" Spacing="1">
-                                    <MudTextField Value="@GetFileName(file.FilePath)" 
-                                                Label="File" 
-                                                Variant="Variant.Outlined" 
-                                                ReadOnly="true"
-                                                Disabled="@(!file.Enabled)" 
-                                                Style="flex: 1;" />
-                                    <MudButton Variant="Variant.Outlined" 
-                                             Color="Color.Primary" 
-                                             OnClick="@(() => PickFile(file))"
-                                             Disabled="@(!file.Enabled)"
-                                             StartIcon="@Icons.Material.Filled.AttachFile">
-                                        Browse
-                                    </MudButton>
-                                </MudStack>
-                                @if (!string.IsNullOrEmpty(file.FilePath) && file.Enabled)
-                                {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
-                                        @GetFileInfo(file.FilePath)
-                                    </MudText>
-                                }
-                            </MudItem>
-                            <MudItem xs="2">
-                                <MudTextField Value="@file.ContentType" 
-                                            ValueChanged="@((string v) => UpdateFormFileContentType(file, v))"
-                                            Label="Content Type" 
-                                            Variant="Variant.Outlined" 
-                                            Disabled="@(!file.Enabled)"
-                                            Placeholder="auto" />
-                            </MudItem>
-                            <MudItem xs="1" Class="d-flex align-center">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveFormFile(file))" />
-                            </MudItem>
-                        </MudGrid>
-                    }
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddFormFile" StartIcon="@Icons.Material.Filled.Add">
-                        Add File
-                    </MudButton>
+                    <!-- Files Section -->
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Files</MudText>
+                            <MudButton Variant="Variant.Text" 
+                                      Color="Color.Primary" 
+                                      OnClick="AddFormFile" 
+                                      StartIcon="@Icons.Material.Filled.Add"
+                                      Size="Size.Small">
+                                Add File
+                            </MudButton>
+                        </MudStack>
+                        
+                        @if (!_formDataFiles.Any())
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pl-1">
+                                No files. Click "Add File" to upload one.
+                            </MudText>
+                        }
+                        else
+                        {
+                            @foreach (var file in _formDataFiles)
+                            {
+                                <div Style="border-bottom: 1px solid var(--mud-palette-divider); padding-bottom: 8px; margin-bottom: 8px;">
+                                    <MudGrid Spacing="1" Style="align-items: start;">
+                                        <MudItem xs="1" sm="1" Style="display: flex; align-items: center; justify-content: center; min-height: 40px;">
+                                            <MudCheckBox Value="@file.Enabled" 
+                                                        ValueChanged="@((bool v) => UpdateFormFileEnabled(file, v))" 
+                                                        Color="Color.Primary"
+                                                        Size="Size.Small"
+                                                        Dense="true" />
+                                        </MudItem>
+                                        <MudItem xs="5" sm="5">
+                                            <MudTextField Value="@file.Key" 
+                                                        ValueChanged="@((string v) => UpdateFormFileKey(file, v))"
+                                                        Label="Field Name" 
+                                                        Variant="Variant.Outlined" 
+                                                        Margin="Margin.Dense"
+                                                        Disabled="@(!file.Enabled)" />
+                                        </MudItem>
+                                        <MudItem xs="5" sm="5">
+                                            <div style="display: flex; gap: 4px; align-items: start;">
+                                                <div style="flex: 1;">
+                                                    <MudTextField Value="@GetFileName(file.FilePath)" 
+                                                                Label="File" 
+                                                                Variant="Variant.Outlined" 
+                                                                Margin="Margin.Dense"
+                                                                ReadOnly="true"
+                                                                Disabled="@(!file.Enabled)" />
+                                                </div>
+                                                <MudIconButton Icon="@Icons.Material.Filled.AttachFile"
+                                                              Color="Color.Primary"
+                                                              Variant="Variant.Outlined"
+                                                              OnClick="@(() => PickFile(file))"
+                                                              Disabled="@(!file.Enabled)"
+                                                              Size="Size.Medium"
+                                                              Style="margin-top: 4px;" />
+                                            </div>
+                                        </MudItem>
+                                        <MudItem xs="1" sm="1" Style="display: flex; align-items: center; justify-content: center; min-height: 40px;">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                          Color="Color.Error" 
+                                                          Size="Size.Small"
+                                                          OnClick="@(() => RemoveFormFile(file))" />
+                                        </MudItem>
+                                    </MudGrid>
+                                    @if (!string.IsNullOrEmpty(file.FilePath) && file.Enabled)
+                                    {
+                                        <MudGrid Spacing="1" Style="margin-top: 4px;">
+                                            <MudItem xs="1" sm="1"></MudItem>
+                                            <MudItem xs="5" sm="5">
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @GetFileInfo(file.FilePath)
+                                                </MudText>
+                                            </MudItem>
+                                            <MudItem xs="5" sm="5">
+                                                <MudTextField Value="@file.ContentType" 
+                                                            ValueChanged="@((string v) => UpdateFormFileContentType(file, v))"
+                                                            Label="Content Type" 
+                                                            Variant="Variant.Outlined" 
+                                                            Margin="Margin.Dense"
+                                                            Disabled="@(!file.Enabled)"
+                                                            Placeholder="auto-detect" />
+                                            </MudItem>
+                                            <MudItem xs="1" sm="1"></MudItem>
+                                        </MudGrid>
+                                    }
+                                    else
+                                    {
+                                        <MudGrid Spacing="1" Style="margin-top: 4px;">
+                                            <MudItem xs="1" sm="1"></MudItem>
+                                            <MudItem xs="5" sm="5"></MudItem>
+                                            <MudItem xs="5" sm="5">
+                                                <MudTextField Value="@file.ContentType" 
+                                                            ValueChanged="@((string v) => UpdateFormFileContentType(file, v))"
+                                                            Label="Content Type" 
+                                                            Variant="Variant.Outlined" 
+                                                            Margin="Margin.Dense"
+                                                            Disabled="@(!file.Enabled)"
+                                                            Placeholder="auto-detect" />
+                                            </MudItem>
+                                            <MudItem xs="1" sm="1"></MudItem>
+                                        </MudGrid>
+                                    }
+                                </div>
+                            }
+                        }
+                    </MudStack>
                 </div>
             }
             else if (Request.BodyType != BodyType.None)
