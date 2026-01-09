@@ -1,0 +1,132 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h5" Class="mb-2">⌨️ Keyboard Shortcuts</MudText>
+            
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Use keyboard shortcuts to navigate and work faster in HolyConnect.
+            </MudText>
+            
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="1" Class="pa-3">
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="mr-1" />
+                            Navigation
+                        </MudText>
+                        <MudSimpleTable Dense="true" Hover="true" Style="font-size: 0.875rem;">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 45%;">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+K</MudChip>
+                                    </td>
+                                    <td>Open global search</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+H</MudChip>
+                                    </td>
+                                    <td>Go to home page</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+E</MudChip>
+                                    </td>
+                                    <td>Go to environments</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+G</MudChip>
+                                    </td>
+                                    <td>Go to Git management</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+Shift+H</MudChip>
+                                    </td>
+                                    <td>Go to history</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+Shift+I</MudChip>
+                                    </td>
+                                    <td>Go to import</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+Shift+F</MudChip>
+                                    </td>
+                                    <td>Go to flows</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+,</MudChip>
+                                    </td>
+                                    <td>Go to settings</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudPaper>
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="1" Class="pa-3 mb-3">
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" Class="mr-1" />
+                            Quick Actions
+                        </MudText>
+                        <MudSimpleTable Dense="true" Hover="true" Style="font-size: 0.875rem;">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 45%;">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+N</MudChip>
+                                    </td>
+                                    <td>Create new request</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+Shift+N</MudChip>
+                                    </td>
+                                    <td>Create new collection</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Ctrl+Shift+E</MudChip>
+                                    </td>
+                                    <td>Create new environment</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudPaper>
+                    
+                    <MudPaper Elevation="1" Class="pa-3">
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Help" Size="Size.Small" Class="mr-1" />
+                            Help
+                        </MudText>
+                        <MudSimpleTable Dense="true" Hover="true" Style="font-size: 0.875rem;">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 45%;">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">?</MudChip>
+                                    </td>
+                                    <td>Show keyboard shortcuts</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+            
+            <MudAlert Severity="Severity.Info" Dense="true">
+                <MudText Typo="Typo.body2">
+                    <strong>Note for Mac users:</strong> Use <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd> for all shortcuts.
+                </MudText>
+            </MudAlert>
+        </MudStack>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+}
