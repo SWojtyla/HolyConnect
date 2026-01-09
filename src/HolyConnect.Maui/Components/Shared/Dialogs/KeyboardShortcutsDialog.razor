@@ -1,5 +1,3 @@
-@inject IKeyboardShortcutService ShortcutService
-
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
@@ -130,6 +128,5 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] 
-    private IMudDialogInstance? MudDialog { get; set; }
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
 }
