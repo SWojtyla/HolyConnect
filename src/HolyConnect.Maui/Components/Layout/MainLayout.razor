@@ -214,7 +214,7 @@
         KeyboardShortcutService.RegisterShortcut("e", true, true, false, () => NavigateTo("/environment/create"), "Create new environment");
         
         // Help
-        KeyboardShortcutService.RegisterShortcut("?", false, false, false, () => NavigateTo("/shortcuts"), "Show keyboard shortcuts");
+        KeyboardShortcutService.RegisterShortcut("?", false, false, false, OpenKeyboardShortcuts, "Show keyboard shortcuts");
     }
     
     [JSInvokable]
@@ -233,6 +233,18 @@
         };
         
         await DialogService.ShowAsync<Components.Shared.Dialogs.GlobalSearchDialog>("Search", options);
+    }
+    
+    private async Task OpenKeyboardShortcuts()
+    {
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Large, 
+            FullWidth = true,
+            CloseButton = true
+        };
+        
+        await DialogService.ShowAsync<Components.Shared.Dialogs.KeyboardShortcutsDialog>("Keyboard Shortcuts", options);
     }
     
     private Task NavigateTo(string url)
