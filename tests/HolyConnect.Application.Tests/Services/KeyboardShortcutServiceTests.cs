@@ -171,4 +171,45 @@ public class KeyboardShortcutServiceTests
         Assert.False(handler1Called);
         Assert.True(handler2Called);
     }
+
+    [Fact]
+    public async Task HandleKeyPress_WithQuestionMarkKey_ShouldMatchShiftModifier()
+    {
+        // Arrange
+        // The ? key requires Shift on most keyboards, so it's sent as key='?' with shiftKey=true
+        var handlerCalled = false;
+        Func<Task> handler = () =>
+        {
+            handlerCalled = true;
+            return Task.CompletedTask;
+        };
+        _service.RegisterShortcut("?", false, true, false, handler, "Show help");
+
+        // Act
+        var handled = await _service.HandleKeyPress("?", false, true, false);
+
+        // Assert
+        Assert.True(handled);
+        Assert.True(handlerCalled);
+    }
+
+    [Fact]
+    public async Task HandleKeyPress_WithQuestionMarkKey_WithoutShift_ShouldNotMatch()
+    {
+        // Arrange
+        var handlerCalled = false;
+        Func<Task> handler = () =>
+        {
+            handlerCalled = true;
+            return Task.CompletedTask;
+        };
+        _service.RegisterShortcut("?", false, true, false, handler, "Show help");
+
+        // Act - Try without shift (which shouldn't be possible in practice for ?)
+        var handled = await _service.HandleKeyPress("?", false, false, false);
+
+        // Assert
+        Assert.False(handled);
+        Assert.False(handlerCalled);
+    }
 }
