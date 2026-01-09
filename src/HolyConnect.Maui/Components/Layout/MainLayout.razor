@@ -6,10 +6,14 @@
 @inject IEnvironmentService EnvironmentService
 @inject IActiveEnvironmentService ActiveEnvironmentService
 @inject ISettingsService AppSettingsService
+@inject IKeyboardShortcutService KeyboardShortcutService
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
 @using HolyConnect.Application.Interfaces
 @using HolyConnect.Maui.Services
 @using HolyConnect.Domain.Entities
 @using HolyConnect.Application.Common
+@using Microsoft.JSInterop
 @implements IDisposable
 
 <MudThemeProvider @ref="@_mudThemeProvider" Theme="_theme" @bind-IsDarkMode="@_isDarkMode" />
@@ -147,6 +151,7 @@
     private Domain.Entities.Environment? _activeEnvironment;
     private Guid? _activeEnvironmentId;
     private System.Threading.Timer? _gitStatusTimer;
+    private DotNetObjectReference<MainLayout>? _dotNetReference;
 
     private EventCallback<bool> DarkModeToggleCallback => EventCallback.Factory.Create<bool>(this, ToggleDarkMode);
 
@@ -174,6 +179,66 @@
                 }
             });
         }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+        
+        // Register keyboard shortcuts
+        RegisterKeyboardShortcuts();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize keyboard shortcuts handler
+            _dotNetReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("keyboardShortcuts.initialize", _dotNetReference);
+        }
+    }
+    
+    private void RegisterKeyboardShortcuts()
+    {
+        // Global search
+        KeyboardShortcutService.RegisterShortcut("k", true, false, false, OpenGlobalSearch, "Open global search");
+        
+        // Navigation shortcuts
+        KeyboardShortcutService.RegisterShortcut("h", true, false, false, () => NavigateTo("/"), "Go to home");
+        KeyboardShortcutService.RegisterShortcut("e", true, false, false, () => NavigateTo("/environments"), "Go to environments");
+        KeyboardShortcutService.RegisterShortcut("g", true, false, false, () => NavigateTo("/git"), "Go to Git management");
+        KeyboardShortcutService.RegisterShortcut("h", true, true, false, () => NavigateTo("/history"), "Go to history");
+        KeyboardShortcutService.RegisterShortcut("i", true, true, false, () => NavigateTo("/import"), "Go to import");
+        KeyboardShortcutService.RegisterShortcut("f", true, true, false, () => NavigateTo("/flows"), "Go to flows");
+        KeyboardShortcutService.RegisterShortcut(",", true, false, false, () => NavigateTo("/settings"), "Go to settings");
+        
+        // Quick actions
+        KeyboardShortcutService.RegisterShortcut("n", true, false, false, () => NavigateTo("/request/create"), "Create new request");
+        KeyboardShortcutService.RegisterShortcut("n", true, true, false, () => NavigateTo("/collection/create"), "Create new collection");
+        KeyboardShortcutService.RegisterShortcut("e", true, true, false, () => NavigateTo("/environment/create"), "Create new environment");
+        
+        // Help
+        KeyboardShortcutService.RegisterShortcut("?", false, false, false, () => NavigateTo("/shortcuts"), "Show keyboard shortcuts");
+    }
+    
+    [JSInvokable]
+    public async Task<bool> HandleKeyPress(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    {
+        return await KeyboardShortcutService.HandleKeyPress(key, ctrlKey, shiftKey, altKey);
+    }
+    
+    private async Task OpenGlobalSearch()
+    {
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Medium, 
+            FullWidth = true,
+            CloseButton = true
+        };
+        
+        await DialogService.ShowAsync<Components.Shared.Dialogs.GlobalSearchDialog>("Search", options);
+    }
+    
+    private Task NavigateTo(string url)
+    {
+        NavigationManager.NavigateTo(url);
+        return Task.CompletedTask;
     }
 
     private async Task LoadEnvironments()
@@ -341,5 +406,19 @@
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
         _gitStatusTimer?.Dispose();
+        
+        // Dispose keyboard shortcuts
+        if (_dotNetReference != null)
+        {
+            try
+            {
+                JSRuntime.InvokeVoidAsync("keyboardShortcuts.dispose").AsTask().Wait(TimeSpan.FromSeconds(1));
+            }
+            catch
+            {
+                // Ignore JS interop errors during disposal
+            }
+            _dotNetReference.Dispose();
+        }
     }
 }

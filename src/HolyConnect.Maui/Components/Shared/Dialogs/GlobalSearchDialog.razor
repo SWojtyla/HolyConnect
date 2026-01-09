@@ -1,0 +1,191 @@
+@inject IGlobalSearchService SearchService
+@inject NavigationManager NavigationManager
+@inject IKeyboardShortcutService ShortcutService
+@using HolyConnect.Application.Interfaces
+@using Microsoft.AspNetCore.Components.Web
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_searchQuery"
+                          Label="Search"
+                          Placeholder="Search environments, collections, requests, flows..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          AutoFocus="true"
+                          @onkeydown="HandleKeyDown"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="PerformSearch" />
+            
+            @if (_isSearching)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            
+            @if (_searchResults != null && _searchResults.Any())
+            {
+                <MudPaper Elevation="0" Class="pa-0" Style="max-height: 400px; overflow-y: auto;">
+                    <MudList T="string" Clickable="true" Dense="true">
+                        @for (int i = 0; i < _searchResults.Count(); i++)
+                        {
+                            var index = i; // Capture for lambda
+                            var result = _searchResults.ElementAt(i);
+                            var isSelected = index == _selectedIndex;
+                            
+                            <MudListItem T="string" @key="result.Id" 
+                                        OnClick="() => NavigateToResult(result)"
+                                        Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@GetIconForResult(result.Icon)" Size="Size.Small" Color="@GetColorForType(result.Type)" />
+                                    <MudStack Spacing="0" Style="flex: 1;">
+                                        <MudText Typo="Typo.body2">
+                                            <strong>@result.Name</strong>
+                                        </MudText>
+                                        @if (!string.IsNullOrEmpty(result.ParentContext))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @result.ParentContext
+                                            </MudText>
+                                        }
+                                        @if (!string.IsNullOrEmpty(result.Description))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @TruncateDescription(result.Description)
+                                            </MudText>
+                                        }
+                                    </MudStack>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                                        @result.Type.ToString()
+                                    </MudChip>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudPaper>
+            }
+            else if (!string.IsNullOrWhiteSpace(_searchQuery) && !_isSearching)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="py-4">
+                    No results found
+                </MudText>
+            }
+            else if (string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="py-4">
+                    Start typing to search...
+                </MudText>
+            }
+            
+            <MudDivider />
+            
+            <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">↑↓</MudChip> Navigate
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Enter</MudChip> Select
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Esc</MudChip> Close
+                </MudText>
+            </MudStack>
+        </MudStack>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance? MudDialog { get; set; }
+    
+    private string _searchQuery = string.Empty;
+    private IEnumerable<SearchResult>? _searchResults;
+    private bool _isSearching = false;
+    private int _selectedIndex = 0;
+    
+    private async Task PerformSearch()
+    {
+        _isSearching = true;
+        _selectedIndex = 0;
+        
+        try
+        {
+            _searchResults = await SearchService.SearchAsync(_searchQuery);
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+        
+        StateHasChanged();
+    }
+    
+    private void NavigateToResult(SearchResult result)
+    {
+        NavigationManager.NavigateTo(result.NavigationUrl);
+        MudDialog?.Close();
+    }
+    
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            MudDialog?.Close();
+            return;
+        }
+        
+        if (_searchResults == null || !_searchResults.Any())
+            return;
+        
+        if (e.Key == "ArrowDown")
+        {
+            _selectedIndex = Math.Min(_selectedIndex + 1, _searchResults.Count() - 1);
+            StateHasChanged();
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            _selectedIndex = Math.Max(_selectedIndex - 1, 0);
+            StateHasChanged();
+        }
+        else if (e.Key == "Enter" && _searchResults.Any())
+        {
+            var selectedResult = _searchResults.ElementAt(_selectedIndex);
+            NavigateToResult(selectedResult);
+        }
+    }
+    
+    private Color GetColorForType(SearchResultType type)
+    {
+        return type switch
+        {
+            SearchResultType.Environment => Color.Success,
+            SearchResultType.Collection => Color.Primary,
+            SearchResultType.Request => Color.Info,
+            SearchResultType.Flow => Color.Warning,
+            _ => Color.Default
+        };
+    }
+    
+    private string GetIconForResult(string iconName)
+    {
+        return iconName switch
+        {
+            "dns" => Icons.Material.Filled.Dns,
+            "folder" => Icons.Material.Filled.Folder,
+            "http" => Icons.Material.Filled.Http,
+            "graphic_eq" => Icons.Material.Filled.GraphicEq,
+            "cable" => Icons.Material.Filled.Cable,
+            "api" => Icons.Material.Filled.Api,
+            "account_tree" => Icons.Material.Filled.AccountTree,
+            _ => Icons.Material.Filled.Help
+        };
+    }
+    
+    private string TruncateDescription(string description, int maxLength = 100)
+    {
+        if (string.IsNullOrEmpty(description) || description.Length <= maxLength)
+            return description;
+        
+        return description.Substring(0, maxLength) + "...";
+    }
+}
