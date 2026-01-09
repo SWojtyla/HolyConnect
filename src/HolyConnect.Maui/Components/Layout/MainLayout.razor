@@ -213,8 +213,8 @@
         KeyboardShortcutService.RegisterShortcut("n", true, true, false, () => NavigateTo("/collection/create"), "Create new collection");
         KeyboardShortcutService.RegisterShortcut("e", true, true, false, () => NavigateTo("/environment/create"), "Create new environment");
         
-        // Help
-        KeyboardShortcutService.RegisterShortcut("?", false, false, false, OpenKeyboardShortcuts, "Show keyboard shortcuts");
+        // Help - ? key requires Shift on most keyboards
+        KeyboardShortcutService.RegisterShortcut("?", false, true, false, OpenKeyboardShortcuts, "Show keyboard shortcuts");
     }
     
     [JSInvokable]
