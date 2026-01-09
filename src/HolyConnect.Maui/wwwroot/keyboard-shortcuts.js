@@ -35,8 +35,8 @@ window.keyboardShortcuts = {
             return;
         }
         
-        // Allow ? key to open shortcuts
-        if (key === '?' && !ctrlKey && !shiftKey && !altKey) {
+        // Allow ? key to open shortcuts (? requires Shift on most keyboards)
+        if (key === '?' && !ctrlKey && !altKey) {
             event.preventDefault();
             this.dotnetReference.invokeMethodAsync('HandleKeyPress', key, ctrlKey, shiftKey, altKey);
             return;

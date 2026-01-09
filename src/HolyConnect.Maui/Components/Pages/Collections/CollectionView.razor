@@ -1,4 +1,5 @@
 @page "/collection/{CollectionId:guid}"
+@page "/collection/{CollectionId:guid}/request/{RequestId:guid}"
 @using HolyConnect.Domain.Entities
 @using HolyConnect.Application.Common
 @inject ICollectionService CollectionService
@@ -210,6 +211,9 @@
 @code {
     [Parameter]
     public Guid CollectionId { get; set; }
+    
+    [Parameter]
+    public Guid? RequestId { get; set; }
 
     private Domain.Entities.Collection? _collection;
     private IEnumerable<Domain.Entities.Collection>? _allCollections;
@@ -274,6 +278,16 @@
         if (activeEnvId.HasValue)
         {
             _activeEnvironment = await EnvironmentService.GetEnvironmentByIdAsync(activeEnvId.Value);
+        }
+        
+        // If RequestId is provided in the URL, automatically select that request
+        if (RequestId.HasValue)
+        {
+            var requestToSelect = allRequests.FirstOrDefault(r => r.Id == RequestId.Value);
+            if (requestToSelect != null)
+            {
+                SelectRequest(requestToSelect);
+            }
         }
     }
 
