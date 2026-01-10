@@ -49,6 +49,29 @@ The project follows clean architecture principles with the following layers:
 - MudBlazor components
 - Razor pages and components
 
+For detailed architecture documentation, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
+## Documentation
+
+📚 **[Complete Documentation Index](DOCUMENTATION_INDEX.md)** - Find all documentation organized by task, topic, and role
+
+### Quick Links for Developers
+
+**Getting Started**:
+- 🎯 **[Quick Reference](.github/QUICK_REFERENCE.md)** - Common tasks and code snippets
+- 🧭 **[UI Navigation Guide](.github/UI_NAVIGATION_GUIDE.md)** - Navigation patterns and routing
+- 🧩 **[Component Library](.github/COMPONENT_LIBRARY.md)** - Reusable UI components
+- ⚠️ **[Common Mistakes](.github/copilot-mistakes.md)** - Pitfalls to avoid
+
+**Comprehensive Guides**:
+- 📖 **[Copilot Instructions](.github/copilot-instructions.md)** - Complete development guidelines
+- 🏛️ **[Architecture](ARCHITECTURE.md)** - System design and principles
+- 🤝 **[Contributing](CONTRIBUTING.md)** - Development workflow
+
+**Feature Documentation**:
+- ⚡ **[Flows Feature](docs/FLOWS_FEATURE.md)** - Sequential request execution
+- 📥 **[Bruno Import](docs/BRUNO_IMPORT.md)** - Import from Bruno API client
+
 ## Getting Started
 
 ### Prerequisites
