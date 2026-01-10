@@ -28,7 +28,7 @@
                 @if (_environmentRequests != null && _environmentRequests.Any())
                 {
                     <MudText Typo="Typo.body2" Class="pa-2 mt-2" Color="Color.Primary"><strong>Requests</strong></MudText>
-                    @foreach (var request in _environmentRequests)
+                    @foreach (var request in _environmentRequests.OrderBy(r => r.OrderIndex).ThenBy(r => r.CreatedAt))
                     {
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" 
                              Style="@GetEnvironmentRequestStyle(request)"
@@ -49,7 +49,7 @@
                 @if (_flows != null && _flows.Any())
                 {
                     <MudText Typo="Typo.body2" Class="pa-2 mt-3" Color="Color.Primary"><strong>Flows</strong></MudText>
-                    @foreach (var flow in _flows)
+                    @foreach (var flow in _flows.OrderBy(f => f.CreatedAt))
                     {
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" 
                              Style="@GetFlowStyle(flow)"
@@ -70,7 +70,7 @@
                 @if (_collections != null && _collections.Any())
                 {
                     <MudText Typo="Typo.body2" Class="pa-2 mt-3" Color="Color.Primary"><strong>Collections</strong></MudText>
-                    @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null))
+                    @foreach (var collection in _collections.Where(c => c.ParentCollectionId == null).OrderBy(c => c.OrderIndex).ThenBy(c => c.CreatedAt))
                     {
                         <CollectionTreeItem Collection="@collection" 
                                           OnSelect="SelectCollection" 

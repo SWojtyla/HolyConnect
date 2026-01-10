@@ -33,7 +33,7 @@
             <div Class="ml-2">
                 @if (Collection.Requests != null && Collection.Requests.Any())
                 {
-                    @foreach (var request in Collection.Requests)
+                    @foreach (var request in Collection.Requests.OrderBy(r => r.OrderIndex).ThenBy(r => r.CreatedAt))
                     {
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" Style="@GetRequestStyle(request)">
                             <MudText Style="flex: 1; cursor: pointer;" @onclick="@(() => OnRequestSelect.InvokeAsync(request))" Class="d-flex align-center">
@@ -50,7 +50,7 @@
                 
                 @if (Collection.SubCollections != null && Collection.SubCollections.Any())
                 {
-                    @foreach (var subCollection in Collection.SubCollections)
+                    @foreach (var subCollection in Collection.SubCollections.OrderBy(c => c.OrderIndex).ThenBy(c => c.CreatedAt))
                     {
                         <CollectionTreeItem Collection="@subCollection" 
                                           OnSelect="@OnSelect" 

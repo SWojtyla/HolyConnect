@@ -30,7 +30,7 @@
                 @if (_collectionRequests != null && _collectionRequests.Any())
                 {
                     <MudText Typo="Typo.body2" Class="pa-2 mt-2" Color="Color.Primary"><strong>Requests</strong></MudText>
-                    @foreach (var request in _collectionRequests)
+                    @foreach (var request in _collectionRequests.OrderBy(r => r.OrderIndex).ThenBy(r => r.CreatedAt))
                     {
                         <div class="d-flex align-center justify-space-between py-0 px-2 rounded mb-0" 
                              Style="@GetRequestStyle(request)"
@@ -51,7 +51,7 @@
                 @if (_subCollections != null && _subCollections.Any())
                 {
                     <MudText Typo="Typo.body2" Class="pa-2 mt-3" Color="Color.Primary"><strong>Sub-Collections</strong></MudText>
-                    @foreach (var subCollection in _subCollections)
+                    @foreach (var subCollection in _subCollections.OrderBy(c => c.OrderIndex).ThenBy(c => c.CreatedAt))
                     {
                         <CollectionTreeItem Collection="@subCollection" 
                                           OnSelect="SelectSubCollection" 
