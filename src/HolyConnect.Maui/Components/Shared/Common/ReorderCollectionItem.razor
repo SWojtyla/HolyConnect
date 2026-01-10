@@ -1,0 +1,214 @@
+@using HolyConnect.Domain.Entities
+@inject IRequestService RequestService
+
+<MudPaper Outlined="true" Class="pa-3">
+    <MudStack Spacing="2">
+        @* Collection Header *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIconButton Icon="@(_isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                               Size="Size.Small"
+                               OnClick="ToggleExpanded"
+                               Disabled="@(!HasChildren)" />
+                <MudIcon Icon="@Icons.Material.Filled.Folder" 
+                         Color="Color.Primary" 
+                         Size="Size.Medium" />
+                <div>
+                    <MudText Typo="Typo.body1"><strong>@Collection.Name</strong></MudText>
+                    @if (!string.IsNullOrEmpty(Collection.Description))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@Collection.Description</MudText>
+                    }
+                </div>
+            </MudStack>
+            <MudStack Row="true" Spacing="1">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Disabled="@(!CanMoveUp)"
+                               OnClick="OnMoveUp"
+                               title="Move up" />
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Disabled="@(!CanMoveDown)"
+                               OnClick="OnMoveDown"
+                               title="Move down" />
+            </MudStack>
+        </MudStack>
+
+        @* Expanded Content *@
+        @if (_isExpanded && HasChildren)
+        {
+            <MudStack Spacing="2" Class="ml-8">
+                @* Requests in this collection *@
+                @if (_requests != null && _requests.Any())
+                {
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Requests</MudText>
+                    @foreach (var request in _requests.OrderBy(r => r.OrderIndex).ThenBy(r => r.CreatedAt))
+                    {
+                        <MudPaper Outlined="true" Class="pa-2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@GetRequestIcon(request.Type)" 
+                                             Color="@GetRequestColor(request.Type)" 
+                                             Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.body2"><strong>@request.Name</strong></MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.7rem;">@request.Url</MudText>
+                                    </div>
+                                </MudStack>
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   Disabled="@(!CanMoveRequestUp(request))"
+                                                   OnClick="@(() => OnRequestMoveUp.InvokeAsync(request))"
+                                                   title="Move up" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   Disabled="@(!CanMoveRequestDown(request))"
+                                                   OnClick="@(() => OnRequestMoveDown.InvokeAsync(request))"
+                                                   title="Move down" />
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                }
+
+                @* Subcollections *@
+                @if (_subCollections != null && _subCollections.Any())
+                {
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Subcollections</MudText>
+                    @foreach (var subCollection in _subCollections.OrderBy(c => c.OrderIndex).ThenBy(c => c.CreatedAt))
+                    {
+                        <ReorderCollectionItem 
+                            Collection="@subCollection"
+                            AllCollections="@AllCollections"
+                            OnMoveUp="@(() => OnMoveUp.InvokeAsync())"
+                            OnMoveDown="@(() => OnMoveDown.InvokeAsync())"
+                            OnRequestMoveUp="@OnRequestMoveUp"
+                            OnRequestMoveDown="@OnRequestMoveDown"
+                            CanMoveUp="@CanMoveSubCollectionUp(subCollection)"
+                            CanMoveDown="@CanMoveSubCollectionDown(subCollection)" />
+                    }
+                }
+            </MudStack>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public Collection Collection { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public IEnumerable<Collection> AllCollections { get; set; } = Enumerable.Empty<Collection>();
+
+    [Parameter]
+    public EventCallback OnMoveUp { get; set; }
+
+    [Parameter]
+    public EventCallback OnMoveDown { get; set; }
+
+    [Parameter]
+    public EventCallback<Request> OnRequestMoveUp { get; set; }
+
+    [Parameter]
+    public EventCallback<Request> OnRequestMoveDown { get; set; }
+
+    [Parameter]
+    public bool CanMoveUp { get; set; }
+
+    [Parameter]
+    public bool CanMoveDown { get; set; }
+
+    private bool _isExpanded = false;
+    private List<Collection>? _subCollections;
+    private List<Request>? _requests;
+
+    private bool HasChildren => 
+        (Collection.SubCollections?.Any() ?? false) || 
+        (Collection.Requests?.Any() ?? false) ||
+        (_subCollections?.Any() ?? false) ||
+        (_requests?.Any() ?? false);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Load subcollections
+        _subCollections = AllCollections
+            .Where(c => c.ParentCollectionId == Collection.Id)
+            .ToList();
+
+        // Load requests for this collection
+        var allRequests = await RequestService.GetAllRequestsAsync();
+        _requests = allRequests
+            .Where(r => r.CollectionId == Collection.Id)
+            .ToList();
+    }
+
+    private void ToggleExpanded()
+    {
+        if (HasChildren)
+        {
+            _isExpanded = !_isExpanded;
+        }
+    }
+
+    private bool CanMoveSubCollectionUp(Collection subCollection)
+    {
+        var siblings = _subCollections?
+            .OrderBy(c => c.OrderIndex)
+            .ThenBy(c => c.CreatedAt)
+            .ToList() ?? new List<Collection>();
+        
+        return siblings.FirstOrDefault()?.Id != subCollection.Id;
+    }
+
+    private bool CanMoveSubCollectionDown(Collection subCollection)
+    {
+        var siblings = _subCollections?
+            .OrderBy(c => c.OrderIndex)
+            .ThenBy(c => c.CreatedAt)
+            .ToList() ?? new List<Collection>();
+        
+        return siblings.LastOrDefault()?.Id != subCollection.Id;
+    }
+
+    private bool CanMoveRequestUp(Request request)
+    {
+        var siblings = _requests?
+            .OrderBy(r => r.OrderIndex)
+            .ThenBy(r => r.CreatedAt)
+            .ToList() ?? new List<Request>();
+        
+        return siblings.FirstOrDefault()?.Id != request.Id;
+    }
+
+    private bool CanMoveRequestDown(Request request)
+    {
+        var siblings = _requests?
+            .OrderBy(r => r.OrderIndex)
+            .ThenBy(r => r.CreatedAt)
+            .ToList() ?? new List<Request>();
+        
+        return siblings.LastOrDefault()?.Id != request.Id;
+    }
+
+    private string GetRequestIcon(RequestType type) => type switch
+    {
+        RequestType.Rest => Icons.Material.Filled.Http,
+        RequestType.GraphQL => Icons.Material.Filled.GraphicEq,
+        RequestType.WebSocket => Icons.Material.Filled.Cable,
+        _ => Icons.Material.Filled.HelpOutline
+    };
+
+    private Color GetRequestColor(RequestType type) => type switch
+    {
+        RequestType.Rest => Color.Primary,
+        RequestType.GraphQL => Color.Secondary,
+        RequestType.WebSocket => Color.Tertiary,
+        _ => Color.Default
+    };
+}

@@ -1,0 +1,258 @@
+@page "/reorder"
+@using HolyConnect.Domain.Entities
+@inject ICollectionService CollectionService
+@inject IRequestService RequestService
+@inject IEnvironmentService EnvironmentService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<PageTitle>Reorder Collections & Requests - HolyConnect</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudStack Spacing="4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <div>
+                <MudText Typo="Typo.h4" GutterBottom="true">Reorder Collections & Requests</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Use the arrow buttons to reorder collections and requests. Changes are saved automatically.
+                </MudText>
+            </div>
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadData">
+                Refresh
+            </MudButton>
+        </MudStack>
+
+        @if (_isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_collections == null || !_collections.Any())
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                <MudText>No collections found. Create collections first from the environments page.</MudText>
+            </MudAlert>
+        }
+        else
+        {
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">Collections Hierarchy</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Expand collections to see and reorder subcollections and requests within them.
+                </MudText>
+                
+                <MudStack Spacing="2">
+                    @foreach (var collection in _rootCollections.OrderBy(c => c.OrderIndex).ThenBy(c => c.CreatedAt))
+                    {
+                        <ReorderCollectionItem 
+                            Collection="@collection"
+                            AllCollections="@_collections"
+                            OnMoveUp="@(() => MoveCollectionUp(collection))"
+                            OnMoveDown="@(() => MoveCollectionDown(collection))"
+                            OnRequestMoveUp="@MoveRequestUp"
+                            OnRequestMoveDown="@MoveRequestDown"
+                            CanMoveUp="@CanMoveCollectionUp(collection)"
+                            CanMoveDown="@CanMoveCollectionDown(collection)" />
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @if (_environmentRequests != null && _environmentRequests.Any())
+            {
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.h6" GutterBottom="true">Environment-Level Requests</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        Requests that are not in any collection.
+                    </MudText>
+                    
+                    <MudStack Spacing="1">
+                        @foreach (var request in _environmentRequests.OrderBy(r => r.OrderIndex).ThenBy(r => r.CreatedAt))
+                        {
+                            <MudPaper Outlined="true" Class="pa-3">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudIcon Icon="@GetRequestIcon(request.Type)" 
+                                                 Color="@GetRequestColor(request.Type)" 
+                                                 Size="Size.Medium" />
+                                        <div>
+                                            <MudText Typo="Typo.body1"><strong>@request.Name</strong></MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@request.Url</MudText>
+                                        </div>
+                                    </MudStack>
+                                    <MudStack Row="true" Spacing="1">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       Disabled="@(!CanMoveRequestUp(request))"
+                                                       OnClick="@(() => MoveRequestUp(request))"
+                                                       title="Move up" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       Disabled="@(!CanMoveRequestDown(request))"
+                                                       OnClick="@(() => MoveRequestDown(request))"
+                                                       title="Move down" />
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private IEnumerable<Collection>? _collections;
+    private List<Collection> _rootCollections = new();
+    private List<Request>? _environmentRequests;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _collections = await CollectionService.GetAllCollectionsAsync();
+            _rootCollections = _collections.Where(c => c.ParentCollectionId == null).ToList();
+
+            var allRequests = await RequestService.GetAllRequestsAsync();
+            _environmentRequests = allRequests.Where(r => r.CollectionId == null).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool CanMoveCollectionUp(Collection collection)
+    {
+        var siblings = _collections?
+            .Where(c => c.ParentCollectionId == collection.ParentCollectionId)
+            .OrderBy(c => c.OrderIndex)
+            .ThenBy(c => c.CreatedAt)
+            .ToList() ?? new List<Collection>();
+        
+        return siblings.FirstOrDefault()?.Id != collection.Id;
+    }
+
+    private bool CanMoveCollectionDown(Collection collection)
+    {
+        var siblings = _collections?
+            .Where(c => c.ParentCollectionId == collection.ParentCollectionId)
+            .OrderBy(c => c.OrderIndex)
+            .ThenBy(c => c.CreatedAt)
+            .ToList() ?? new List<Collection>();
+        
+        return siblings.LastOrDefault()?.Id != collection.Id;
+    }
+
+    private async Task MoveCollectionUp(Collection collection)
+    {
+        try
+        {
+            await CollectionService.MoveCollectionAsync(collection.Id, moveUp: true);
+            Snackbar.Add($"Moved '{collection.Name}' up", Severity.Success);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error moving collection: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task MoveCollectionDown(Collection collection)
+    {
+        try
+        {
+            await CollectionService.MoveCollectionAsync(collection.Id, moveUp: false);
+            Snackbar.Add($"Moved '{collection.Name}' down", Severity.Success);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error moving collection: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private bool CanMoveRequestUp(Request request)
+    {
+        var siblings = _environmentRequests?
+            .Where(r => r.CollectionId == request.CollectionId)
+            .OrderBy(r => r.OrderIndex)
+            .ThenBy(r => r.CreatedAt)
+            .ToList() ?? new List<Request>();
+        
+        return siblings.FirstOrDefault()?.Id != request.Id;
+    }
+
+    private bool CanMoveRequestDown(Request request)
+    {
+        var siblings = _environmentRequests?
+            .Where(r => r.CollectionId == request.CollectionId)
+            .OrderBy(r => r.OrderIndex)
+            .ThenBy(r => r.CreatedAt)
+            .ToList() ?? new List<Request>();
+        
+        return siblings.LastOrDefault()?.Id != request.Id;
+    }
+
+    private async Task MoveRequestUp(Request request)
+    {
+        try
+        {
+            await RequestService.MoveRequestAsync(request.Id, moveUp: true);
+            Snackbar.Add($"Moved '{request.Name}' up", Severity.Success);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error moving request: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task MoveRequestDown(Request request)
+    {
+        try
+        {
+            await RequestService.MoveRequestAsync(request.Id, moveUp: false);
+            Snackbar.Add($"Moved '{request.Name}' down", Severity.Success);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error moving request: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetRequestIcon(RequestType type) => type switch
+    {
+        RequestType.Rest => Icons.Material.Filled.Http,
+        RequestType.GraphQL => Icons.Material.Filled.GraphicEq,
+        RequestType.WebSocket => Icons.Material.Filled.Cable,
+        _ => Icons.Material.Filled.HelpOutline
+    };
+
+    private Color GetRequestColor(RequestType type) => type switch
+    {
+        RequestType.Rest => Color.Primary,
+        RequestType.GraphQL => Color.Secondary,
+        RequestType.WebSocket => Color.Tertiary,
+        _ => Color.Default
+    };
+}
