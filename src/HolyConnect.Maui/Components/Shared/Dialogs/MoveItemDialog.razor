@@ -178,14 +178,6 @@
     private void Confirm()
     {
         Guid? targetCollectionId = _selectedOption == "root" ? null : Guid.Parse(_selectedOption);
-        MudDialog?.Close(DialogResult.Ok(new MoveItemResult { TargetCollectionId = targetCollectionId }));
-    }
-}
-
-namespace HolyConnect.Maui.Components.Shared.Dialogs
-{
-    public class MoveItemResult
-    {
-        public Guid? TargetCollectionId { get; set; }
+        MudDialog?.Close(DialogResult.Ok(new { TargetCollectionId = targetCollectionId }));
     }
 }
