@@ -3,6 +3,22 @@
 ## Overview
 HolyConnect is an API testing tool built with .NET MAUI and Blazor, following clean architecture principles. These instructions ensure consistent code quality, maintainability, and adherence to best practices across the codebase.
 
+## Quick Start Documentation
+
+For quick access to specific information:
+- **[Quick Reference Guide](.github/QUICK_REFERENCE.md)** - Common tasks and code snippets
+- **[UI Navigation Guide](.github/UI_NAVIGATION_GUIDE.md)** - Navigation patterns and routing
+- **[Component Library Reference](.github/COMPONENT_LIBRARY.md)** - Reusable UI components
+- **[Common Mistakes to Avoid](.github/copilot-mistakes.md)** - Learn from past mistakes
+- **[Flows Feature Documentation](../docs/FLOWS_FEATURE.md)** - Flows feature overview
+- **[Bruno Import Documentation](../docs/BRUNO_IMPORT.md)** - Import functionality
+
+**When to Use Each Guide**:
+- Adding a new feature? Start with [Quick Reference Guide](.github/QUICK_REFERENCE.md)
+- Creating a new page? See [UI Navigation Guide](.github/UI_NAVIGATION_GUIDE.md)
+- Using UI components? Check [Component Library Reference](.github/COMPONENT_LIBRARY.md)
+- Build errors? Review [Common Mistakes to Avoid](.github/copilot-mistakes.md)
+
 ## Architecture Principles
 
 ### Clean Architecture
@@ -385,6 +401,17 @@ Two protocols supported:
 **Precedence**: Collection variables override environment variables
 **Locations**: URL, headers, query parameters, request body
 
+**Usage Pattern**:
+```csharp
+var variables = new Dictionary<string, string>();
+// Merge environment variables
+foreach (var kvp in environment.Variables) variables[kvp.Key] = kvp.Value;
+// Merge collection variables (overrides environment)
+foreach (var kvp in collection.Variables) variables[kvp.Key] = kvp.Value;
+// Resolve
+var resolved = await VariableResolver.ResolveVariablesAsync(template, variables);
+```
+
 #### Response Value Extraction
 **Service**: `ResponseValueExtractor` in Application layer
 **Patterns**: 
@@ -392,11 +419,93 @@ Two protocols supported:
 - XPath for XML: `//user/id`
 **Usage**: Ad-hoc extraction or automated via `ResponseExtraction` rules
 
+**Entity**: `ResponseExtraction` in Domain
+- `Path`: JSONPath or XPath expression
+- `TargetVariable`: Variable name to store extracted value
+- `Scope`: "Environment" or "Collection"
+
+#### Dynamic Variables (Test Data Generation)
+**Service**: `DataGeneratorService` in Infrastructure layer
+**Entity**: `DynamicVariable` in Domain
+
+Supports generating test data for:
+- Personal data: FirstName, LastName, Email, PhoneNumber
+- Addresses: Address, City, State, ZipCode, Country
+- Numbers: RandomNumber, RandomDecimal
+- Dates: Date, DateOfBirth
+- Text: Lorem, Word, Sentence, Paragraph
+- IDs: Guid, UUID
+
+**Constraints**:
+- Min/Max values for numbers
+- Date ranges
+- Age ranges for DOB
+- Format patterns
+
+**Usage**: Define in Environment.DynamicVariables, referenced like static variables
+
 #### Git Integration
 **Service**: `GitService` in Infrastructure layer
 **Library**: LibGit2Sharp
 **Operations**: Initialize, commit, branch, fetch, pull, push
 **Storage**: Uses same storage path as data files
+
+**Git Folders**:
+- Multiple git folders can be configured
+- One active git folder at a time
+- Automatic switching via `GitFolderService`
+- Storage path switches with active folder
+
+#### Import/Export
+**Service**: `ImportService` in Infrastructure layer
+**Strategies**: Strategy pattern for different import formats
+
+**Supported Formats**:
+1. **cURL**: Import from cURL commands
+   - `CurlImportStrategy`
+   - Parses headers, method, body, URL
+2. **Bruno**: Import from Bruno API client
+   - `BrunoImportStrategy`
+   - Single files or entire folder structures
+   - Environments, collections, requests
+
+**Bruno Import Features**:
+- Folder structure becomes collection hierarchy
+- `environments/` folder → Environment entities
+- `collection.bru` → Collection variables
+- `bruno.json` → Collection metadata
+- Individual `.bru` files → Request entities
+
+See [Bruno Import Documentation](../docs/BRUNO_IMPORT.md) for details.
+
+#### Flows (Sequential Request Execution)
+**Service**: `FlowService` in Application layer
+**Entity**: `Flow`, `FlowStep`, `FlowExecutionResult` in Domain
+
+**Features**:
+- Execute multiple requests in sequence
+- Pass variables between steps via extraction rules
+- Continue on error configuration per step
+- Delays between steps
+- Environment-independent (choose environment at execution time)
+- Cross-collection request selection
+
+**Flow Execution**:
+1. Select environment at runtime (not at creation)
+2. Execute steps in order
+3. Extract values from responses
+4. Store in temporary variable scope
+5. Pass to subsequent steps
+6. Handle errors based on step configuration
+
+**Navigation**:
+- List: `/flows`
+- View: `/flow/{id}/view`
+- Create: `/flow/create`
+- Edit: `/flow/{id}/edit`
+- Execute: `/flow/{id}/execute`
+
+See [Flows Feature Documentation](../docs/FLOWS_FEATURE.md) for complete details.
 
 ### Important File Locations
 
@@ -411,19 +520,86 @@ Two protocols supported:
 
 #### Infrastructure
 - `src/HolyConnect.Infrastructure/Services/`: Request executors
+- `src/HolyConnect.Infrastructure/Services/ImportStrategies/`: Import strategy implementations
 - `src/HolyConnect.Infrastructure/Persistence/`: Data persistence
 - `src/HolyConnect.Infrastructure/Common/`: Shared helpers and constants
 
 #### UI Components
-- `src/HolyConnect.Maui/Components/Pages/`: Main pages
-- `src/HolyConnect.Maui/Components/Shared/`: Reusable components
+- `src/HolyConnect.Maui/Components/Pages/`: Main pages (routable)
+- `src/HolyConnect.Maui/Components/Shared/Common/`: General-purpose components
+- `src/HolyConnect.Maui/Components/Shared/Dialogs/`: Modal dialog components
+- `src/HolyConnect.Maui/Components/Shared/Editors/`: Input/editing components
+- `src/HolyConnect.Maui/Components/Shared/Viewers/`: Display/viewing components
+- `src/HolyConnect.Maui/Components/Shared/Utilities/`: Helper/utility components
 - `src/HolyConnect.Maui/Components/Layout/`: Layout components
 
 #### Tests
-- `tests/HolyConnect.Domain.Tests/`: Domain layer tests (80+ tests)
-- `tests/HolyConnect.Application.Tests/`: Application layer tests (99+ tests)
-- `tests/HolyConnect.Infrastructure.Tests/`: Infrastructure layer tests (154+ tests)
-- `tests/HolyConnect.Maui.Tests/`: UI component tests (11+ tests)
+- `tests/HolyConnect.Domain.Tests/`: Domain layer tests (113+ tests)
+- `tests/HolyConnect.Application.Tests/`: Application layer tests (182+ tests)
+- `tests/HolyConnect.Infrastructure.Tests/`: Infrastructure layer tests (299+ tests)
+- `tests/HolyConnect.Maui.Tests/`: UI component tests (126+ tests)
+
+**Total Test Count**: 720+ tests across all layers
+
+### Page-to-Route Mapping
+
+Quick reference for all routable pages:
+
+| Page | Route(s) | Component Path |
+|------|----------|----------------|
+| Home | `/` | `Pages/Home.razor` |
+| Collections List | (Dynamic in NavMenu) | N/A |
+| Collection View | `/collection/{id}`, `/collection/{id}/request/{requestId}` | `Pages/Collections/CollectionView.razor` |
+| Collection Create | `/collection/create`, `/collection/{parentId}/subcollection/create` | `Pages/Collections/CollectionCreate.razor` |
+| Collection Edit | `/collection/{id}/edit` | `Pages/Collections/CollectionEdit.razor` |
+| Environments List | `/environments` | `Pages/Environments/Environments.razor` |
+| Environment View | `/environment/{id}` | `Pages/Environments/EnvironmentView.razor` |
+| Environment Create | `/environment/create` | `Pages/Environments/EnvironmentCreate.razor` |
+| Environment Edit | `/environment/{id}/edit` | `Pages/Environments/EnvironmentEdit.razor` |
+| Request Create | `/collection/{id}/request/create`, `/environment/{id}/request/create` | `Pages/Requests/RequestCreate.razor` |
+| Flows List | `/flows` | `Pages/Flows/Flows.razor` |
+| Flow View | `/flow/{id}/view` | `Pages/Flows/FlowView.razor` |
+| Flow Create | `/flow/create` | `Pages/Flows/FlowCreate.razor` |
+| Flow Edit | `/flow/{id}/edit` | `Pages/Flows/FlowEdit.razor` |
+| Flow Execute | `/flow/{id}/execute` | `Pages/Flows/FlowExecute.razor` |
+| Variable Matrix | `/variables/matrix` | `Pages/Variables/VariablesMatrix.razor` |
+| Import | `/import` | `Pages/Import.razor` |
+| Git Management | `/git` | `Pages/Git/GitManagement.razor` |
+| History | `/history` | `Pages/History.razor` |
+| Variables Wiki | `/wiki/variables` | `Pages/Docs/VariablesWiki.razor` |
+| Keyboard Shortcuts | `/shortcuts` | `Pages/KeyboardShortcuts.razor` |
+| Settings | `/settings` | `Pages/Settings.razor` |
+| Not Found | Any unmatched | `Pages/NotFound.razor` |
+
+See [UI Navigation Guide](.github/UI_NAVIGATION_GUIDE.md) for detailed navigation patterns.
+
+### Component Cross-References
+
+Understanding component relationships:
+
+**Request Editing Flow**:
+1. `CollectionView` → Displays collection structure
+2. `RequestEditor` → Main editor, delegates to specialized editors
+3. `RestRequestEditor` / `GraphQLRequestEditor` / `WebSocketRequestEditor` → Type-specific editors
+4. `HeadersEditor`, `CodeEditor`, `ResponseExtractionManager` → Shared editing components
+5. `ResponseViewer` → Display results
+
+**Variable Management**:
+1. `EnvironmentView` / `CollectionView` → Manage variables
+2. `StaticVariableEditor` → Edit key-value pairs
+3. `DynamicVariableEditor` → Configure test data generation
+4. `VariableTextField` → Input with variable autocomplete
+5. `VariablesMatrix` → View variables across environments
+
+**Dialog System**:
+- `ConfirmDialog` → Yes/No confirmations
+- `RenameDialog` → Rename entities
+- `GlobalSearchDialog` (Ctrl+K) → Search across entities
+- `SelectOptionDialog` → Choose from list
+- `DiffViewerDialog` → Compare versions
+- `KeyboardShortcutsDialog` (Ctrl+/) → Show shortcuts
+
+See [Component Library Reference](.github/COMPONENT_LIBRARY.md) for complete component documentation.
 
 ### Documentation Files to Keep Updated
 
@@ -442,36 +618,83 @@ Two protocols supported:
 - Update when changing development processes
 - Keep code style examples current
 
-#### This File
-- `.github/copilot-instructions.md`: **ALWAYS UPDATE** when:
+#### Copilot Documentation
+- `.github/copilot-instructions.md`: **THIS FILE** - Always update when:
   - New patterns or practices are established
   - Build/test commands change
   - New layers or major components are added
   - Service registration patterns change
   - New testing approaches are adopted
+  - New features are added (Flows, Import, etc.)
+- `.github/copilot-mistakes.md`: Document common mistakes and corrections
+- `.github/QUICK_REFERENCE.md`: Quick reference for common tasks
+- `.github/UI_NAVIGATION_GUIDE.md`: Navigation patterns and routing
+- `.github/COMPONENT_LIBRARY.md`: Component documentation and usage
+
+#### Feature Documentation
+- `docs/FLOWS_FEATURE.md`: Complete Flows feature documentation
+- `docs/BRUNO_IMPORT.md`: Bruno import functionality
+- Update when feature behavior or UI changes
+
+### Keyboard Shortcuts
+
+HolyConnect implements global keyboard shortcuts via `KeyboardShortcutService`.
+
+**Available Shortcuts**:
+- `Ctrl+K` (Cmd+K on Mac): Global search dialog
+- `Ctrl+/` (Cmd+/): Show keyboard shortcuts dialog
+- `Ctrl+N` (Cmd+N): New request (when in collection view)
+- `Ctrl+S` (Cmd+S): Save current item
+- `Ctrl+E` (Cmd+E): Execute request (when in request editor)
+- `F5`: Execute selected request
+- `Escape`: Cancel current operation / close dialog
+
+**Implementation**:
+- Service: `KeyboardShortcutService` in Application layer
+- Page: `Components/Pages/KeyboardShortcuts.razor`
+- Dialog: `Components/Shared/Dialogs/KeyboardShortcutsDialog.razor`
+
+**Adding New Shortcuts**:
+1. Register in `KeyboardShortcutService`
+2. Handle in consuming component via service subscription
+3. Update `KeyboardShortcuts.razor` documentation page
 
 ### Tips for Working with This Codebase
 
 #### When Adding New Features
-1. Check if similar features exist (request executors, services)
+1. **Check existing patterns first**: Review [Quick Reference Guide](.github/QUICK_REFERENCE.md) for similar features
 2. Follow established patterns (especially in request execution)
 3. Use existing helpers (`HttpAuthenticationHelper`, `HttpConstants`)
 4. Register new services in `MauiProgram.cs`
 5. Add comprehensive tests in appropriate test project
 6. Update ARCHITECTURE.md if adding new patterns
+7. **Document navigation**: Add routes to [UI Navigation Guide](.github/UI_NAVIGATION_GUIDE.md)
+8. **Document components**: Add to [Component Library](.github/COMPONENT_LIBRARY.md) if reusable
+9. **Create quick reference**: Add common usage to [Quick Reference](.github/QUICK_REFERENCE.md)
 
 #### When Fixing Bugs
 1. Start with a failing test that reproduces the bug
 2. Check if bug affects multiple executors (use shared helpers)
-3. Verify fix doesn't break existing tests
+3. Verify fix doesn't break existing tests (run full test suite)
 4. Consider adding regression test
+5. **Document mistake**: If it's a common error pattern, add to `.github/copilot-mistakes.md`
 
 #### When Refactoring
-1. All 344+ tests must pass before and after
+1. All 720+ tests must pass before and after
 2. Consider extracting to helper classes for duplicated logic
 3. Use constants from `HttpConstants` instead of magic strings
 4. Maintain clean architecture layer separation
 5. Update documentation to reflect new structure
+6. **Preserve navigation**: Ensure routes remain consistent
+7. **Update component docs**: Reflect changes in Component Library
+
+#### When Working with UI
+1. **Check component library first**: See if component already exists
+2. **Follow navigation patterns**: Use established routing patterns
+3. **Use MudBlazor consistently**: Stick to MudBlazor components
+4. **Review copilot-mistakes.md**: Avoid common UI pitfalls (especially Dialog vs Snackbar)
+5. **Test responsiveness**: Ensure UI works on different screen sizes
+6. **Add keyboard shortcuts**: Consider if feature benefits from shortcuts
 
 ### Common Pitfalls to Avoid
 
@@ -482,6 +705,43 @@ Two protocols supported:
 5. **Don't forget to register services**: New services must be registered in `MauiProgram.cs`
 6. **Don't forget nullable reference types**: They're enabled project-wide
 7. **Don't block UI thread**: Always use async/await for I/O operations
+8. **Don't await Snackbar.Add()**: It's not awaitable - use DialogService for confirmations (see copilot-mistakes.md)
+9. **Don't create duplicate components**: Check Component Library first
+10. **Don't hardcode routes**: Use proper navigation patterns
+11. **Don't forget to document**: Update relevant documentation files
+12. **Don't ignore test failures**: Fix immediately, don't commit broken tests
+
+### Service Quick Reference
+
+Quick lookup for commonly used services:
+
+| Service | Purpose | Lifetime | Location |
+|---------|---------|----------|----------|
+| `IEnvironmentService` | Environment CRUD | Scoped | Application/Services |
+| `ICollectionService` | Collection management | Scoped | Application/Services |
+| `IRequestService` | Request operations | Scoped | Application/Services |
+| `IFlowService` | Flow management & execution | Scoped | Application/Services |
+| `IVariableResolver` | Resolve `{{variable}}` syntax | Scoped | Application/Services |
+| `IResponseValueExtractor` | Extract values from responses | Scoped | Application/Services |
+| `IRequestExecutorFactory` | Get executor for request type | Scoped | Application/Services |
+| `IActiveEnvironmentService` | Manage active environment | Scoped | Application/Services |
+| `ISettingsService` | App settings | Singleton | Application/Interfaces |
+| `IGitService` | Git operations | Scoped | Application/Interfaces |
+| `IGitFolderService` | Git folder management | Scoped | Application/Interfaces |
+| `IImportService` | Import from external sources | Scoped | Application/Interfaces |
+| `IDataGeneratorService` | Generate test data | Scoped | Application/Interfaces |
+| `IFormatterService` | Format JSON/XML | Scoped | Application/Services |
+| `IClipboardService` | Clipboard operations | Platform-specific | Application/Interfaces |
+| `IKeyboardShortcutService` | Keyboard shortcut handling | Scoped | Application/Services |
+| `IGlobalSearchService` | Search across entities | Scoped | Application/Services |
+| `IRequestHistoryService` | Request execution history | Scoped | Application/Services |
+| `IGraphQLSchemaService` | GraphQL schema introspection | Scoped | Application/Interfaces |
+| `ISecretVariablesService` | Secure storage for secrets | Scoped | Application/Services |
+
+**MudBlazor Services** (injected automatically):
+- `IDialogService`: Show modal dialogs (awaitable)
+- `ISnackbar`: Show toast notifications (NOT awaitable)
+- `NavigationManager`: Navigate between pages
 
 ## Maintenance Instructions
 
@@ -517,6 +777,39 @@ When making significant changes to the codebase, verify and update:
 6. Version important changes in commit messages
 
 ## Summary
+
 These instructions ensure HolyConnect maintains high code quality, follows clean architecture principles, and implements .NET and Blazor best practices. Always write comprehensive tests, keep documentation current, and follow the established patterns when adding new features or fixing issues.
 
 **Remember**: This file is your guide to understanding the codebase quickly. Keep it updated so future you (and others) can work efficiently without re-discovering patterns and practices.
+
+## Quick Navigation to Documentation
+
+**Start Here**:
+- New to the project? Read this file first
+- Need to implement something quickly? → [Quick Reference](.github/QUICK_REFERENCE.md)
+- Working on UI? → [Component Library](.github/COMPONENT_LIBRARY.md) + [Navigation Guide](.github/UI_NAVIGATION_GUIDE.md)
+- Hit a build error? → [Copilot Mistakes](.github/copilot-mistakes.md)
+
+**Feature-Specific**:
+- Flows feature → [Flows Documentation](../docs/FLOWS_FEATURE.md)
+- Import functionality → [Bruno Import](../docs/BRUNO_IMPORT.md)
+- Architecture overview → [ARCHITECTURE.md](../ARCHITECTURE.md)
+- Contributing guidelines → [CONTRIBUTING.md](../CONTRIBUTING.md)
+
+**When to Update This File**:
+- ✅ New architectural patterns introduced
+- ✅ New major features added (like Flows)
+- ✅ Service registration patterns change
+- ✅ New common pitfalls discovered
+- ✅ Build/test processes change
+- ✅ New helper classes or constants added
+
+**When to Update Other Documentation**:
+- Component created/changed → Update [Component Library](.github/COMPONENT_LIBRARY.md)
+- Page/route added/changed → Update [Navigation Guide](.github/UI_NAVIGATION_GUIDE.md)
+- Common task pattern → Add to [Quick Reference](.github/QUICK_REFERENCE.md)
+- Mistake pattern identified → Document in [Copilot Mistakes](.github/copilot-mistakes.md)
+
+---
+
+**Last Major Update**: 2026-01-10 - Added comprehensive navigation, component documentation, and cross-references between documentation files. Added Flows feature details, Import functionality, Dynamic Variables, and updated test counts to 720+.
