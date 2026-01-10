@@ -38,7 +38,7 @@
                         Available Collections
                     </MudText>
                     
-                    @if (!string.IsNullOrWhiteSpace(_searchFilter))
+                    @if (AvailableCollections.Count > 5)
                     {
                         <MudTextField @bind-Value="_searchFilter" 
                                      Label="Search collections" 

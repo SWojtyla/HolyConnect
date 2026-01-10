@@ -10,6 +10,7 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 🔌 **WebSocket Support**: Connect to WebSocket servers for real-time bidirectional communication with streaming message log
 - ⌨️ **Keyboard Shortcuts**: Navigate quickly with keyboard shortcuts (Ctrl+K for global search, Ctrl+H for home, and more)
 - 🔍 **Global Search**: Fast fuzzy search across all environments, collections, requests, and flows (Ctrl+K)
+- 🔄 **Reorder Items**: Intuitive UI to reorganize collections, sub-collections, and requests without drag-and-drop
 - 🗂️ **Environment Management**: Organize your API requests by environments
 - 📁 **Collection Hierarchy**: Create nested collections to organize requests
 - 💾 **Request Storage**: Save and reuse your API requests

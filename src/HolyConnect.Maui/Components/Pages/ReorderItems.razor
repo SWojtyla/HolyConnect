@@ -8,6 +8,32 @@
 
 <PageTitle>Reorder Items - HolyConnect</PageTitle>
 
+<style>
+    .item-card {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .item-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
 <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudStack Spacing="3">
@@ -37,6 +63,7 @@
                          Immediate="true"
                          Clearable="true"
                          OnClearButtonClick="ClearSearch"
+                         ValueChanged="@((string value) => OnSearchChanged(value))"
                          DebounceInterval="300" />
 
             <MudStack Row="true" Spacing="2">
@@ -85,7 +112,7 @@
             <MudStack Spacing="2">
                 @foreach (var item in _filteredItems)
                 {
-                    <MudPaper Outlined="true" Class="pa-3">
+                    <MudPaper Outlined="true" Class="pa-3 item-card fade-in">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                             <MudIcon Icon="@GetItemIcon(item)" 
                                     Color="@GetItemColor(item)" 
@@ -247,6 +274,12 @@
         FilterItems();
     }
 
+    private void OnSearchChanged(string value)
+    {
+        _searchQuery = value;
+        FilterItems();
+    }
+
     private async Task RefreshData()
     {
         await LoadData();
@@ -385,15 +418,6 @@
             {
                 Snackbar.Add($"Error removing request: {ex.Message}", Severity.Error);
             }
-        }
-    }
-
-    // Watch for search query changes
-    protected override void OnParametersSet()
-    {
-        if (!_isLoading)
-        {
-            FilterItems();
         }
     }
 }
