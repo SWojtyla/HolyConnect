@@ -1,20 +1,23 @@
 @inject IGlobalSearchService SearchService
 @inject NavigationManager NavigationManager
 @inject IKeyboardShortcutService ShortcutService
+@inject IJSRuntime JSRuntime
 @using HolyConnect.Application.Interfaces
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_searchQuery"
+            <MudTextField @ref="_searchTextField"
+                          @bind-Value="_searchQuery"
                           Label="Search"
                           Placeholder="Search environments, collections, requests, flows..."
                           Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           Immediate="true"
-                          AutoFocus="true"
                           @onkeydown="HandleKeyDown"
                           DebounceInterval="300"
                           OnDebounceIntervalElapsed="PerformSearch" />
@@ -98,10 +101,41 @@
 @code {
     [CascadingParameter] IMudDialogInstance? MudDialog { get; set; }
     
+    private MudTextField<string>? _searchTextField;
     private string _searchQuery = string.Empty;
     private IEnumerable<SearchResult>? _searchResults;
     private bool _isSearching = false;
     private int _selectedIndex = 0;
+    private DotNetObjectReference<GlobalSearchDialog>? _dotNetReference;
+    private IJSObjectReference? _dialogKeyboardModule;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Set up JS interop for dialog-level keyboard handling
+            _dotNetReference = DotNetObjectReference.Create(this);
+            
+            // Import the dialog keyboard module
+            _dialogKeyboardModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Shared/Dialogs/GlobalSearchDialog.razor.js");
+            
+            // Initialize keyboard listener for the dialog
+            await _dialogKeyboardModule.InvokeVoidAsync("initialize", _dotNetReference);
+            
+            // Focus the search text field
+            if (_searchTextField != null)
+            {
+                await _searchTextField.FocusAsync();
+            }
+        }
+    }
+    
+    [JSInvokable]
+    public void CloseDialog()
+    {
+        MudDialog?.Close();
+    }
     
     private async Task PerformSearch()
     {
@@ -187,5 +221,23 @@
             return description;
         
         return description.Substring(0, maxLength) + "...";
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_dialogKeyboardModule != null)
+            {
+                await _dialogKeyboardModule.InvokeVoidAsync("dispose");
+                await _dialogKeyboardModule.DisposeAsync();
+            }
+            
+            _dotNetReference?.Dispose();
+        }
+        catch
+        {
+            // Ignore errors during disposal
+        }
     }
 }
