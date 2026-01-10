@@ -17,4 +17,10 @@ public class Collection
     public List<Collection> SubCollections { get; set; } = new();
     public List<Request> Requests { get; set; } = new();
     public DateTime CreatedAt { get; set; }
+    
+    /// <summary>
+    /// The order index for sorting collections within the same parent.
+    /// Lower values appear first. Default is 0.
+    /// </summary>
+    public int OrderIndex { get; set; } = 0;
 }

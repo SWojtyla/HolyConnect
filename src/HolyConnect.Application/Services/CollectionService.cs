@@ -87,4 +87,52 @@ public class CollectionService : CrudServiceBase<Collection>, ICollectionService
     {
         await SecretVariablesService.DeleteCollectionSecretsAsync(id);
     }
+
+    public async Task UpdateCollectionOrderAsync(IEnumerable<(Guid CollectionId, int OrderIndex)> collectionOrders)
+    {
+        foreach (var (collectionId, orderIndex) in collectionOrders)
+        {
+            var collection = await Repository.GetByIdAsync(collectionId);
+            if (collection != null)
+            {
+                collection.OrderIndex = orderIndex;
+                await Repository.UpdateAsync(collection);
+            }
+        }
+    }
+
+    public async Task MoveCollectionAsync(Guid collectionId, bool moveUp)
+    {
+        var collection = await Repository.GetByIdAsync(collectionId);
+        if (collection == null)
+        {
+            throw new InvalidOperationException($"Collection with ID {collectionId} not found.");
+        }
+
+        // Get all collections with the same parent
+        var allCollections = await Repository.GetAllAsync();
+        var siblings = allCollections
+            .Where(c => c.ParentCollectionId == collection.ParentCollectionId)
+            .OrderBy(c => c.OrderIndex)
+            .ThenBy(c => c.CreatedAt)
+            .ToList();
+
+        var currentIndex = siblings.FindIndex(c => c.Id == collectionId);
+        if (currentIndex == -1) return;
+
+        // Determine target index based on direction
+        int targetIndex = moveUp ? currentIndex - 1 : currentIndex + 1;
+
+        // Check bounds
+        if (targetIndex < 0 || targetIndex >= siblings.Count) return;
+
+        // Swap OrderIndex values
+        var targetCollection = siblings[targetIndex];
+        var tempOrderIndex = collection.OrderIndex;
+        collection.OrderIndex = targetCollection.OrderIndex;
+        targetCollection.OrderIndex = tempOrderIndex;
+
+        await Repository.UpdateAsync(collection);
+        await Repository.UpdateAsync(targetCollection);
+    }
 }

@@ -205,4 +205,52 @@ public class RequestService : IRequestService
             }
         }
     }
+
+    public async Task UpdateRequestOrderAsync(IEnumerable<(Guid RequestId, int OrderIndex)> requestOrders)
+    {
+        foreach (var (requestId, orderIndex) in requestOrders)
+        {
+            var request = await _repositories.Requests.GetByIdAsync(requestId);
+            if (request != null)
+            {
+                request.OrderIndex = orderIndex;
+                await _repositories.Requests.UpdateAsync(request);
+            }
+        }
+    }
+
+    public async Task MoveRequestAsync(Guid requestId, bool moveUp)
+    {
+        var request = await _repositories.Requests.GetByIdAsync(requestId);
+        if (request == null)
+        {
+            throw new InvalidOperationException($"Request with ID {requestId} not found.");
+        }
+
+        // Get all requests with the same collection ID (or no collection)
+        var allRequests = await _repositories.Requests.GetAllAsync();
+        var siblings = allRequests
+            .Where(r => r.CollectionId == request.CollectionId)
+            .OrderBy(r => r.OrderIndex)
+            .ThenBy(r => r.CreatedAt)
+            .ToList();
+
+        var currentIndex = siblings.FindIndex(r => r.Id == requestId);
+        if (currentIndex == -1) return;
+
+        // Determine target index based on direction
+        int targetIndex = moveUp ? currentIndex - 1 : currentIndex + 1;
+
+        // Check bounds
+        if (targetIndex < 0 || targetIndex >= siblings.Count) return;
+
+        // Swap OrderIndex values
+        var targetRequest = siblings[targetIndex];
+        var tempOrderIndex = request.OrderIndex;
+        request.OrderIndex = targetRequest.OrderIndex;
+        targetRequest.OrderIndex = tempOrderIndex;
+
+        await _repositories.Requests.UpdateAsync(request);
+        await _repositories.Requests.UpdateAsync(targetRequest);
+    }
 }

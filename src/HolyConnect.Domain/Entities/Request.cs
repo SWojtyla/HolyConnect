@@ -22,6 +22,12 @@ public abstract class Request
     public string? BasicAuthPassword { get; set; }
     public string? BearerToken { get; set; }
     public List<ResponseExtraction> ResponseExtractions { get; set; } = new();
+    
+    /// <summary>
+    /// The order index for sorting requests within the same collection or environment.
+    /// Lower values appear first. Default is 0.
+    /// </summary>
+    public int OrderIndex { get; set; } = 0;
 }
 
 public enum RequestType
