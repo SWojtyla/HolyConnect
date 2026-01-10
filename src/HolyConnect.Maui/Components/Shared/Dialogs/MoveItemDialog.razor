@@ -178,6 +178,6 @@
     private void Confirm()
     {
         Guid? targetCollectionId = _selectedOption == "root" ? null : Guid.Parse(_selectedOption);
-        MudDialog?.Close(DialogResult.Ok(new { TargetCollectionId = targetCollectionId }));
+        MudDialog?.Close(DialogResult.Ok(new MoveItemResult { TargetCollectionId = targetCollectionId }));
     }
 }

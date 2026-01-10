@@ -36,6 +36,15 @@
 </style>
 
 <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+    <MudAlert Severity="Severity.Warning" 
+              Variant="Variant.Outlined" 
+              Class="mb-4"
+              Icon="@Icons.Material.Filled.Info">
+        <MudText Typo="Typo.body2">
+            <strong>Note:</strong> This reorder UI is temporary and will be replaced with drag-and-drop functionality once WebView2 issues in MAUI are resolved.
+        </MudText>
+    </MudAlert>
+
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudStack Spacing="3">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
