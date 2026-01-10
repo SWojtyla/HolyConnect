@@ -59,6 +59,19 @@ public class RequestService : IRequestService
         await _repositories.Requests.DeleteAsync(id);
     }
 
+    public async Task<Request> MoveRequestAsync(Guid requestId, Guid? newCollectionId)
+    {
+        var request = await _repositories.Requests.GetByIdAsync(requestId);
+        if (request == null)
+        {
+            throw new InvalidOperationException($"Request with ID {requestId} not found.");
+        }
+
+        // Update the collection ID
+        request.CollectionId = newCollectionId;
+        return await _repositories.Requests.UpdateAsync(request);
+    }
+
     public async Task<RequestResponse> ExecuteRequestAsync(Request request)
     {
         return await ExecuteRequestAsync(request, null, null);

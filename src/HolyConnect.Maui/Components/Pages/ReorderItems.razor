@@ -1,0 +1,439 @@
+@page "/reorder"
+@using HolyConnect.Domain.Entities
+@using HolyConnect.Application.Common
+@using HolyConnect.Maui.Components.Shared.Dialogs
+@inject ICollectionService CollectionService
+@inject IRequestService RequestService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Reorder Items - HolyConnect</PageTitle>
+
+<style>
+    .item-card {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .item-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+    <MudAlert Severity="Severity.Warning" 
+              Variant="Variant.Outlined" 
+              Class="mb-4"
+              Icon="@Icons.Material.Filled.Info">
+        <MudText Typo="Typo.body2">
+            <strong>Note:</strong> This reorder UI is temporary and will be replaced with drag-and-drop functionality once WebView2 issues in MAUI are resolved.
+        </MudText>
+    </MudAlert>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudStack Spacing="3">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <div>
+                    <MudText Typo="Typo.h4" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapVert" Class="mr-2" />
+                        Reorder Items
+                    </MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        Organize your collections, sub-collections, and requests
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="RefreshData"
+                          StartIcon="@Icons.Material.Filled.Refresh">
+                    Refresh
+                </MudButton>
+            </MudStack>
+
+            <MudTextField @bind-Value="_searchQuery" 
+                         Label="Search items" 
+                         Variant="Variant.Outlined"
+                         Adornment="Adornment.Start" 
+                         AdornmentIcon="@Icons.Material.Filled.Search"
+                         Immediate="true"
+                         Clearable="true"
+                         OnClearButtonClick="ClearSearch"
+                         DebounceInterval="300"
+                         @bind-Value:after="OnSearchChanged" />
+
+            <MudStack Row="true" Spacing="2">
+                <MudChip T="string" 
+                        Color="Color.Info" 
+                        Icon="@Icons.Material.Filled.Folder">
+                    @_totalCollections Collections
+                </MudChip>
+                <MudChip T="string" 
+                        Color="Color.Success" 
+                        Icon="@Icons.Material.Filled.Http">
+                    @_totalRequests Requests
+                </MudChip>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    @if (_isLoading)
+    {
+        <MudPaper Elevation="2" Class="pa-8 d-flex justify-center align-center" Style="min-height: 400px;">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        </MudPaper>
+    }
+    else if (_filteredItems.Count == 0)
+    {
+        <MudPaper Elevation="2" Class="pa-8 d-flex justify-center align-center" Style="min-height: 400px;">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                @if (string.IsNullOrWhiteSpace(_searchQuery))
+                {
+                    <text>No items found. Create collections and requests to organize them here.</text>
+                }
+                else
+                {
+                    <text>No items match your search query "@_searchQuery".</text>
+                }
+            </MudAlert>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Items (@_filteredItems.Count)
+            </MudText>
+            
+            <MudStack Spacing="2">
+                @foreach (var item in _filteredItems)
+                {
+                    <MudPaper Outlined="true" Class="pa-3 item-card fade-in">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@GetItemIcon(item)" 
+                                    Color="@GetItemColor(item)" 
+                                    Size="Size.Medium" />
+                            
+                            <MudStack Spacing="1" Style="flex: 1;">
+                                <MudText Typo="Typo.subtitle1">
+                                    <strong>@GetItemName(item)</strong>
+                                </MudText>
+                                <MudStack Row="true" Spacing="1">
+                                    <MudChip T="string" 
+                                            Size="Size.Small" 
+                                            Color="@GetItemColor(item)">
+                                        @GetItemType(item)
+                                    </MudChip>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @GetItemLocation(item)
+                                    </MudText>
+                                </MudStack>
+                            </MudStack>
+
+                            <MudStack Row="true" Spacing="1">
+                                <MudTooltip Text="Move to...">
+                                    <MudIconButton Icon="@Icons.Material.Filled.DriveFileMove" 
+                                                  Color="Color.Primary"
+                                                  Size="Size.Medium"
+                                                  OnClick="@(() => ShowMoveDialog(item))" />
+                                </MudTooltip>
+                                
+                                @if (item is Request request)
+                                {
+                                    <MudTooltip Text="Remove from collection">
+                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline" 
+                                                      Color="Color.Warning"
+                                                      Size="Size.Medium"
+                                                      Disabled="@(!request.CollectionId.HasValue)"
+                                                      OnClick="@(() => RemoveFromCollection(request))" />
+                                    </MudTooltip>
+                                }
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private string _searchQuery = string.Empty;
+    private bool _isLoading = true;
+    private List<object> _allItems = new();
+    private List<object> _filteredItems = new();
+    private IEnumerable<Collection> _allCollections = Enumerable.Empty<Collection>();
+    private IEnumerable<Request> _allRequests = Enumerable.Empty<Request>();
+    private Dictionary<Guid, string> _collectionPaths = new();
+    private int _totalCollections = 0;
+    private int _totalRequests = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load all collections and requests
+            _allCollections = await CollectionService.GetAllCollectionsAsync();
+            _allRequests = await RequestService.GetAllRequestsAsync();
+
+            // Build hierarchy
+            var hierarchicalCollections = CollectionHierarchyHelper.BuildHierarchy(_allCollections);
+            _allCollections = CollectionHierarchyHelper.FlattenHierarchy(hierarchicalCollections);
+
+            // Build collection paths for display
+            _collectionPaths = BuildCollectionPaths(_allCollections);
+
+            // Combine items for display
+            _allItems.Clear();
+            _allItems.AddRange(_allCollections.Cast<object>());
+            _allItems.AddRange(_allRequests.Cast<object>());
+
+            _totalCollections = _allCollections.Count();
+            _totalRequests = _allRequests.Count();
+
+            FilterItems();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Dictionary<Guid, string> BuildCollectionPaths(IEnumerable<Collection> collections)
+    {
+        var paths = new Dictionary<Guid, string>();
+        var collectionDict = collections.ToDictionary(c => c.Id);
+
+        foreach (var collection in collections)
+        {
+            paths[collection.Id] = GetCollectionPath(collection, collectionDict);
+        }
+
+        return paths;
+    }
+
+    private string GetCollectionPath(Collection collection, Dictionary<Guid, Collection> collectionDict)
+    {
+        var path = new List<string> { collection.Name };
+        var current = collection;
+
+        while (current.ParentCollectionId.HasValue && collectionDict.TryGetValue(current.ParentCollectionId.Value, out var parent))
+        {
+            path.Insert(0, parent.Name);
+            current = parent;
+        }
+
+        return string.Join(" / ", path);
+    }
+
+    private void FilterItems()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            _filteredItems = new List<object>(_allItems);
+        }
+        else
+        {
+            var query = _searchQuery.ToLower();
+            _filteredItems = _allItems.Where(item =>
+            {
+                if (item is Collection collection)
+                {
+                    return collection.Name.ToLower().Contains(query) ||
+                           (_collectionPaths.TryGetValue(collection.Id, out var path) && path.ToLower().Contains(query));
+                }
+                else if (item is Request request)
+                {
+                    return request.Name.ToLower().Contains(query) ||
+                           request.Url.ToLower().Contains(query) ||
+                           GetItemLocation(request).ToLower().Contains(query);
+                }
+                return false;
+            }).ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchQuery = string.Empty;
+        FilterItems();
+    }
+
+    private void OnSearchChanged()
+    {
+        FilterItems();
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+        Snackbar.Add("Data refreshed", Severity.Success);
+    }
+
+    private string GetItemIcon(object item) => item switch
+    {
+        Collection => Icons.Material.Filled.Folder,
+        RestRequest => Icons.Material.Filled.Http,
+        GraphQLRequest => Icons.Material.Filled.GraphicEq,
+        WebSocketRequest => Icons.Material.Filled.Cable,
+        Request => Icons.Material.Filled.Code,
+        _ => Icons.Material.Filled.Help
+    };
+
+    private Color GetItemColor(object item) => item switch
+    {
+        Collection => Color.Info,
+        RestRequest => Color.Primary,
+        GraphQLRequest => Color.Secondary,
+        WebSocketRequest => Color.Tertiary,
+        _ => Color.Default
+    };
+
+    private string GetItemName(object item) => item switch
+    {
+        Collection c => c.Name,
+        Request r => r.Name,
+        _ => "Unknown"
+    };
+
+    private string GetItemType(object item) => item switch
+    {
+        Collection collection => collection.ParentCollectionId.HasValue ? "Sub-Collection" : "Collection",
+        RestRequest => "REST Request",
+        GraphQLRequest => "GraphQL Request",
+        WebSocketRequest => "WebSocket Request",
+        Request => "Request",
+        _ => "Unknown"
+    };
+
+    private string GetItemLocation(object item)
+    {
+        if (item is Collection collection)
+        {
+            if (collection.ParentCollectionId.HasValue && _collectionPaths.TryGetValue(collection.Id, out var path))
+            {
+                var parts = path.Split(" / ");
+                if (parts.Length > 1)
+                {
+                    return "Parent: " + string.Join(" / ", parts.Take(parts.Length - 1));
+                }
+            }
+            return "Root level";
+        }
+        else if (item is Request request)
+        {
+            if (request.CollectionId.HasValue && _collectionPaths.TryGetValue(request.CollectionId.Value, out var path))
+            {
+                return "In: " + path;
+            }
+            return "Not in any collection";
+        }
+        return string.Empty;
+    }
+
+    private async Task ShowMoveDialog(object item)
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            ["Item"] = item,
+            ["AllCollections"] = _allCollections,
+            ["CollectionPaths"] = _collectionPaths
+        };
+
+        var dialog = await DialogService.ShowAsync<MoveItemDialog>("Move Item", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is MoveItemResult moveResult)
+        {
+            await PerformMove(item, moveResult.TargetCollectionId);
+        }
+    }
+
+    private async Task PerformMove(object item, Guid? targetCollectionId)
+    {
+        try
+        {
+            if (item is Collection collection)
+            {
+                if (collection.ParentCollectionId == targetCollectionId)
+                {
+                    Snackbar.Add("Collection is already in that location", Severity.Info);
+                    return;
+                }
+
+                await CollectionService.MoveCollectionAsync(collection.Id, targetCollectionId);
+                Snackbar.Add($"Collection '{collection.Name}' moved successfully", Severity.Success);
+            }
+            else if (item is Request request)
+            {
+                if (request.CollectionId == targetCollectionId)
+                {
+                    Snackbar.Add("Request is already in that location", Severity.Info);
+                    return;
+                }
+
+                await RequestService.MoveRequestAsync(request.Id, targetCollectionId);
+                Snackbar.Add($"Request '{request.Name}' moved successfully", Severity.Success);
+            }
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error moving item: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveFromCollection(Request request)
+    {
+        if (!request.CollectionId.HasValue)
+        {
+            return;
+        }
+
+        var result = await DialogService.ShowMessageBox(
+            "Remove from Collection",
+            $"Remove '{request.Name}' from its collection? The request will not be deleted.",
+            yesText: "Remove", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                await RequestService.MoveRequestAsync(request.Id, null);
+                Snackbar.Add($"Request '{request.Name}' removed from collection", Severity.Success);
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error removing request: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

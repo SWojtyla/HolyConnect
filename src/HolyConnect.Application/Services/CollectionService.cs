@@ -50,6 +50,43 @@ public class CollectionService : CrudServiceBase<Collection>, ICollectionService
         await DeleteAsync(id);
     }
 
+    public async Task<Collection> MoveCollectionAsync(Guid collectionId, Guid? newParentCollectionId)
+    {
+        var collection = await Repository.GetByIdAsync(collectionId);
+        if (collection == null)
+        {
+            throw new InvalidOperationException($"Collection with ID {collectionId} not found.");
+        }
+
+        // Prevent circular references - check if the new parent is a descendant of this collection
+        if (newParentCollectionId.HasValue)
+        {
+            var allCollections = await Repository.GetAllAsync();
+            if (IsDescendant(collectionId, newParentCollectionId.Value, allCollections))
+            {
+                throw new InvalidOperationException("Cannot move a collection into one of its own descendants.");
+            }
+        }
+
+        // Update the parent collection ID
+        collection.ParentCollectionId = newParentCollectionId;
+        return await Repository.UpdateAsync(collection);
+    }
+
+    private bool IsDescendant(Guid ancestorId, Guid potentialDescendantId, IEnumerable<Collection> allCollections)
+    {
+        var current = allCollections.FirstOrDefault(c => c.Id == potentialDescendantId);
+        while (current != null)
+        {
+            if (current.ParentCollectionId == ancestorId)
+            {
+                return true;
+            }
+            current = allCollections.FirstOrDefault(c => c.Id == current.ParentCollectionId);
+        }
+        return false;
+    }
+
     protected override Guid GetEntityId(Collection entity)
     {
         return entity.Id;

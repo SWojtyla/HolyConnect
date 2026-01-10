@@ -1,0 +1,183 @@
+@using HolyConnect.Domain.Entities
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                <MudText Typo="Typo.body2">
+                    Select a destination collection for <strong>@GetItemName()</strong>
+                </MudText>
+            </MudAlert>
+
+            <MudRadioGroup @bind-Value="_selectedOption">
+                <MudRadio T="string" Value="@("root")" Color="Color.Primary">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Home" Size="Size.Small" />
+                        <div>
+                            <MudText Typo="Typo.subtitle2">Root Level</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @if (Item is Collection)
+                                {
+                                    <text>Move to top-level (no parent collection)</text>
+                                }
+                                else
+                                {
+                                    <text>Not in any collection</text>
+                                }
+                            </MudText>
+                        </div>
+                    </MudStack>
+                </MudRadio>
+                
+                <MudDivider Class="my-2" />
+                
+                @if (AvailableCollections.Any())
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="mr-1" />
+                        Available Collections
+                    </MudText>
+                    
+                    @if (AvailableCollections.Count > 5)
+                    {
+                        <MudTextField @bind-Value="_searchFilter" 
+                                     Label="Search collections" 
+                                     Variant="Variant.Outlined"
+                                     Adornment="Adornment.Start" 
+                                     AdornmentIcon="@Icons.Material.Filled.Search"
+                                     Immediate="true"
+                                     Clearable="true"
+                                     Margin="Margin.Dense"
+                                     DebounceInterval="200" />
+                    }
+                    
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        @foreach (var collection in GetFilteredCollections())
+                        {
+                            <MudRadio T="string" Value="@collection.Id.ToString()" Color="Color.Primary">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Folder" 
+                                            Color="Color.Info" 
+                                            Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2">@collection.Name</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="font-size: 0.75rem;">
+                                            @GetCollectionPath(collection.Id)
+                                        </MudText>
+                                    </div>
+                                </MudStack>
+                            </MudRadio>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true">
+                        No available collections to move to.
+                    </MudAlert>
+                }
+            </MudRadioGroup>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" StartIcon="@Icons.Material.Filled.Close">
+            Cancel
+        </MudButton>
+        <MudButton Color="Color.Primary" 
+                  Variant="Variant.Filled" 
+                  OnClick="Confirm"
+                  StartIcon="@Icons.Material.Filled.Check">
+            Move Here
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter, EditorRequired]
+    public object? Item { get; set; }
+
+    [Parameter, EditorRequired]
+    public IEnumerable<Collection> AllCollections { get; set; } = Enumerable.Empty<Collection>();
+
+    [Parameter, EditorRequired]
+    public Dictionary<Guid, string> CollectionPaths { get; set; } = new();
+
+    private string _selectedOption = "root";
+    private string _searchFilter = string.Empty;
+
+    private List<Collection> AvailableCollections => GetAvailableCollections();
+
+    private List<Collection> GetAvailableCollections()
+    {
+        if (Item is Collection collection)
+        {
+            // For collections, exclude itself and all its descendants
+            return AllCollections
+                .Where(c => c.Id != collection.Id && !IsDescendant(collection.Id, c.Id))
+                .OrderBy(c => GetCollectionPath(c.Id))
+                .ToList();
+        }
+        else if (Item is Request)
+        {
+            // For requests, show all collections
+            return AllCollections
+                .OrderBy(c => GetCollectionPath(c.Id))
+                .ToList();
+        }
+        
+        return new List<Collection>();
+    }
+
+    private IEnumerable<Collection> GetFilteredCollections()
+    {
+        if (string.IsNullOrWhiteSpace(_searchFilter))
+        {
+            return AvailableCollections;
+        }
+
+        var query = _searchFilter.ToLower();
+        return AvailableCollections
+            .Where(c => c.Name.ToLower().Contains(query) || 
+                       GetCollectionPath(c.Id).ToLower().Contains(query));
+    }
+
+    private bool IsDescendant(Guid ancestorId, Guid potentialDescendantId)
+    {
+        var current = AllCollections.FirstOrDefault(c => c.Id == potentialDescendantId);
+        while (current != null)
+        {
+            if (current.ParentCollectionId == ancestorId)
+            {
+                return true;
+            }
+            current = AllCollections.FirstOrDefault(c => c.Id == current.ParentCollectionId);
+        }
+        return false;
+    }
+
+    private string GetItemName()
+    {
+        return Item switch
+        {
+            Collection c => c.Name,
+            Request r => r.Name,
+            _ => "Unknown item"
+        };
+    }
+
+    private string GetCollectionPath(Guid collectionId)
+    {
+        return CollectionPaths.TryGetValue(collectionId, out var path) ? path : "Unknown";
+    }
+
+    private void Cancel() => MudDialog?.Cancel();
+
+    private void Confirm()
+    {
+        Guid? targetCollectionId = _selectedOption == "root" ? null : Guid.Parse(_selectedOption);
+        MudDialog?.Close(DialogResult.Ok(new MoveItemResult { TargetCollectionId = targetCollectionId }));
+    }
+}
