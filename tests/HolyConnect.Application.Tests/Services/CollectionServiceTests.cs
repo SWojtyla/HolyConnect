@@ -259,4 +259,105 @@ public class CollectionServiceTests
         Assert.Contains("already exists", exception.Message);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Collection>()), Times.Once);
     }
+
+    [Fact]
+    public async Task MoveCollectionAsync_WithValidDestination_ShouldMoveCollection()
+    {
+        // Arrange
+        var collectionId = Guid.NewGuid();
+        var newParentId = Guid.NewGuid();
+        var collection = new Collection
+        {
+            Id = collectionId,
+            Name = "Test Collection",
+            ParentCollectionId = null
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
+        _mockRepository.Setup(r => r.GetAllAsync())
+            .ReturnsAsync(new List<Collection> { collection });
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        // Act
+        var result = await _service.MoveCollectionAsync(collectionId, newParentId);
+
+        // Assert
+        Assert.Equal(newParentId, result.ParentCollectionId);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Collection>(c => c.ParentCollectionId == newParentId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task MoveCollectionAsync_ToRoot_ShouldSetParentToNull()
+    {
+        // Arrange
+        var collectionId = Guid.NewGuid();
+        var parentId = Guid.NewGuid();
+        var collection = new Collection
+        {
+            Id = collectionId,
+            Name = "Test Collection",
+            ParentCollectionId = parentId
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
+        _mockRepository.Setup(r => r.GetAllAsync())
+            .ReturnsAsync(new List<Collection> { collection });
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        // Act
+        var result = await _service.MoveCollectionAsync(collectionId, null);
+
+        // Assert
+        Assert.Null(result.ParentCollectionId);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Collection>(c => c.ParentCollectionId == null)), Times.Once);
+    }
+
+    [Fact]
+    public async Task MoveCollectionAsync_WithCircularReference_ShouldThrowException()
+    {
+        // Arrange
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var parent = new Collection
+        {
+            Id = parentId,
+            Name = "Parent",
+            ParentCollectionId = null
+        };
+        var child = new Collection
+        {
+            Id = childId,
+            Name = "Child",
+            ParentCollectionId = parentId
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(parentId))
+            .ReturnsAsync(parent);
+        _mockRepository.Setup(r => r.GetAllAsync())
+            .ReturnsAsync(new List<Collection> { parent, child });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.MoveCollectionAsync(parentId, childId));
+        Assert.Contains("descendant", exception.Message);
+    }
+
+    [Fact]
+    public async Task MoveCollectionAsync_WithNonExistentCollection_ShouldThrowException()
+    {
+        // Arrange
+        var collectionId = Guid.NewGuid();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(collectionId))
+            .ReturnsAsync((Collection?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.MoveCollectionAsync(collectionId, Guid.NewGuid()));
+        Assert.Contains("not found", exception.Message);
+    }
 }

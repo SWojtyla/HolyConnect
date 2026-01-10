@@ -12,4 +12,5 @@ public interface IRequestService
     Task DeleteRequestAsync(Guid id);
     Task<RequestResponse> ExecuteRequestAsync(Request request);
     Task<RequestResponse> ExecuteRequestAsync(Request request, Domain.Entities.Environment? environment, Collection? collection);
+    Task<Request> MoveRequestAsync(Guid requestId, Guid? newCollectionId);
 }

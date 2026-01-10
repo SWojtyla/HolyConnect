@@ -525,4 +525,74 @@ public class RequestServiceTests
         Assert.Contains("already exists", exception.Message);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Request>()), Times.Once);
     }
+
+    [Fact]
+    public async Task MoveRequestAsync_WithValidDestination_ShouldMoveRequest()
+    {
+        // Arrange
+        var requestId = Guid.NewGuid();
+        var oldCollectionId = Guid.NewGuid();
+        var newCollectionId = Guid.NewGuid();
+        var request = new RestRequest
+        {
+            Id = requestId,
+            Name = "Test Request",
+            Url = "https://api.example.com",
+            CollectionId = oldCollectionId
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(requestId))
+            .ReturnsAsync(request);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Request>()))
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _service.MoveRequestAsync(requestId, newCollectionId);
+
+        // Assert
+        Assert.Equal(newCollectionId, result.CollectionId);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Request>(r => r.CollectionId == newCollectionId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task MoveRequestAsync_RemoveFromCollection_ShouldSetCollectionIdToNull()
+    {
+        // Arrange
+        var requestId = Guid.NewGuid();
+        var collectionId = Guid.NewGuid();
+        var request = new RestRequest
+        {
+            Id = requestId,
+            Name = "Test Request",
+            Url = "https://api.example.com",
+            CollectionId = collectionId
+        };
+
+        _mockRepository.Setup(r => r.GetByIdAsync(requestId))
+            .ReturnsAsync(request);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Request>()))
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _service.MoveRequestAsync(requestId, null);
+
+        // Assert
+        Assert.Null(result.CollectionId);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Request>(r => r.CollectionId == null)), Times.Once);
+    }
+
+    [Fact]
+    public async Task MoveRequestAsync_WithNonExistentRequest_ShouldThrowException()
+    {
+        // Arrange
+        var requestId = Guid.NewGuid();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(requestId))
+            .ReturnsAsync((Request?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.MoveRequestAsync(requestId, Guid.NewGuid()));
+        Assert.Contains("not found", exception.Message);
+    }
 }
