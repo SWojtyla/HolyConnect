@@ -23,5 +23,6 @@ public class ImportResult
 public enum ImportSource
 {
     Curl,
-    Bruno
+    Bruno,
+    Postman
 }

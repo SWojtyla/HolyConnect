@@ -44,6 +44,31 @@ public interface IImportService
     Task<ImportResult> ImportFromBrunoFolderAsync(string folderPath, Guid? parentCollectionId = null);
     
     /// <summary>
+    /// Import a request from Postman collection JSON (single request format)
+    /// </summary>
+    /// <param name="postmanJson">The Postman JSON content</param>
+    /// <param name="collectionId">Optional target collection ID</param>
+    /// <param name="customName">Optional custom name for the request</param>
+    /// <returns>Import result containing the imported request or error details</returns>
+    Task<ImportResult> ImportFromPostmanAsync(string postmanJson, Guid? collectionId = null, string? customName = null);
+    
+    /// <summary>
+    /// Import multiple requests from a Postman collection JSON file
+    /// </summary>
+    /// <param name="postmanCollectionJson">The Postman collection JSON content</param>
+    /// <param name="parentCollectionId">Optional parent collection ID</param>
+    /// <returns>Import result containing all imported requests and collections</returns>
+    Task<ImportResult> ImportFromPostmanCollectionAsync(string postmanCollectionJson, Guid? parentCollectionId = null);
+    
+    /// <summary>
+    /// Import an environment from Postman environment JSON
+    /// </summary>
+    /// <param name="postmanEnvironmentJson">The Postman environment JSON content</param>
+    /// <param name="customName">Optional custom name for the environment</param>
+    /// <returns>Import result containing the imported environment or error details</returns>
+    Task<ImportResult> ImportFromPostmanEnvironmentAsync(string postmanEnvironmentJson, string? customName = null);
+    
+    /// <summary>
     /// Check if the service can handle a specific import source
     /// </summary>
     /// <param name="source">Import source type</param>

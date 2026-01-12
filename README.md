@@ -20,10 +20,12 @@ A powerful API testing tool built with .NET 10 MAUI and MudBlazor, designed as a
 - 🔄 **Git Integration**: Full version control with git support (initialize, commit, branch, push, pull, commit history, selective staging)
 - 📋 **Response Extraction**: Extract values from responses using JSONPath/XPath and save to clipboard or variables
 - 🔀 **Flows**: Chain multiple requests together in sequence, passing variables between steps for complex workflows
-- 📥 **Import Support**: Import requests from curl commands and Bruno files (.bru)
-  - **Single File Import**: Import individual Bruno or curl requests
-  - **Folder Import**: Import complete Bruno collections with folder hierarchy preserved
+- 📥 **Import Support**: Import requests from curl commands, Bruno files (.bru), and Postman collections (JSON)
+  - **cURL**: Import individual requests from curl commands
+  - **Bruno**: Import single files or complete collections with folder hierarchy
+  - **Postman**: Import collections, environments, and individual requests from Postman JSON exports
   - Automatically creates collections and subcollections matching folder structure
+  - Supports REST, GraphQL, authentication, headers, and variables
 - 🎨 **Clean UI**: Modern interface built with MudBlazor components
 - 🏗️ **Extensible Architecture**: Built with clean architecture principles for easy extension
 
@@ -72,6 +74,7 @@ For detailed architecture documentation, see **[ARCHITECTURE.md](ARCHITECTURE.md
 **Feature Documentation**:
 - ⚡ **[Flows Feature](docs/FLOWS_FEATURE.md)** - Sequential request execution
 - 📥 **[Bruno Import](docs/BRUNO_IMPORT.md)** - Import from Bruno API client
+- 📥 **[Postman Import](docs/POSTMAN_IMPORT.md)** - Import from Postman
 
 ## Getting Started
 
