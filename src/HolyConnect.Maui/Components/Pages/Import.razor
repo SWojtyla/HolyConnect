@@ -167,7 +167,7 @@
                         {
                             <MudTextField T="string" 
                                          Label="Postman JSON Content (Preview)" 
-                                         Value="@(_postmanJsonContent.Length > 1000 ? _postmanJsonContent.Substring(0, 1000) + "..." : _postmanJsonContent)"
+                                         Value="@_postmanJsonPreview"
                                          Variant="Variant.Outlined"
                                          Lines="10"
                                          ReadOnly="true"
@@ -381,6 +381,7 @@ body:graphql:vars {
     private string _curlCommand = string.Empty;
     private string _brunoFileContent = string.Empty;
     private string _postmanJsonContent = string.Empty;
+    private string _postmanJsonPreview = string.Empty;
     private string? _selectedFileName;
     private string? _requestName;
     private bool _importFolder = false;
@@ -469,6 +470,11 @@ body:graphql:vars {
                 using var stream = await result.OpenReadAsync();
                 using var reader = new StreamReader(stream);
                 _postmanJsonContent = await reader.ReadToEndAsync();
+                
+                // Pre-compute preview to avoid UI performance issues
+                _postmanJsonPreview = _postmanJsonContent.Length > 1000 
+                    ? _postmanJsonContent.Substring(0, 1000) + "..." 
+                    : _postmanJsonContent;
                 
                 StateHasChanged();
             }

@@ -240,7 +240,7 @@ public class PostmanImportStrategy : IImportStrategy
             if (bodyElement.TryGetProperty("mode", out var modeElement))
             {
                 var mode = modeElement.GetString();
-                if (mode == "graphql")
+                if (mode?.Equals("graphql", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     return true;
                 }
@@ -442,7 +442,7 @@ public class PostmanImportStrategy : IImportStrategy
                         var value = valueElement.GetString();
                         if (!string.IsNullOrEmpty(key))
                         {
-                            queryParams.Add($"{key}={value}");
+                            queryParams.Add($"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value ?? string.Empty)}");
                         }
                     }
                 }
@@ -644,7 +644,7 @@ public class PostmanImportStrategy : IImportStrategy
 
                             if (!disabled && !string.IsNullOrEmpty(key))
                             {
-                                formData.Add($"{key}={value}");
+                                formData.Add($"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value ?? string.Empty)}");
                             }
                         }
                     }
