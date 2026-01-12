@@ -20,7 +20,8 @@ public class ImportServiceTests
         var strategies = new List<IImportStrategy>
         {
             new CurlImportStrategy(),
-            new BrunoImportStrategy()
+            new BrunoImportStrategy(),
+            new PostmanImportStrategy()
         };
         _service = new ImportService(_mockRequestService.Object, mockCollectionService.Object, _mockEnvironmentService.Object, strategies);
     }
@@ -909,6 +910,107 @@ body:xml {
         Assert.Contains("<item>", capturedRequest.Body);
         Assert.Contains("Test Item", capturedRequest.Body);
         Assert.Equal(BodyType.Xml, capturedRequest.BodyType);
+    }
+
+    #endregion
+
+    #region Postman Import Tests
+
+    [Fact]
+    public void CanImport_WithPostmanSource_ReturnsTrue()
+    {
+        // Act
+        var result = _service.CanImport(ImportSource.Postman);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task ImportFromPostmanAsync_WithValidRequest_SuccessfullyImports()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var postmanJson = @"{
+            ""name"": ""Get Users"",
+            ""request"": {
+                ""method"": ""GET"",
+                ""url"": ""https://api.example.com/users""
+            }
+        }";
+        RestRequest? capturedRequest = null;
+
+        _mockRequestService.Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .Callback<Request>(r => capturedRequest = r as RestRequest)
+            .ReturnsAsync((Request r) => r);
+
+        // Act
+        var result = await _service.ImportFromPostmanAsync(postmanJson, environmentId);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.ImportedRequest);
+        Assert.NotNull(capturedRequest);
+        Assert.Equal("Get Users", capturedRequest.Name);
+        Assert.Equal("https://api.example.com/users", capturedRequest.Url);
+        Assert.Equal(Domain.Entities.HttpMethod.Get, capturedRequest.Method);
+        _mockRequestService.Verify(s => s.CreateRequestAsync(It.IsAny<Request>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ImportFromPostmanAsync_WithInvalidJson_ReturnsError()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var invalidJson = "not valid json";
+
+        // Act
+        var result = await _service.ImportFromPostmanAsync(invalidJson, environmentId);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ImportFromPostmanEnvironmentAsync_WithValidEnvironment_SuccessfullyImports()
+    {
+        // Arrange
+        var postmanEnvironment = @"{
+            ""name"": ""Production"",
+            ""values"": [
+                {
+                    ""key"": ""baseUrl"",
+                    ""value"": ""https://api.example.com"",
+                    ""type"": ""default""
+                }
+            ]
+        }";
+        Domain.Entities.Environment? capturedEnvironment = null;
+
+        _mockEnvironmentService.Setup(s => s.CreateEnvironmentAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, string description) => new Domain.Entities.Environment 
+            { 
+                Id = Guid.NewGuid(), 
+                Name = name,
+                Variables = new Dictionary<string, string>(),
+                SecretVariableNames = new HashSet<string>()
+            });
+
+        _mockEnvironmentService.Setup(s => s.UpdateEnvironmentAsync(It.IsAny<Domain.Entities.Environment>()))
+            .Callback<Domain.Entities.Environment>(e => capturedEnvironment = e)
+            .ReturnsAsync((Domain.Entities.Environment e) => e);
+
+        // Act
+        var result = await _service.ImportFromPostmanEnvironmentAsync(postmanEnvironment);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Single(result.ImportedEnvironments);
+        Assert.NotNull(capturedEnvironment);
+        Assert.Equal("Production", capturedEnvironment.Name);
+        Assert.Contains("baseUrl", capturedEnvironment.Variables.Keys);
+        Assert.Equal("https://api.example.com", capturedEnvironment.Variables["baseUrl"]);
     }
 
     #endregion
