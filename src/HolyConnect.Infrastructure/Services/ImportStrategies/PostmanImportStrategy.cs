@@ -723,7 +723,7 @@ public class PostmanImportStrategy : IImportStrategy
             }
             else
             {
-                // This is a request
+                // This is a request - assign it to the current parent collection
                 var request = ParsePostmanRequest(item, parentCollectionId, null);
                 if (request != null)
                 {

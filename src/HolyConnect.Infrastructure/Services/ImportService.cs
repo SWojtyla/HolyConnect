@@ -445,12 +445,25 @@ public class ImportService : IImportService
             }
 
             // Save collections first
+            // We need to maintain a mapping of old IDs to new IDs to handle parent-child relationships
+            var idMapping = new Dictionary<Guid, Guid>();
+            
             foreach (var collection in collections)
             {
+                // Update parent collection ID if it was remapped
+                var parentId = collection.ParentCollectionId;
+                if (parentId.HasValue && idMapping.ContainsKey(parentId.Value))
+                {
+                    parentId = idMapping[parentId.Value];
+                }
+                
                 var savedCollection = await _collectionService.CreateCollectionAsync(
                     collection.Name,
-                    collection.ParentCollectionId,
+                    parentId,
                     collection.Description);
+                
+                // Store the ID mapping
+                idMapping[collection.Id] = savedCollection.Id;
                 
                 // Update with variables if any
                 if (collection.Variables.Any())

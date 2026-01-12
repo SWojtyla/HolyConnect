@@ -660,4 +660,68 @@ public class PostmanImportStrategyTests
         Assert.Equal("First Request", restRequest.Name);
         Assert.Equal("https://api.example.com/first", restRequest.Url);
     }
+
+    [Fact]
+    public void ParseCollection_WithNestedFoldersAndRequests_ShouldAssignCorrectParentIds()
+    {
+        // Arrange - Structure: Main Collection > Folder1 > Folder2 > Request
+        var postmanCollection = @"{
+            ""info"": {
+                ""name"": ""Main Collection""
+            },
+            ""item"": [
+                {
+                    ""name"": ""Folder1"",
+                    ""item"": [
+                        {
+                            ""name"": ""Folder2"",
+                            ""item"": [
+                                {
+                                    ""name"": ""Nested Request"",
+                                    ""request"": {
+                                        ""method"": ""GET"",
+                                        ""url"": ""https://api.example.com/nested""
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            ""name"": ""Request in Folder1"",
+                            ""request"": {
+                                ""method"": ""GET"",
+                                ""url"": ""https://api.example.com/folder1""
+                            }
+                        }
+                    ]
+                }
+            ]
+        }";
+
+        // Act
+        var (requests, collections, environments) = _strategy.ParseCollection(postmanCollection, null);
+
+        // Assert
+        Assert.Equal(3, collections.Count); // Main Collection + Folder1 + Folder2
+        Assert.Equal(2, requests.Count);
+        
+        var mainCollection = collections[0];
+        var folder1 = collections[1];
+        var folder2 = collections[2];
+        
+        Assert.Equal("Main Collection", mainCollection.Name);
+        Assert.Equal("Folder1", folder1.Name);
+        Assert.Equal("Folder2", folder2.Name);
+        
+        // Verify parent relationships
+        Assert.Null(mainCollection.ParentCollectionId);
+        Assert.Equal(mainCollection.Id, folder1.ParentCollectionId);
+        Assert.Equal(folder1.Id, folder2.ParentCollectionId);
+        
+        // Verify request assignments
+        var nestedRequest = requests.First(r => r.Name == "Nested Request");
+        var folder1Request = requests.First(r => r.Name == "Request in Folder1");
+        
+        Assert.Equal(folder2.Id, nestedRequest.CollectionId);
+        Assert.Equal(folder1.Id, folder1Request.CollectionId);
+    }
 }

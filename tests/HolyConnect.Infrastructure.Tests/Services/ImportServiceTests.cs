@@ -1013,5 +1013,81 @@ body:xml {
         Assert.Equal("https://api.example.com", capturedEnvironment.Variables["baseUrl"]);
     }
 
+    [Fact]
+    public async Task ImportFromPostmanCollectionAsync_WithNestedFolders_ShouldMapParentIdsCorrectly()
+    {
+        // Arrange
+        var postmanCollection = @"{
+            ""info"": {
+                ""name"": ""Root Collection""
+            },
+            ""item"": [
+                {
+                    ""name"": ""Folder1"",
+                    ""item"": [
+                        {
+                            ""name"": ""Nested Request"",
+                            ""request"": {
+                                ""method"": ""GET"",
+                                ""url"": ""https://api.example.com/nested""
+                            }
+                        }
+                    ]
+                }
+            ]
+        }";
+
+        var createdCollections = new List<Collection>();
+        var createdRequests = new List<Request>();
+
+        var mockCollectionService = new Mock<ICollectionService>();
+        mockCollectionService.Setup(s => s.CreateCollectionAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string>()))
+            .ReturnsAsync((string name, Guid? parentId, string description) => 
+            {
+                var collection = new Collection 
+                { 
+                    Id = Guid.NewGuid(), 
+                    Name = name,
+                    ParentCollectionId = parentId,
+                    Variables = new Dictionary<string, string>()
+                };
+                createdCollections.Add(collection);
+                return collection;
+            });
+
+        mockCollectionService.Setup(s => s.UpdateCollectionAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        var mockRequestService = new Mock<IRequestService>();
+        mockRequestService.Setup(s => s.CreateRequestAsync(It.IsAny<Request>()))
+            .Callback<Request>(r => createdRequests.Add(r))
+            .ReturnsAsync((Request r) => r);
+
+        var strategies = new List<IImportStrategy>
+        {
+            new CurlImportStrategy(),
+            new BrunoImportStrategy(),
+            new PostmanImportStrategy()
+        };
+        var service = new ImportService(mockRequestService.Object, mockCollectionService.Object, _mockEnvironmentService.Object, strategies);
+
+        // Act
+        var result = await service.ImportFromPostmanCollectionAsync(postmanCollection);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal(2, createdCollections.Count);
+        Assert.Single(createdRequests);
+
+        var rootCollection = createdCollections.First(c => c.Name == "Root Collection");
+        var folder1 = createdCollections.First(c => c.Name == "Folder1");
+        var nestedRequest = createdRequests.First();
+
+        // Verify the parent relationship was correctly mapped
+        Assert.Null(rootCollection.ParentCollectionId);
+        Assert.Equal(rootCollection.Id, folder1.ParentCollectionId);
+        Assert.Equal(folder1.Id, nestedRequest.CollectionId);
+    }
+
     #endregion
 }
