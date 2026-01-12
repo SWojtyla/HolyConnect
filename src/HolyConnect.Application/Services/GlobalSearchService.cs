@@ -72,7 +72,7 @@ public class GlobalSearchService : IGlobalSearchService
                     Id = env.Id,
                     Name = env.Name,
                     Description = env.Description,
-                    NavigationUrl = $"/environment/{env.Id}",
+                    NavigationUrl = $"/environment/{env.Id}/edit",
                     Icon = "dns", // Material icon name
                     RelevanceScore = score
                 };
@@ -157,7 +157,7 @@ public class GlobalSearchService : IGlobalSearchService
                     Id = flow.Id,
                     Name = flow.Name,
                     Description = flow.Description,
-                    NavigationUrl = $"/flow/{flow.Id}",
+                    NavigationUrl = $"/flow/{flow.Id}/view",
                     Icon = "account_tree", // Material icon name
                     RelevanceScore = score
                 };

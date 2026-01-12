@@ -336,4 +336,64 @@ public class GlobalSearchServiceTests
         Assert.Equal("Child Collection", result.Name);
         Assert.Equal("Parent Collection", result.ParentContext);
     }
+
+    [Fact]
+    public async Task SearchAsync_WithMatchingEnvironment_ShouldReturnEditNavigationUrl()
+    {
+        // Arrange
+        var environmentId = Guid.NewGuid();
+        var environment = new DomainEnvironment
+        {
+            Id = environmentId,
+            Name = "Production",
+            Description = "Production environment"
+        };
+        
+        _mockEnvironmentService.Setup(s => s.GetAllEnvironmentsAsync())
+            .ReturnsAsync(new[] { environment });
+        _mockCollectionService.Setup(s => s.GetAllCollectionsAsync())
+            .ReturnsAsync(Array.Empty<Collection>());
+        _mockRequestService.Setup(s => s.GetAllRequestsAsync())
+            .ReturnsAsync(Array.Empty<Request>());
+        _mockFlowService.Setup(s => s.GetAllFlowsAsync())
+            .ReturnsAsync(Array.Empty<Flow>());
+
+        // Act
+        var results = await _service.SearchAsync("prod");
+
+        // Assert
+        Assert.Single(results);
+        var result = results.First();
+        Assert.Equal($"/environment/{environmentId}/edit", result.NavigationUrl);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithMatchingFlow_ShouldReturnViewNavigationUrl()
+    {
+        // Arrange
+        var flowId = Guid.NewGuid();
+        var flow = new Flow
+        {
+            Id = flowId,
+            Name = "Authentication Flow",
+            Description = "Login and get token"
+        };
+        
+        _mockEnvironmentService.Setup(s => s.GetAllEnvironmentsAsync())
+            .ReturnsAsync(Array.Empty<DomainEnvironment>());
+        _mockCollectionService.Setup(s => s.GetAllCollectionsAsync())
+            .ReturnsAsync(Array.Empty<Collection>());
+        _mockRequestService.Setup(s => s.GetAllRequestsAsync())
+            .ReturnsAsync(Array.Empty<Request>());
+        _mockFlowService.Setup(s => s.GetAllFlowsAsync())
+            .ReturnsAsync(new[] { flow });
+
+        // Act
+        var results = await _service.SearchAsync("auth");
+
+        // Assert
+        Assert.Single(results);
+        var result = results.First();
+        Assert.Equal($"/flow/{flowId}/view", result.NavigationUrl);
+    }
 }
