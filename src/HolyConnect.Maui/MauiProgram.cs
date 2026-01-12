@@ -228,6 +228,7 @@ public static class MauiProgram
         // Register import strategies
         builder.Services.AddScoped<IImportStrategy, CurlImportStrategy>();
         builder.Services.AddScoped<IImportStrategy, BrunoImportStrategy>();
+        builder.Services.AddScoped<IImportStrategy, PostmanImportStrategy>();
         builder.Services.AddScoped<IImportService, ImportService>();
 
         // Add request executors

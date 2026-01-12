@@ -378,4 +378,176 @@ public class ImportService : IImportService
             await ProcessFolderAsync(subFolder, effectiveParentId, strategy, result, isRootFolder: false);
         }
     }
+
+    public async Task<ImportResult> ImportFromPostmanAsync(string postmanJson, Guid? collectionId = null, string? customName = null)
+    {
+        var result = new ImportResult();
+
+        try
+        {
+            var strategy = _importStrategies.FirstOrDefault(s => s.Source == ImportSource.Postman);
+            if (strategy == null)
+            {
+                result.ErrorMessage = "Postman import strategy not found.";
+                return result;
+            }
+
+            var request = strategy.Parse(postmanJson, collectionId, customName);
+            
+            if (request == null)
+            {
+                result.ErrorMessage = "Failed to parse Postman JSON. Please check the format.";
+                return result;
+            }
+
+            // Save the request
+            var savedRequest = await _requestService.CreateRequestAsync(request);
+            
+            result.Success = true;
+            result.ImportedRequest = savedRequest;
+        }
+        catch (Exception ex)
+        {
+            result.ErrorMessage = $"Error importing Postman JSON: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    public async Task<ImportResult> ImportFromPostmanCollectionAsync(string postmanCollectionJson, Guid? parentCollectionId = null)
+    {
+        var result = new ImportResult();
+
+        try
+        {
+            var strategy = _importStrategies.FirstOrDefault(s => s.Source == ImportSource.Postman);
+            if (strategy == null)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Postman import strategy not found.";
+                return result;
+            }
+
+            if (strategy is not PostmanImportStrategy postmanStrategy)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Invalid Postman import strategy type.";
+                return result;
+            }
+
+            var (requests, collections, environments) = postmanStrategy.ParseCollection(postmanCollectionJson, parentCollectionId);
+
+            if (collections.Count == 0 && requests.Count == 0)
+            {
+                result.Success = false;
+                result.ErrorMessage = "No valid collections or requests found in the Postman collection.";
+                return result;
+            }
+
+            // Save collections first
+            foreach (var collection in collections)
+            {
+                var savedCollection = await _collectionService.CreateCollectionAsync(
+                    collection.Name,
+                    collection.ParentId,
+                    collection.Description);
+                
+                // Update with variables if any
+                if (collection.Variables.Any())
+                {
+                    savedCollection.Variables = collection.Variables;
+                    savedCollection = await _collectionService.UpdateCollectionAsync(savedCollection);
+                }
+
+                result.ImportedCollections.Add(savedCollection);
+
+                // Update request collection IDs to point to saved collection
+                foreach (var request in requests.Where(r => r.CollectionId == collection.Id))
+                {
+                    request.CollectionId = savedCollection.Id;
+                }
+            }
+
+            // Save requests
+            foreach (var request in requests)
+            {
+                try
+                {
+                    var savedRequest = await _requestService.CreateRequestAsync(request);
+                    result.ImportedRequests.Add(savedRequest);
+                    result.SuccessfulImports++;
+                }
+                catch (Exception ex)
+                {
+                    result.FailedImports++;
+                    result.Warnings.Add($"Failed to import request '{request.Name}': {ex.Message}");
+                }
+            }
+
+            result.TotalFilesProcessed = requests.Count;
+            result.Success = true;
+
+            if (result.FailedImports > 0)
+            {
+                result.Warnings.Add($"{result.FailedImports} out of {result.TotalFilesProcessed} requests failed to import.");
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = $"Error importing Postman collection: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    public async Task<ImportResult> ImportFromPostmanEnvironmentAsync(string postmanEnvironmentJson, string? customName = null)
+    {
+        var result = new ImportResult();
+
+        try
+        {
+            var strategy = _importStrategies.FirstOrDefault(s => s.Source == ImportSource.Postman);
+            if (strategy == null)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Postman import strategy not found.";
+                return result;
+            }
+
+            if (strategy is not PostmanImportStrategy postmanStrategy)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Invalid Postman import strategy type.";
+                return result;
+            }
+
+            var environment = postmanStrategy.ParseEnvironment(postmanEnvironmentJson, customName);
+            
+            if (environment == null)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Failed to parse Postman environment JSON. Please check the format.";
+                return result;
+            }
+
+            // Save the environment
+            var savedEnvironment = await _environmentService.CreateEnvironmentAsync(environment.Name, environment.Description);
+            
+            // Update the variables and secret variables
+            savedEnvironment.Variables = environment.Variables;
+            savedEnvironment.SecretVariableNames = environment.SecretVariableNames;
+            savedEnvironment = await _environmentService.UpdateEnvironmentAsync(savedEnvironment);
+            
+            result.Success = true;
+            result.ImportedEnvironments.Add(savedEnvironment);
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = $"Error importing Postman environment: {ex.Message}";
+        }
+
+        return result;
+    }
 }
