@@ -449,7 +449,7 @@ public class ImportService : IImportService
             {
                 var savedCollection = await _collectionService.CreateCollectionAsync(
                     collection.Name,
-                    collection.ParentId,
+                    collection.ParentCollectionId,
                     collection.Description);
                 
                 // Update with variables if any

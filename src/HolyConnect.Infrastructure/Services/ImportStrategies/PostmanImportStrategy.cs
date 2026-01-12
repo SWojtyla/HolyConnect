@@ -55,13 +55,13 @@ public class PostmanImportStrategy : IImportStrategy
     /// <summary>
     /// Parse a full Postman collection and return all requests, collections, and environments
     /// </summary>
-    public (List<Request> Requests, List<Collection> Collections, List<Environment> Environments) ParseCollection(
+    public (List<Request> Requests, List<Collection> Collections, List<Domain.Entities.Environment> Environments) ParseCollection(
         string content, 
         Guid? parentCollectionId = null)
     {
         var requests = new List<Request>();
         var collections = new List<Collection>();
-        var environments = new List<Environment>();
+        var environments = new List<Domain.Entities.Environment>();
 
         try
         {
@@ -86,7 +86,7 @@ public class PostmanImportStrategy : IImportStrategy
             {
                 Id = Guid.NewGuid(),
                 Name = collectionName,
-                ParentId = parentCollectionId,
+                ParentCollectionId = parentCollectionId,
                 CreatedAt = DateTime.UtcNow,
                 Variables = new Dictionary<string, string>()
             };
@@ -117,7 +117,7 @@ public class PostmanImportStrategy : IImportStrategy
     /// <summary>
     /// Parse Postman environment JSON
     /// </summary>
-    public Environment? ParseEnvironment(string content, string? customName = null)
+    public Domain.Entities.Environment? ParseEnvironment(string content, string? customName = null)
     {
         try
         {
@@ -131,13 +131,17 @@ public class PostmanImportStrategy : IImportStrategy
             }
 
             // Get environment name
-            var environmentName = customName ?? "Imported Environment";
-            if (root.TryGetProperty("name", out var nameElement))
+            var environmentName = "Imported Environment";
+            if (!string.IsNullOrWhiteSpace(customName))
+            {
+                environmentName = customName;
+            }
+            else if (root.TryGetProperty("name", out var nameElement))
             {
                 environmentName = nameElement.GetString() ?? environmentName;
             }
 
-            var environment = new Environment
+            var environment = new Domain.Entities.Environment
             {
                 Id = Guid.NewGuid(),
                 Name = environmentName,
@@ -194,8 +198,12 @@ public class PostmanImportStrategy : IImportStrategy
             }
 
             // Get request name
-            var requestName = customName ?? "Imported Request";
-            if (item.TryGetProperty("name", out var nameElement))
+            var requestName = "Imported Request";
+            if (!string.IsNullOrWhiteSpace(customName))
+            {
+                requestName = customName;
+            }
+            else if (item.TryGetProperty("name", out var nameElement))
             {
                 requestName = nameElement.GetString() ?? requestName;
             }
@@ -703,7 +711,7 @@ public class PostmanImportStrategy : IImportStrategy
                 {
                     Id = Guid.NewGuid(),
                     Name = folderName,
-                    ParentId = parentCollectionId,
+                    ParentCollectionId = parentCollectionId,
                     CreatedAt = DateTime.UtcNow,
                     Variables = new Dictionary<string, string>()
                 };

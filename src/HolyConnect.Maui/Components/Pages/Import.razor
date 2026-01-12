@@ -167,7 +167,7 @@
                         {
                             <MudTextField T="string" 
                                          Label="Postman JSON Content (Preview)" 
-                                         Value="_postmanJsonContent.Length > 1000 ? _postmanJsonContent.Substring(0, 1000) + "..." : _postmanJsonContent"
+                                         Value="@(_postmanJsonContent.Length > 1000 ? _postmanJsonContent.Substring(0, 1000) + "..." : _postmanJsonContent)"
                                          Variant="Variant.Outlined"
                                          Lines="10"
                                          ReadOnly="true"
